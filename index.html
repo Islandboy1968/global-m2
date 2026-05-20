@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Global M2 — G5</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="./data/data.js"></script>
+<style>
+  :root {
+    --bg: #0a0d12;
+    --bg-card: #11161e;
+    --bg-elev: #161d28;
+    --border: #1e2734;
+    --text: #e6ebf2;
+    --text-dim: #8c98a8;
+    --text-faint: #5b6573;
+    --accent: #4ec5ff;
+    --m2: #4ec5ff;
+    --pos: #3fd693;
+    --neg: #ff6a6a;
+    --warn: #f5c451;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    font-feature-settings: "tnum", "ss01";
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 32px 28px 64px; }
+  header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px; margin-bottom: 28px;
+  }
+  header h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  header .sub { font-size: 13px; color: var(--text-dim); }
+  .updated { font-size: 12px; color: var(--text-faint); }
+
+  .hero {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin-bottom: 28px;
+  }
+  .stat {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .stat .lbl { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .val { font-size: 32px; font-weight: 600; margin-top: 6px; letter-spacing: -0.02em; }
+  .stat .delta { font-size: 14px; margin-top: 4px; }
+  .stat .delta.pos { color: var(--pos); }
+  .stat .delta.neg { color: var(--neg); }
+  .stat .stripe { height: 3px; border-radius: 2px; margin-top: 12px; background: var(--m2); }
+
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 22px;
+  }
+  .chart-card h2 { margin: 0 0 4px 0; font-size: 16px; font-weight: 600; }
+  .chart-card .subtitle { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  .chart-wrap { position: relative; height: 360px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: right; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-weight: 500; color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td { color: var(--text); }
+  tr.subtotal td { font-weight: 600; background: var(--bg-elev); }
+  td.dim { color: var(--text-faint); }
+  td.stale { color: var(--warn); font-size: 11px; }
+
+  .notes {
+    margin-top: 24px; padding: 16px 18px;
+    background: rgba(245,196,81,0.06);
+    border: 1px solid rgba(245,196,81,0.25);
+    border-left: 3px solid var(--warn);
+    border-radius: 6px;
+    font-size: 12px; color: var(--text-dim); line-height: 1.6;
+  }
+  .notes strong { color: var(--warn); }
+  .notes ul { margin: 8px 0 0 16px; padding: 0; }
+
+  footer {
+    margin-top: 40px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; color: var(--text-faint); line-height: 1.7;
+  }
+  footer a { color: var(--text-dim); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  @media (max-width: 760px) {
+    .hero { grid-template-columns: 1fr; }
+    .chart-wrap { height: 260px; }
+    .wrap { padding: 20px 14px 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Global M2</h1>
+    <div class="sub">G5 broad money (US, Eurozone, China, Japan, UK), USD, 4-year rolling daily</div>
+  </div>
+  <div class="updated" id="updated">—</div>
+</header>
+
+<div class="hero">
+  <div class="stat">
+    <div class="lbl">Global M2 (G5)</div>
+    <div class="val" id="hero-total">—</div>
+    <div class="delta" id="hero-yoy">—</div>
+    <div class="stripe"></div>
+  </div>
+  <div class="stat">
+    <div class="lbl">4-year change</div>
+    <div class="val" id="hero-4y">—</div>
+    <div class="delta" id="hero-4y-sub">vs <span id="hero-4y-start">—</span></div>
+    <div class="stripe"></div>
+  </div>
+  <div class="stat">
+    <div class="lbl">Latest date</div>
+    <div class="val" id="hero-date">—</div>
+    <div class="delta" id="hero-cadence">daily, FX-revalued</div>
+    <div class="stripe"></div>
+  </div>
+</div>
+
+<div class="chart-card">
+  <h2>Global M2 — Level</h2>
+  <div class="subtitle">USD trillions. Daily cadence: monthly M2 prints forward-filled, ECB daily FX revaluation against EUR cross-rates.</div>
+  <div class="chart-wrap"><canvas id="chart-level"></canvas></div>
+</div>
+
+<div class="chart-card">
+  <h2>YoY % Change</h2>
+  <div class="subtitle">Year-over-year growth, daily.</div>
+  <div class="chart-wrap"><canvas id="chart-yoy"></canvas></div>
+</div>
+
+<div class="chart-card">
+  <h2>Component Breakdown</h2>
+  <div class="subtitle">Latest native reading, converted to USD trillions at today's spot.</div>
+  <table id="breakdown"><thead><tr>
+    <th>Country</th>
+    <th>Native (latest)</th>
+    <th>Last print</th>
+    <th>USD</th>
+    <th>Share</th>
+  </tr></thead><tbody></tbody></table>
+</div>
+
+<div class="notes" id="notes">
+  <strong>Construction notes.</strong>
+  <ul id="notes-list"></ul>
+</div>
+
+<footer>
+  Global M2 = sum of broad money (M2/M3) for US, Eurozone, China, Japan, UK. All series normalised to USD via ECB daily reference rates (cross-rates through EUR). Daily cadence with forward-filled monthly observations. 4-year rolling window.
+  <br><br>
+  Sources:
+  <a href="https://fred.stlouisfed.org/series/M2SL" target="_blank">FRED M2SL</a> ·
+  <a href="https://data.ecb.europa.eu/help/api/overview" target="_blank">ECB Data Portal</a> ·
+  <a href="https://chinadata.live/data/china-m2-money-supply/" target="_blank">chinadata.live</a> ·
+  <a href="https://fred.stlouisfed.org/series/MABMM301JPM189N" target="_blank">FRED Japan M2 mirror</a> ·
+  <a href="https://www.bankofengland.co.uk/boeapps/database/" target="_blank">BoE IADB</a>
+</footer>
+
+</div>
+
+<script>
+(function () {
+  const D = window.GLOBAL_M2_DATA;
+  if (!D) { document.getElementById('hero-total').textContent = 'No data'; return; }
+
+  const fmtT = (v) => v == null ? '—' : '$' + (v/1000).toFixed(2) + 'T';
+  const fmtPct = (v) => v == null ? '—' : (v >= 0 ? '+' : '') + v.toFixed(2) + '%';
+  const lastNonNull = (arr) => {
+    for (let i = arr.length - 1; i >= 0; i--) if (arr[i] != null) return { v: arr[i], i };
+    return { v: null, i: -1 };
+  };
+  const firstNonNull = (arr) => {
+    for (let i = 0; i < arr.length; i++) if (arr[i] != null) return { v: arr[i], i };
+    return { v: null, i: -1 };
+  };
+  const setDelta = (el, v, suffix) => {
+    el.textContent = fmtPct(v) + (suffix || '');
+    if (v == null) return;
+    el.classList.toggle('pos', v >= 0);
+    el.classList.toggle('neg', v < 0);
+  };
+
+  // hero
+  const lt = lastNonNull(D.global_m2_usd_bn);
+  const ft = firstNonNull(D.global_m2_usd_bn);
+  document.getElementById('hero-total').textContent = fmtT(lt.v);
+  setDelta(document.getElementById('hero-yoy'), D.global_m2_yoy_pct[lt.i], ' YoY');
+  const fourY = (lt.v / ft.v - 1) * 100;
+  document.getElementById('hero-4y').textContent = (fourY >= 0 ? '+' : '') + fourY.toFixed(1) + '%';
+  document.getElementById('hero-4y-start').textContent = D.dates[ft.i];
+  document.getElementById('hero-date').textContent = D.dates[lt.i];
+
+  document.getElementById('updated').textContent = 'as of ' + D.dates[lt.i] + '  ·  generated ' + D.generated_at.slice(0, 10);
+
+  Chart.defaults.color = '#8c98a8';
+  Chart.defaults.borderColor = '#1e2734';
+  Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, Inter, "Segoe UI", sans-serif';
+
+  const dates = D.dates;
+  const levelT = D.global_m2_usd_bn.map(v => v == null ? null : v / 1000);
+
+  const step = 7;
+  const ds_dates = []; const ds_level = []; const ds_yoy = [];
+  for (let i = 0; i < dates.length; i += step) {
+    ds_dates.push(dates[i]); ds_level.push(levelT[i]); ds_yoy.push(D.global_m2_yoy_pct[i]);
+  }
+
+  new Chart(document.getElementById('chart-level'), {
+    type: 'line',
+    data: { labels: ds_dates, datasets: [{
+      label: 'Global M2', data: ds_level,
+      borderColor: '#4ec5ff', backgroundColor: 'rgba(78,197,255,0.12)',
+      fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, autoSkip: true }, grid: { color: '#161d28' } },
+        y: { ticks: { callback: v => '$' + v.toFixed(0) + 'T' }, grid: { color: '#161d28' } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#11161e', borderColor: '#1e2734', borderWidth: 1,
+          callbacks: { label: (ctx) => 'Global M2: $' + ctx.parsed.y.toFixed(2) + 'T' },
+        },
+      },
+    },
+  });
+
+  new Chart(document.getElementById('chart-yoy'), {
+    type: 'line',
+    data: { labels: ds_dates, datasets: [{
+      label: 'Global M2 YoY', data: ds_yoy,
+      borderColor: '#4ec5ff', backgroundColor: 'rgba(78,197,255,0.08)',
+      fill: true, tension: 0.25, pointRadius: 0, borderWidth: 2,
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, autoSkip: true }, grid: { color: '#161d28' } },
+        y: { ticks: { callback: v => (v >= 0 ? '+' : '') + v.toFixed(0) + '%' }, grid: { color: '#161d28' } },
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#11161e', borderColor: '#1e2734', borderWidth: 1,
+          callbacks: { label: (ctx) => ctx.parsed.y == null ? '—' : 'YoY: ' + (ctx.parsed.y >= 0 ? '+' : '') + ctx.parsed.y.toFixed(2) + '%' },
+        },
+      },
+    },
+  });
+
+  // breakdown table
+  const tbody = document.querySelector('#breakdown tbody');
+  const totalUsdBn = lt.v;
+
+  const NATIVE_FMT = {
+    'US M2':    (v) => '$' + v.toFixed(1) + 'B',
+    'EZ M3':    (v) => '€' + (v / 1000).toFixed(2) + 'T',
+    'China M2': (v) => '¥' + (v / 1e12).toFixed(2) + 'T',
+    'Japan M2': (v) => '¥' + (v / 1e12).toFixed(0) + 'T',
+    'UK M2':    (v) => '£' + (v / 1000).toFixed(2) + 'T',
+  };
+
+  function isStale(dateStr) {
+    const d = new Date(dateStr);
+    const today = new Date(D.today);
+    return (today - d) / 86400000 > 75;
+  }
+
+  Object.entries(D.components).forEach(([name, c]) => {
+    const usdBn = c.latest.usd_bn_today;
+    const native = c.latest.native_value;
+    const dateStr = c.latest.native_date;
+    const stale = isStale(dateStr);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.country}<span style="color:var(--text-faint); margin-left:6px;">${name}</span></td>
+      <td>${NATIVE_FMT[name] ? NATIVE_FMT[name](native) : native.toFixed(0)}</td>
+      <td class="${stale ? 'stale' : 'dim'}">${dateStr}${stale ? ' ⚠' : ''}</td>
+      <td>$${(usdBn / 1000).toFixed(2)}T</td>
+      <td class="dim">${(usdBn / totalUsdBn * 100).toFixed(1)}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  const total = document.createElement('tr');
+  total.className = 'subtotal';
+  total.innerHTML = `
+    <td><strong>Global M2</strong></td><td></td><td></td>
+    <td><strong>$${(totalUsdBn / 1000).toFixed(2)}T</strong></td>
+    <td class="dim">100.0%</td>
+  `;
+  tbody.appendChild(total);
+
+  const noteUl = document.getElementById('notes-list');
+  Object.entries(D.notes).forEach(([k, v]) => {
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${k}:</strong> ${v}`;
+    noteUl.appendChild(li);
+  });
+})();
+</script>
+</body>
+</html>
