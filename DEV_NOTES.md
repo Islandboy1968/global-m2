@@ -10,8 +10,12 @@ styled in the **GMI brand "light report-chart" theme** (see Styling below). The 
 **The Everything Code (TEC)** — liquidity is the first section; more TEC sections (tabs) will
 be added over time.
 
-Every tab shows **THE EVERYTHING CODE** as the main title (`.maintitle`, all caps) with a
-section name beneath it (`.subtitle`) and a one-line descriptor (`.updated`).
+Layout follows the Claude Design template (GMI house style): a hot-pink top rule, a
+`GMI` / `GLOBAL MACRO INVESTOR` masthead, then a title block with a small pink kicker
+**"The Everything Code"** (`.kicker`) over the big section headline **"Global Liquidity" /
+"US Liquidity"** (`.h1title`, Oswald), with a right-aligned descriptor (`.descr`). The
+title/descriptor are page-level and updated by `showTab()` on tab change. A footer reads
+`GMI · The Everything Code` / month-year.
 
 - **Global Liquidity tab** — Total Global Liquidity: broad money across 47 economies,
   each converted to USD at spot FX and summed (the GMI method). ~135T, ~8% YoY.
@@ -27,10 +31,14 @@ Live at: https://islandboy1968.github.io/global-m2/
 - **Every chart is fully independent.** There is no longer any cross-chart x-axis sync
   (`syncX` was removed). Zooming, panning, range selection and lead/lag on one chart never
   touch any other chart.
-- **Range buttons are per-chart.** Each card has its own `1M / 3M / 6M / 1Y / 5Y / All` row
-  (built by `buildRanges(chart, container)` into a `.ctrls > .ranges` bar inserted above the
-  canvas). Each set acts only on its own chart, anchored to that chart's own data extent
-  (`xExtent`). Picking a range also auto-fits Y (`fitY`).
+- **Range buttons are per-chart.** Each panel carries its own `1M / 3M / 6M / 1Y / 5Y / All`
+  row in a `.ctrls > .ranges` bar (the empty `.ranges`/`.lagctl` divs are pre-placed in the
+  HTML inside each `.panel`; `controls(chart)` finds them via `chart.canvas.closest('.panel')`
+  and populates them). Each set acts only on its own chart, anchored to that chart's own data
+  extent (`xExtent`). Picking a range also auto-fits Y (`fitY`). (Note: the static Claude
+  Design mock shows a single top-right range row; we kept per-chart controls per the explicit
+  functional requirement — to switch to one master row, move the `.ranges` bar out of the
+  panels and have `setRange` loop all charts.)
 - **Lead/lag is adjustable per overlay chart.** The lead/lag charts (global BTC & NDX, US NDX
   & BTC) have a `.lagctl` control: presets `[-90, 0, +90, +120, +180]` plus a free numeric
   input for any value. Positive = liquidity leads (asset shifted back), negative = liquidity
@@ -42,19 +50,26 @@ Live at: https://islandboy1968.github.io/global-m2/
   smooth on trackpads). Value-axis drag (slide) is damped by `AXIS_DRAG_DAMP=0.55` so overlay
   alignment is fine-grained. Both constants are at the top of the app `<script>`.
 
-## Styling (GMI light report-chart theme)
-Applied from the GMI Visual Guidance brand system. All tokens are CSS vars in `:root`.
-- **Palette:** background = soft pink gradient (`#ffd9e2 → #ffedf1 → #fbfcfd`, fixed attachment);
-  cards = white `#ffffff`; text/ink = Slate `#22233f`, muted = `#6e7088`; borders `#ece2e8`;
-  **accent = GMI hot pink `#f12a5a`**; chart grid `#efe6ec`.
-- **Series colours:** liquidity lines = near-black `#1a1a22` (`LINE`); overlay asset lines
-  (BTC/NDX) = hot pink `#f12a5a` (`ACCENT`); 3m-avg companion line = muted mauve `#bcb6c6`
-  (`SMOOTH`). These four constants live at the top of the app `<script>`.
-- **Type (Google Fonts, loaded in `<head>`):** Oswald (Tungsten substitute) for titles —
-  `.maintitle`, `.subtitle` wrapper aside, chart `h2`, tab buttons, all uppercase; DM Sans
-  (AT Aero substitute) for body + the big stat numbers; DM Mono for small UI labels (subtitle
-  line, `.updated`, range/lag buttons, hints, axis ticks/titles). `Chart.defaults.font.family`
-  is set to DM Sans so tooltips match.
+## Styling (GMI template — Claude Design)
+Built to the Claude Design template PNG + CSS spec. All tokens are CSS vars in `:root`.
+- **Page is white;** the colour lives in the chart panels. Each chart sits in a `.panel` with
+  the pink gradient `linear-gradient(180deg,#ECC2EA 0%,#F8DDEF 60%,#FBE7F2 100%)`. Above each
+  panel a `.chead` row carries a pink section number (`01`…), the Oswald title, and a right
+  `.ccap` caption. Inside each panel: a top-left HTML `.legend` (line swatch + label; liquidity
+  black, asset pink), the `.chartbox`, the per-chart `.ctrls`, and an italic `.src` source line.
+- **Accent = GMI hot pink `#f12a5a` (`PINK`).** Ink `#131316` (`BLACK`). Muted text
+  `rgba(19,19,22,.6/.45)`. Borders `rgba(19,19,22,.12)`.
+- **Series colours:** index/level + overlay-liquidity lines = black `#131316`; YoY lines and all
+  overlay asset lines (BTC/NDX) = hot pink `#f12a5a`; 3m-avg companion = faint `rgba(19,19,22,.16)`
+  (`SMOOTH`). Chart grid `rgba(19,19,22,.07)`, x baseline `rgba(19,19,22,.6)`. **Axis tick colour
+  matches its series** — level y ticks black, YoY y ticks pink, overlay right (log) ticks pink.
+- **Index/level charts are shown in $BN** (data is $tn, multiplied ×1000 at plot time via `ptsBN`
+  / `PBN`; tick formatter `fmtBN` adds thousands separators). YoY stays % (`fmtPCT`). The big
+  on-page stat readouts were replaced by the `.ccap` captions (latest value / YoY in the header).
+- **Type (Google Fonts, in `<head>`):** Oswald (Tungsten substitute) for `GMI` wordmark, section
+  titles, `.h1title`, tabs; DM Sans (AT Aero substitute) for legends/body; DM Mono for the
+  masthead sub-wordmark, kicker, descriptor, captions, range/lag pills, footer, axis ticks.
+  `Chart.defaults.font.family` = DM Sans (tooltips).
 - **NOTE on fonts:** Tungsten + AT Aero are licensed and not embeddable from the brand PDF, so
   Oswald/DM Sans stand in. To go pixel-exact, drop the licensed `.woff2` files in and add
   `@font-face` rules, then swap the `font-family` stacks (search "Oswald"/"DM Sans").

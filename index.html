@@ -13,58 +13,77 @@
 <script src="data.js"></script>
 <script>window.TGL_DATA||document.write('<scr'+'ipt src="data/data.js"><\/scr'+'ipt>');</script>
 <style>
-  /* GMI palette — hot pink #F12A5A, slate #22233F, light report-chart theme */
-  :root{--bg1:#ffd9e2;--bg2:#ffedf1;--ink:#22233f;--ink2:#6e7088;--line:#ece2e8;
-        --accent:#f12a5a;--card:#ffffff;--gridline:#efe6ec;--linedark:#1a1a22;--smooth:#bcb6c6}
+  /* GMI brand — light report-chart template (Claude Design) */
+  :root{--pink:#f12a5a;--ink:#131316;--mut:rgba(19,19,22,.6);--mut2:rgba(19,19,22,.45);
+        --line:rgba(19,19,22,.12);--grid:rgba(19,19,22,.07);
+        --panel:linear-gradient(180deg,#ECC2EA 0%,#F8DDEF 60%,#FBE7F2 100%)}
   *{box-sizing:border-box}
   body{margin:0;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-       color:var(--ink);background:linear-gradient(158deg,var(--bg1),var(--bg2) 42%,#fbfcfd 100%);
-       background-attachment:fixed;min-height:100vh}
-  .wrap{max-width:1000px;margin:0 auto;padding:34px 22px 56px}
-  .maintitle{font-family:"Oswald",sans-serif;font-size:34px;line-height:1;margin:0;font-weight:700;
-       letter-spacing:1.5px;text-transform:uppercase;color:var(--ink)}
-  .subtitle{font-family:"DM Mono",monospace;font-size:12.5px;font-weight:500;color:var(--accent);
-       margin-top:7px;letter-spacing:3px;text-transform:uppercase}
-  .updated{font-family:"DM Mono",monospace;font-size:11px;color:var(--ink2);margin-top:8px;letter-spacing:.3px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:20px;
-        box-shadow:0 2px 10px rgba(34,35,63,.05)}
-  .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-  .row h2{font-family:"Oswald",sans-serif;font-size:17px;margin:0;color:var(--ink);font-weight:600;
-       text-transform:uppercase;letter-spacing:.6px}
-  .big{font-family:"DM Sans",sans-serif;font-size:30px;font-weight:700;color:var(--ink)}
-  .big small{font-family:"DM Mono",monospace;font-size:12px;font-weight:400;color:var(--ink2);margin-left:8px;letter-spacing:.2px}
-  .leadlbl{font-family:"DM Mono",monospace;font-size:11.5px;color:var(--ink2);font-weight:400;letter-spacing:.2px}
+       color:var(--ink);background:#ffffff;min-height:100vh}
+  .topbar{height:5px;background:var(--pink);width:100%}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px 40px}
+  .brand{display:flex;justify-content:space-between;align-items:center;padding:22px 0 8px}
+  .brand .gmi{font-family:"Oswald",sans-serif;font-weight:700;font-size:24px;letter-spacing:.5px;color:var(--ink)}
+  .brand .gmin{font-family:"DM Mono",monospace;font-weight:500;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--ink)}
+  .titlewrap{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:26px 0 18px}
+  .kicker{font-family:"DM Mono",monospace;font-weight:500;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:7px}
+  .h1title{font-family:"Oswald",sans-serif;font-weight:700;font-size:31px;line-height:1;color:var(--ink)}
+  .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:11px;line-height:1.55;color:var(--mut);text-align:right;max-width:320px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tabs button{font-family:"Oswald",sans-serif;font-size:14px;font-weight:600;letter-spacing:.4px;
+    color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 18px;cursor:pointer;transition:all .15s}
+  .tabs button:hover{border-color:var(--pink);color:var(--pink)}
+  .tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .pane[hidden]{display:none}
+  .chead{display:flex;align-items:baseline;gap:12px;margin:32px 0 9px}
+  .cnum{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;letter-spacing:2px;color:var(--pink)}
+  .chead h2{font-family:"Oswald",sans-serif;font-weight:600;font-size:23px;margin:0;color:var(--ink)}
+  .ccap{margin-left:auto;font-family:"DM Mono",monospace;font-size:11px;color:var(--mut);text-align:right}
+  .panel{position:relative;background:var(--panel);border-radius:6px;padding:18px 22px 14px}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:6px}
+  .lg{font-family:"DM Sans",sans-serif;font-weight:600;font-size:13px;color:var(--ink);display:inline-flex;align-items:center}
+  .lg.pink{color:var(--pink)}
+  .lg .sw{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:8px}
+  .lg .sw.blk{background:var(--ink)}
+  .lg .sw.pnk{background:var(--pink)}
   .chartbox{position:relative;height:360px;cursor:grab}
   .chartbox:active{cursor:grabbing}
-  .hint{font-family:"DM Mono",monospace;font-size:10.5px;color:var(--ink2);text-align:right;margin-top:8px;opacity:.75;letter-spacing:.2px}
-  .ctrls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+  .src{font-family:"DM Sans",sans-serif;font-style:italic;font-size:10px;color:var(--mut2);text-align:right;margin-top:6px}
+  .ctrls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
   .ranges{display:flex;gap:6px;flex-wrap:wrap}
-  .ranges button{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink2);background:#fff;
+  .ranges button{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;color:var(--ink);background:rgba(255,255,255,.85);
     border:1px solid var(--line);border-radius:7px;padding:5px 11px;cursor:pointer;transition:all .12s}
-  .ranges button:hover{border-color:var(--accent);color:var(--accent)}
-  .ranges button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ranges button:hover{border-color:var(--pink);color:var(--pink)}
+  .ranges button.on{background:var(--pink);border-color:var(--pink);color:#fff}
   .lagctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .lagctl .lagk{font-family:"DM Mono",monospace;font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:var(--ink2)}
-  .lagctl button{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink2);background:#fff;
+  .lagctl .lagk{font-family:"DM Mono",monospace;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:var(--mut)}
+  .lagctl button{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;color:var(--ink);background:rgba(255,255,255,.85);
     border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;transition:all .12s}
-  .lagctl button:hover{border-color:var(--accent);color:var(--accent)}
-  .lagctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .lagctl input{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink);width:62px;text-align:center;
-    border:1px solid var(--line);border-radius:7px;padding:5px 6px}
-  .lagctl input:focus{outline:none;border-color:var(--accent)}
-  .lagctl .lagunit{font-family:"DM Mono",monospace;font-size:10.5px;color:var(--ink2)}
-  .tabs{display:flex;gap:8px;margin-bottom:22px}
-  .tabs button{font-family:"Oswald",sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
-    color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 20px;cursor:pointer;transition:all .15s}
-  .tabs button:hover{border-color:var(--accent);color:var(--accent)}
-  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(241,42,90,.28)}
-  .pane[hidden]{display:none}
-  .note{font-family:"DM Sans",sans-serif;font-size:13px;color:var(--ink);background:#fff;border:1px solid var(--accent);
-    border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-top:18px}
+  .lagctl button:hover{border-color:var(--pink);color:var(--pink)}
+  .lagctl button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .lagctl input{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;color:var(--ink);width:60px;text-align:center;
+    background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:7px;padding:5px 6px}
+  .lagctl input:focus{outline:none;border-color:var(--pink)}
+  .lagctl .lagunit{font-family:"DM Mono",monospace;font-size:10px;color:var(--mut)}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:40px;padding-top:16px;border-top:1px solid var(--line);
+    font-family:"DM Mono",monospace;font-size:11px;font-weight:500;letter-spacing:2px;text-transform:uppercase;color:var(--mut2)}
+  .note{font-family:"DM Sans",sans-serif;font-size:13px;color:var(--ink);background:#fff;border:1px solid var(--pink);
+    border-left:4px solid var(--pink);border-radius:8px;padding:14px 16px;margin-top:18px}
 </style>
 </head>
 <body>
+<div class="topbar"></div>
 <div class="wrap">
+
+  <div class="brand"><span class="gmi">GMI</span><span class="gmin">Global Macro Investor</span></div>
+
+  <div class="titlewrap">
+    <div>
+      <div class="kicker">The Everything Code</div>
+      <div class="h1title" id="secTitle">Global Liquidity</div>
+    </div>
+    <div class="descr" id="secDescr">&mdash;</div>
+  </div>
 
   <div class="tabs" id="tabnav">
     <button data-tab="global" class="on">Global Liquidity</button>
@@ -73,108 +92,130 @@
 
   <!-- ============ GLOBAL TAB ============ -->
   <section id="tab-global" class="pane">
-    <header>
-      <h1 class="maintitle">The Everything Code</h1>
-      <div class="subtitle">Global Liquidity</div>
-      <div class="updated">Broad money across <span id="necon">47</span> economies, in US dollars · daily · updated <span id="updated">—</span></div>
-    </header>
-
     <div id="global-missing" class="note" hidden>
       Global series not loaded (<code>data.js</code> missing beside this page). Deploy with <code>data.js</code> present, or run the daily pipeline, to see the global charts.
     </div>
 
-    <div class="card">
-      <div class="row"><h2>Index</h2><div class="big" id="lvl">—</div></div>
+    <div class="chead"><span class="cnum">01</span><h2>Index</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span></div>
       <div class="chartbox"><canvas id="levelChart"></canvas></div>
-      <div class="hint">scroll to zoom · drag to pan · price auto-scales to view · double-click to reset</div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>Year-on-year</h2><div class="big" id="yoy">—</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>TGL YoY %</span></div>
       <div class="chartbox"><canvas id="yoyChart"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>Liquidity leads Bitcoin</h2><div class="leadlbl" id="btcLead">TGL vs BTC · liquidity leads 90 days</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>Liquidity leads Bitcoin</h2><span class="ccap" id="btcLead">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
       <div class="chartbox"><canvas id="btcChart"></canvas></div>
-      <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>Liquidity leads Nasdaq 100</h2><div class="leadlbl" id="ndxLead">TGL vs NDX · liquidity leads 90 days</div></div>
+    <div class="chead"><span class="cnum">04</span><h2>Liquidity leads Nasdaq 100</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
-      <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (NDX): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
   </section>
 
   <!-- ============ US TAB ============ -->
   <section id="tab-us" class="pane" hidden>
-    <header>
-      <h1 class="maintitle">The Everything Code</h1>
-      <div class="subtitle">US Liquidity</div>
-      <div class="updated">Fed balance sheet − TGA − RRP + bank loans (Broad) · weekly FRED · latest <span id="us-updated">—</span></div>
-    </header>
-
     <div id="us-missing" class="note" hidden>
       US series not present in <code>data.js</code> yet. It is generated by the daily pipeline (<code>us_liquidity.py</code>); run the GitHub Action once to populate it.
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Total Liquidity (Broad)</h2><div class="big" id="us-lvl">—</div></div>
+    <div class="chead"><span class="cnum">01</span><h2>US Total Liquidity (Broad)</h2><span class="ccap" id="cap-us-lvl">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span></div>
       <div class="chartbox"><canvas id="usLevel"></canvas></div>
-      <div class="hint">scroll to zoom · drag to pan · auto-scales to view · double-click to reset</div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Total Liquidity (Broad) — Year-on-year</h2><div class="big" id="us-yoy">—</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>US Total Liquidity (Broad) — Year-on-year</h2><span class="ccap" id="cap-us-yoy">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>US Liquidity (Broad) YoY %</span></div>
       <div class="chartbox"><canvas id="usYoy"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Total Liquidity (Narrow)</h2><div class="leadlbl">… − TGA − RRP + Treasury securities held by banks</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>US Total Liquidity (Narrow)</h2><span class="ccap" id="cap-us-lvl-old">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span></div>
       <div class="chartbox"><canvas id="usLevelOld"></canvas></div>
-      <div class="hint">scroll to zoom · drag to pan · auto-scales to view · double-click to reset</div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Total Liquidity (Narrow) — Year-on-year</h2><div class="big" id="us-yoy-old">—</div></div>
+    <div class="chead"><span class="cnum">04</span><h2>US Total Liquidity (Narrow) — Year-on-year</h2><span class="ccap" id="cap-us-yoy-old">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>US Liquidity (Narrow) YoY %</span></div>
       <div class="chartbox"><canvas id="usYoyOld"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Liquidity (Broad) leads Nasdaq 100</h2><div class="leadlbl" id="usNdxLead">US TGL (Broad) vs NDX · liquidity leads 90 days</div></div>
+    <div class="chead"><span class="cnum">05</span><h2>US Liquidity (Broad) leads Nasdaq 100</h2><span class="ccap" id="usNdxLead">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="usNdx"></canvas></div>
-      <div class="hint">plot: scroll/drag = time · left axis (US liq) &amp; right axis (NDX): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="card">
-      <div class="row"><h2>US Liquidity (Narrow) leads Bitcoin</h2><div class="leadlbl" id="usBtcLead">US TGL (Narrow) vs BTC · liquidity leads 90 days</div></div>
+    <div class="chead"><span class="cnum">06</span><h2>US Liquidity (Narrow) leads Bitcoin</h2><span class="ccap" id="usBtcLead">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
       <div class="chartbox"><canvas id="usBtc"></canvas></div>
-      <div class="hint">plot: scroll/drag = time · left axis (US liq, Narrow) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
     </div>
   </section>
+
+  <div class="foot"><span>GMI &middot; The Everything Code</span><span id="footdate">&mdash;</span></div>
 
 </div>
 
 <script>
-const ACCENT="#f12a5a", INK="#22233f", LINE="#1a1a22", SMOOTH="#bcb6c6";  // GMI: pink accent, black liquidity line
-// --- interaction sensitivity (lower = calmer) ---
-const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~11% per mouse notch, smooth on trackpad
-const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
+const PINK="#f12a5a", BLACK="#131316", SMOOTH="rgba(19,19,22,.16)";
+const GRID="rgba(19,19,22,.07)", BORDER="rgba(19,19,22,.6)", MONO="'DM Mono', monospace";
 const ZP = window.ChartZoom || window['chartjs-plugin-zoom'] || window.chartjsPluginZoom;
 if (ZP) Chart.register(ZP.default || ZP);
 if (window.Chart) Chart.defaults.font.family = "'DM Sans', sans-serif";
 
+// --- interaction sensitivity (lower = calmer) ---
+const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~7-11% per notch, smooth on trackpad
+const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
+
 const DAY=864e5;
 const yr=v=>new Date(v).getUTCFullYear();
-const grid={grid:{color:"#efe6ec"},ticks:{color:"#6e7088",font:{size:11,family:"'DM Mono', monospace"}}};
-function opts(yl){return{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,normalized:true,
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function monthYear(s){const m=(s||"").match(/(\d{4})-(\d{2})/); return m?MONTHS[+m[2]-1]+" "+m[1]:"";}
+const fmtBN=v=>Math.round(v).toLocaleString("en-US");
+const fmtPCT=v=>(v>0?"+":"")+Math.round(v)+"%";
+const sgn=v=>(v>=0?"+":"")+v;
+const bn=t=>Math.round(t*1000).toLocaleString("en-US");
+
+function opts(yTickColor, yfmt){return{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,normalized:true,
   interaction:{mode:"index",intersect:false},
   plugins:{legend:{display:false},
     tooltip:{callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
-  scales:{x:{type:"linear",...grid,
-             ticks:{...grid.ticks,maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
-          y:{...grid,title:{display:true,text:yl,color:"#6e7088",font:{family:"'DM Mono', monospace"}}}}};}
+  scales:{x:{type:"linear",grid:{color:GRID},border:{color:BORDER},
+             ticks:{color:BORDER,font:{size:11,family:MONO},maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
+          y:{grid:{color:GRID},border:{display:false},
+             ticks:{color:yTickColor,font:{size:11,family:MONO},callback:yfmt}}}};}
 
 // auto-fit every y-axis to whatever x-window is visible — TradingView style
 function fitY(chart){
@@ -193,20 +234,18 @@ function fitY(chart){
   chart.update("none");
 }
 
-function opts2(rightLabel, leftLabel){
-  const o=opts(leftLabel||"TGL  $tn");
-  o.plugins.legend={display:true,labels:{color:INK,boxWidth:12,font:{size:11},usePointStyle:true}};
+function opts2(){
+  const o=opts(BLACK, fmtBN);
   o.scales.y.position="left";
-  o.scales.y1={type:"logarithmic",position:"right",grid:{drawOnChartArea:false},
-    ticks:{color:"#6e7088",font:{size:11,family:"'DM Mono', monospace"},callback:v=>{const e=Math.log10(v);return (Math.abs(e-Math.round(e))<.01||[2,5].includes(v/Math.pow(10,Math.floor(e))))?(v>=1000?(v/1000).toFixed(0)+"k":v):"";}},
-    title:{display:true,text:rightLabel,color:"#6e7088",font:{family:"'DM Mono', monospace"}}};
+  o.scales.y1={type:"logarithmic",position:"right",grid:{drawOnChartArea:false},border:{display:false},
+    ticks:{color:PINK,font:{size:11,family:MONO},callback:v=>{const e=Math.log10(v);return (Math.abs(e-Math.round(e))<.01||[2,5].includes(v/Math.pow(10,Math.floor(e))))?(v>=1000?(v/1000).toFixed(0)+"k":v):"";}}};
   return o;
 }
-function overlay(canvas, leftPts, rightPts, rightLabel, assetColor, leftLabel, lagDays){
+function overlay(canvas, leftPts, rightPts, rightLabel, leftLabel, lagDays){
   return new Chart(canvas,{type:"line",data:{datasets:[
-    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:LINE,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
-    {label:rightLabel,data:rightPts,borderColor:assetColor,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
-  ]},options:opts2(rightLabel, leftLabel)});
+    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:BLACK,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:rightLabel,data:rightPts,borderColor:PINK,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:opts2()});
 }
 function leadDesc(d){ d=+d; if(d>0) return " (leads "+d+"d)"; if(d<0) return " (lags "+(-d)+"d)"; return " (no shift)"; }
 
@@ -275,7 +314,7 @@ function xExtent(chart){
   return [lo,hi];
 }
 
-// ----- per-chart range buttons (1M/3M/6M/1Y/5Y/All), independent of every other chart -----
+// ----- per-chart range buttons (independent of every other chart) -----
 const RANGES=[["1M",30],["3M",91],["6M",182],["1Y",365],["5Y",1825],["All",null]];
 function buildRanges(chart, container){
   function setRange(days, btn){
@@ -302,8 +341,8 @@ function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
     chart.data.datasets[1].data = (asset||[]).map(a=>({x:Date.parse(a.d)-days*DAY, y:a.p}));
     chart.data.datasets[0].label = leftLabel + leadDesc(days);
     if(leadEl){
-      const verb = days>0?("leads "+days+" days") : days<0?("lags "+(-days)+" days") : "no shift";
-      leadEl.textContent = pairLbl+" · liquidity "+verb;
+      const verb = days>0?("liquidity leads "+days+" days") : days<0?("liquidity lags "+(-days)+" days") : "no shift";
+      leadEl.textContent = pairLbl+" · "+verb;
     }
     fitY(chart);
     [...container.querySelectorAll("button")].forEach(b=>b.classList.toggle("on", (+b.dataset.d)===days));
@@ -323,97 +362,102 @@ function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
   relag(def);
 }
 
-// ----- build the controls bar inside a chart's card -----
+// ----- wire controls already present in a chart's panel -----
 function controls(chart, lag){
-  const card=chart.canvas.closest(".card");
-  const bar=document.createElement("div"); bar.className="ctrls";
-  const ranges=document.createElement("div"); ranges.className="ranges"; bar.appendChild(ranges);
-  if(lag){ const lc=document.createElement("div"); lc.className="lagctl"; bar.appendChild(lc);
-    buildLag(chart, lc, lag.asset, lag.leftLabel, lag.pairLbl, lag.leadEl, lag.def); }
-  card.querySelector(".chartbox").insertAdjacentElement("beforebegin", bar);
-  buildRanges(chart, ranges);
+  const panel=chart.canvas.closest(".panel");
+  buildRanges(chart, panel.querySelector(".ranges"));
+  if(lag) buildLag(chart, panel.querySelector(".lagctl"), lag.asset, lag.leftLabel, lag.pairLbl, lag.leadEl, lag.def);
 }
 
 const DATA = window.TGL_DATA || null;
+let descrGlobal="—", descrUS="";
 
 // ===================== GLOBAL TAB =====================
 const GLOBAL = (function(){
   if(!DATA || !DATA.series){ document.getElementById("global-missing").hidden=false; return null; }
   const S=DATA.series, su=DATA.summary;
-  document.getElementById("necon").textContent=su.n_economies;
-  document.getElementById("updated").textContent=DATA.updated;
-  document.getElementById("lvl").innerHTML="$"+su.total_tn+"T <small>"+su.latest+"</small>";
-  document.getElementById("yoy").innerHTML=su.yoy+"% <small>3m avg "+su.yoy_s+"%</small>";
+  descrGlobal="Broad money across "+su.n_economies+" economies, in US dollars · daily · updated "+monthYear(DATA.updated);
+  document.getElementById("footdate").textContent=monthYear(DATA.updated);
+  document.getElementById("cap-lvl").textContent=bn(su.total_tn)+" $BN · "+monthYear(DATA.updated);
+  document.getElementById("cap-yoy").textContent="12-month % change · "+su.yoy+"% (3m avg "+su.yoy_s+"%)";
   const pts=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]}));
+  const ptsBN=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:pts("v"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
-  ]},options:opts("$ trillion")}));
+    {data:ptsBN("v"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+  ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
     {data:pts("ys"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:pts("y"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
-  ]},options:opts("% YoY")}));
+    {data:pts("y"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+  ]},options:opts(PINK, fmtPCT)}));
   const DEF=(DATA.lag_days||90);
-  const tglPts=pts("v");
+  const tglPts=ptsBN("v");
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
-  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "BTC", ACCENT, "TGL  $tn", DEF));
-  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "NDX", ACCENT, "TGL  $tn", DEF));
+  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
+  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
   charts.forEach((c,i)=>c.$auto=(i<2));
   [levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]);
-  controls(charts[2],{asset:DATA.btc, leftLabel:"TGL  $tn", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
-  controls(charts[3],{asset:DATA.ndx, leftLabel:"TGL  $tn", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
+  controls(charts[2],{asset:DATA.btc, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
+  controls(charts[3],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
   return {charts};
 })();
 
-// ===================== US TAB (reads TGL_DATA.us; BTC/NDX reused from global) =====================
+// ===================== US TAB =====================
 const US = (function(){
   const U = DATA && DATA.us;
   if(!U || !U.series || !U.series.length){ document.getElementById("us-missing").hidden=false; return null; }
   const S=U.series, su=U.summary;
-  const sgn=v=>(v>=0?"+":"")+v;
-  document.getElementById("us-updated").textContent=su.latest;
-  document.getElementById("us-lvl").innerHTML="$"+su.new_tn.toFixed(2)+"T <small>"+su.latest+"</small>";
-  document.getElementById("us-yoy").innerHTML=sgn(su.yoy_new)+"% <small>3m avg "+su.yoy_new_s+"%</small>";
-  document.getElementById("us-yoy-old").innerHTML=sgn(su.yoy_old)+"% <small>3m avg "+su.yoy_old_s+"%</small>";
+  descrUS="Fed balance sheet − TGA − RRP + bank loans (Broad) · weekly FRED · latest "+monthYear(su.latest);
+  document.getElementById("cap-us-lvl").textContent=bn(su.new_tn)+" $BN · "+monthYear(su.latest);
+  document.getElementById("cap-us-lvl-old").textContent=bn(su.old_tn)+" $BN · "+monthYear(su.latest);
+  document.getElementById("cap-us-yoy").textContent="12-month % change · "+sgn(su.yoy_new)+"% (3m avg "+su.yoy_new_s+"%)";
+  document.getElementById("cap-us-yoy-old").textContent="12-month % change · "+sgn(su.yoy_old)+"% (3m avg "+su.yoy_old_s+"%)";
   const P=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]}));
+  const PBN=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(usLevel,{type:"line",data:{datasets:[
-    {data:P("vn"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
-  ]},options:opts("$ trillion")}));
+    {data:PBN("vn"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+  ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoy,{type:"line",data:{datasets:[
     {data:P("yns"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yn"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
-  ]},options:opts("% YoY")}));
+    {data:P("yn"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+  ]},options:opts(PINK, fmtPCT)}));
   charts.push(new Chart(usLevelOld,{type:"line",data:{datasets:[
-    {data:P("vo"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
-  ]},options:opts("$ trillion")}));
+    {data:PBN("vo"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+  ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoyOld,{type:"line",data:{datasets:[
     {data:P("yos"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yo"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
-  ]},options:opts("% YoY")}));
+    {data:P("yo"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+  ]},options:opts(PINK, fmtPCT)}));
   const DEF=(U.lag_days||90);
-  charts.push(overlay(usNdx, P("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "NDX", ACCENT, "US liq  $tn", DEF));
-  charts.push(overlay(usBtc, P("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "BTC", ACCENT, "US liq (Narrow)  $tn", DEF));
+  charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
+  charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
   charts.forEach((c,i)=>c.$auto=(i<4));
   [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]);
-  controls(charts[4],{asset:DATA.ndx, leftLabel:"US liq  $tn", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
-  controls(charts[5],{asset:DATA.btc, leftLabel:"US liq (Narrow)  $tn", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
+  controls(charts[5],{asset:DATA.btc, leftLabel:"US Total Liquidity, Narrow ($BN)", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
   return {charts};
 })();
 
 // ===================== tab switching =====================
 const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us")};
-document.getElementById("tabnav").addEventListener("click", e=>{
-  const b=e.target.closest("button"); if(!b) return;
-  const t=b.dataset.tab;
-  [...e.currentTarget.children].forEach(x=>x.classList.remove("on"));
-  b.classList.add("on");
+const secTitle=document.getElementById("secTitle"), secDescr=document.getElementById("secDescr");
+function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
+  secTitle.textContent = t==="global" ? "Global Liquidity" : "US Liquidity";
+  secDescr.textContent = t==="global" ? descrGlobal : descrUS;
   const g = t==="global" ? GLOBAL : US;
   if(g){ g.charts.forEach(c=>{ c.resize(); c.update("none"); }); }
+}
+document.getElementById("tabnav").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  [...e.currentTarget.children].forEach(x=>x.classList.remove("on"));
+  b.classList.add("on");
+  showTab(b.dataset.tab);
 });
+secDescr.textContent=descrGlobal;
 
 window.GLOBAL=GLOBAL; window.US=US;
 </script>
