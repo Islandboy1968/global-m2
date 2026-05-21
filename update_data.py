@@ -14,6 +14,7 @@ import json, os, time, datetime as dt
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from tv_pull import pull_series
 from econ import ECON
+from us_liquidity import build_us
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -164,9 +165,20 @@ def build():
         assets[code] = [{"d": d.strftime("%Y-%m-%d"), "p": round(v, 2)}
                         for d, v in pts if d >= START and v]
 
+    # US Total Liquidity (FRED, server-side). Never let a US failure break the
+    # global build — if FRED is down we just omit the block and the US tab shows
+    # a notice; the global dashboard is unaffected.
+    try:
+        us = build_us()
+        print(f"  US: {len(us['series'])} wk | {us['summary']['latest']} "
+              f"new ${us['summary']['new_tn']:.2f}T old ${us['summary']['old_tn']:.2f}T")
+    except Exception as e:
+        us = None
+        print("  US build FAILED:", str(e)[:100])
+
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
-            "btc": assets["btc"], "ndx": assets["ndx"]}
+            "btc": assets["btc"], "ndx": assets["ndx"], "us": us}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
