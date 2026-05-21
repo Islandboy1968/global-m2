@@ -35,7 +35,14 @@
   .kicker{font-family:"DM Mono",monospace;font-weight:500;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:7px}
   .h1title{font-family:"Teko",sans-serif;font-weight:400;font-size:40px;line-height:.95;color:var(--ink)}
   .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:12px;line-height:1.55;color:var(--mut);text-align:right;max-width:340px}
-  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tabrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .tabs{display:flex;gap:8px}
+  .lockbtn{display:inline-flex;align-items:center;gap:6px;font-family:"DM Mono",monospace;font-size:11px;font-weight:500;
+    letter-spacing:1px;text-transform:uppercase;color:var(--mut);background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:7px 13px;cursor:pointer;transition:all .15s}
+  .lockbtn:hover{border-color:var(--pink);color:var(--pink)}
+  .lockbtn.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .lockbtn svg{width:13px;height:13px;display:block}
   .tabs button{font-family:"Teko",sans-serif;font-size:17px;font-weight:400;letter-spacing:.4px;line-height:1;
     color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 15px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--pink);color:var(--pink)}
@@ -91,10 +98,13 @@
     <div class="descr" id="secDescr">&mdash;</div>
   </div>
 
-  <div class="tabs" id="tabnav">
-    <button data-tab="global" class="on">Global Liquidity</button>
-    <button data-tab="us">US Liquidity</button>
-    <button data-tab="big">The Big Picture</button>
+  <div class="tabrow">
+    <div class="tabs" id="tabnav">
+      <button data-tab="global" class="on">Global Liquidity</button>
+      <button data-tab="us">US Liquidity</button>
+      <button data-tab="big">The Big Picture</button>
+    </div>
+    <button class="lockbtn" id="lockbtn" title="Lock all charts so your zoom, scale and lead/lag stay put on reload">Lock</button>
   </div>
 
   <!-- ============ GLOBAL TAB ============ -->
@@ -213,11 +223,11 @@
       <div class="src">Source: FRED (BLS, U.S. Treasury / BEA) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">03</span><h2>US liquidity vs government debt</h2><span class="ccap">US Total Liquidity (Narrow) vs Federal debt as % of GDP</span></div>
+    <div class="chead"><span class="cnum">03</span><h2>US liquidity vs government debt</h2><span class="ccap" id="bigLiqDebt">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>US Govt Debt as % of GDP (RHS)</span></div>
       <div class="chartbox"><canvas id="bigLiqDebtC"></canvas></div>
-      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED (Federal Reserve, U.S. Treasury / BEA) &middot; Global Macro Investor</div>
     </div>
 
@@ -246,6 +256,12 @@ const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~7-11% per notch, smooth on
 const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
 
 const DAY=864e5;
+// ----- lock state (persists each chart's view across reloads via localStorage) -----
+let LOCKED=false, READY=false;
+const ALL_CHARTS=[];
+try{ LOCKED = localStorage.getItem('tec_locked')==='1'; }catch(e){}
+const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.5"/></svg>';
 const yr=v=>new Date(v).getUTCFullYear();
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function monthYear(s){const m=(s||"").match(/(\d{4})-(\d{2})/); return m?MONTHS[+m[2]-1]+" "+m[1]:"";}
@@ -312,6 +328,7 @@ function scaleAround(chart, id, focus, f){
 }
 function attach(canvas, chart){
   canvas.addEventListener("wheel", e=>{
+    if(LOCKED) return;                     // locked: let the page scroll normally
     e.preventDefault();
     let dy=e.deltaY;                       // normalise wheel units across devices
     if(e.deltaMode===1) dy*=16; else if(e.deltaMode===2) dy*=400;
@@ -327,7 +344,7 @@ function attach(canvas, chart){
     }
   }, {passive:false});
   let drag=null;
-  canvas.addEventListener("mousedown", e=>{ drag={reg:regionOf(chart,e.offsetX), x:e.clientX, y:e.clientY}; });
+  canvas.addEventListener("mousedown", e=>{ if(LOCKED) return; drag={reg:regionOf(chart,e.offsetX), x:e.clientX, y:e.clientY}; });
   window.addEventListener("mousemove", e=>{
     if(!drag) return;
     const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
@@ -350,7 +367,7 @@ function attach(canvas, chart){
     }
   });
   window.addEventListener("mouseup", ()=>{ drag=null; });
-  canvas.addEventListener("dblclick", ()=>fitY(chart));
+  canvas.addEventListener("dblclick", ()=>{ if(LOCKED) return; fitY(chart); });
 }
 
 // ----- per-chart x-extent (over all datasets) -----
@@ -370,6 +387,7 @@ function buildRanges(chart, container){
     fitY(chart);
     [...container.children].forEach(b=>b.classList.remove("on"));
     if(btn) btn.classList.add("on");
+    if(LOCKED) saveLayout();
   }
   RANGES.forEach(([lbl,d])=>{
     const b=document.createElement("button"); b.textContent=lbl;
@@ -390,7 +408,9 @@ function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
       leadEl.textContent = pairLbl+" · "+verb;
     }
     fitY(chart);
+    chart.$relag=relag; chart.$leadInput=input; chart.$lead=days;
     if(input.value!=String(days)) input.value=days;
+    if(LOCKED) saveLayout();
   }
   const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead/Lag"; container.appendChild(k);
   const input=document.createElement("input"); input.type="number"; input.step="5"; input.value=def;
@@ -439,7 +459,9 @@ function buildLagFwd(chart, container, asset, pairLbl, leadEl, def){
     chart.data.datasets[1].data=(asset||[]).map(a=>({x:Date.parse(a.d)+days*DAY, y:a.v}));
     if(leadEl) leadEl.textContent=pairLbl+" · "+leadHuman(days)+" ("+days+"d)";
     fitY(chart);
+    chart.$relag=relag; chart.$leadInput=input; chart.$lead=days;
     if(input.value!=String(days)) input.value=days;
+    if(LOCKED) saveLayout();
   }
   const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; container.appendChild(k);
   const input=document.createElement("input"); input.type="number"; input.step="30"; input.value=def;
@@ -541,14 +563,15 @@ const BIG = (function(){
   charts.push(overlayLin(bigLfprBirthC, lfpr, [], fmtPct, false, fmtNum));
   // 02 LFPR vs debt/GDP (right axis inverted)
   charts.push(overlayLin(bigLfprDebtC, lfpr, A(B.debt), fmtPct, true, fmtPct));
-  // 03 US Total Liquidity Narrow ($BN) vs debt/GDP
-  charts.push(overlayLin(bigLiqDebtC, liqN, A(B.debt), fmtNum, false, fmtPct));
+  // 03 US Total Liquidity Narrow ($BN) vs debt/GDP (debt gets an adjustable lead)
+  charts.push(overlayLin(bigLiqDebtC, liqN, [], fmtNum, false, fmtPct));
   // 04 US Total Liquidity Broad ($BN) vs interest payments (+36mo forward lead)
   charts.push(overlayLin(bigLiqIntrC, liqB, [], fmtNum, false, fmtNum));
   charts.forEach(c=>c.$auto=false);
   [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
-  controls(charts[1]); controls(charts[2]);
+  controls(charts[1]);
+  controlsFwd(charts[2],{asset:B.debt, pairLbl:"US liquidity (Narrow) vs debt/GDP", leadEl:document.getElementById("bigLiqDebt"), def:0});
   controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Broad) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
   // default view windows matched to the official GMI charts (range buttons still override)
   const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
@@ -560,6 +583,47 @@ const BIG = (function(){
   bigStart(charts[3],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
   return {charts};
 })();
+
+// ===================== lock / persist layout (all charts, all tabs) =====================
+function snapshot(c){
+  const o=c.options.scales; const s={xmin:o.x.min,xmax:o.x.max,ymin:o.y.min,ymax:o.y.max};
+  if(o.y1){ s.y1min=o.y1.min; s.y1max=o.y1.max; }
+  if(c.$lead!=null) s.lead=c.$lead;
+  return s;
+}
+function applySnap(c,s){
+  if(s.lead!=null && c.$relag) c.$relag(s.lead);   // restore lead first (it re-fits Y)
+  const o=c.options.scales;
+  if(s.xmin!=null){ o.x.min=s.xmin; o.x.max=s.xmax; }
+  if(s.ymin!=null){ o.y.min=s.ymin; o.y.max=s.ymax; }
+  if(o.y1 && s.y1min!=null){ o.y1.min=s.y1min; o.y1.max=s.y1max; }
+  c.update("none");
+}
+function saveLayout(){
+  if(!READY) return;
+  const m={}; ALL_CHARTS.forEach(c=>{ m[c.canvas.id]=snapshot(c); });
+  try{ localStorage.setItem('tec_layout', JSON.stringify(m)); }catch(e){}
+}
+function applyLayout(){
+  let m={}; try{ m=JSON.parse(localStorage.getItem('tec_layout')||'{}'); }catch(e){}
+  ALL_CHARTS.forEach(c=>{ if(m[c.canvas.id]) applySnap(c,m[c.canvas.id]); });
+}
+function setLocked(v){
+  LOCKED=v; try{ localStorage.setItem('tec_locked', v?'1':'0'); }catch(e){}
+  ALL_CHARTS.forEach(c=>{ if(c.$leadInput) c.$leadInput.disabled=v; });
+  document.querySelectorAll('.chartbox').forEach(b=>b.style.cursor=v?'default':'grab');
+  const btn=document.getElementById('lockbtn');
+  if(btn){ btn.classList.toggle('on',v); btn.innerHTML=(v?LOCK_SVG:UNLOCK_SVG)+'<span>'+(v?'Locked':'Lock')+'</span>'; }
+}
+
+[GLOBAL,US,BIG].forEach(g=>{ if(g) g.charts.forEach(c=>ALL_CHARTS.push(c)); });
+if(LOCKED) applyLayout();      // restore saved positions before enabling
+setLocked(LOCKED);             // sync icon, cursor, input-disabled state
+READY=true;
+document.getElementById('lockbtn').addEventListener('click', ()=>{
+  if(!LOCKED){ setLocked(true); saveLayout(); }   // lock: freeze + snapshot current views
+  else { setLocked(false); }                       // unlock: re-enable manual moves
+});
 
 // ===================== tab switching =====================
 const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big")};
