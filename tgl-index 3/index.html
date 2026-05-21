@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Total Global Liquidity Index</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
+<script src="data/data.js"></script>
+<style>
+  :root{--bg1:#eef1f5;--bg2:#fbfcfd;--ink:#13212e;--ink2:#5b6b78;--line:#e2e7ec;--accent:#0e7490}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       color:var(--ink);background:linear-gradient(165deg,var(--bg1),var(--bg2) 55%,#fff);min-height:100vh}
+  .wrap{max-width:1000px;margin:0 auto;padding:34px 22px 56px}
+  h1{font-size:23px;margin:0;letter-spacing:.2px}
+  .updated{font-size:12px;color:var(--ink2);margin-top:3px}
+  .card{background:#ffffffd9;border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-top:22px;
+        box-shadow:0 1px 3px #13212e0a;backdrop-filter:blur(4px)}
+  .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .row h2{font-size:13px;margin:0;color:var(--ink2);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
+  .big{font-size:30px;font-weight:700}
+  .big small{font-size:13px;font-weight:600;color:var(--ink2);margin-left:7px}
+  .leadlbl{font-size:12px;color:var(--ink2);font-weight:600}
+  .chartbox{position:relative;height:360px;cursor:grab}
+  .chartbox:active{cursor:grabbing}
+  .hint{font-size:11px;color:var(--ink2);text-align:right;margin-top:8px;opacity:.8}
+  .ranges{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 2px}
+  .ranges button{font:inherit;font-size:12px;font-weight:600;color:var(--ink2);background:#fff;
+    border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+  .ranges button:hover{border-color:var(--accent);color:var(--accent)}
+  .ranges button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Total Global Liquidity Index</h1>
+    <div class="updated">Broad money across <span id="necon">47</span> economies, in US dollars · daily · updated <span id="updated">—</span></div>
+  </header>
+
+  <div class="ranges" id="ranges"></div>
+
+  <div class="card">
+    <div class="row"><h2>Index</h2><div class="big" id="lvl">—</div></div>
+    <div class="chartbox"><canvas id="levelChart"></canvas></div>
+    <div class="hint">scroll to zoom · drag to pan · price auto-scales to view · double-click to reset</div>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Year-on-year</h2><div class="big" id="yoy">—</div></div>
+    <div class="chartbox"><canvas id="yoyChart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Liquidity leads Bitcoin</h2><div class="leadlbl">TGL vs BTC · liquidity leads 90 days</div></div>
+    <div class="chartbox"><canvas id="btcChart"></canvas></div>
+    <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+  </div>
+
+  <div class="card">
+    <div class="row"><h2>Liquidity leads Nasdaq 100</h2><div class="leadlbl">TGL vs NDX · liquidity leads 90 days</div></div>
+    <div class="chartbox"><canvas id="ndxChart"></canvas></div>
+    <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (NDX): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+  </div>
+</div>
+
+<script>
+const D=window.TGL_DATA, S=D.series, su=D.summary;
+document.getElementById("necon").textContent=su.n_economies;
+document.getElementById("updated").textContent=D.updated;
+document.getElementById("lvl").innerHTML="$"+su.total_tn+"T <small>"+su.latest+"</small>";
+document.getElementById("yoy").innerHTML=su.yoy+"% <small>3m avg "+su.yoy_s+"%</small>";
+
+const ACCENT="#0e7490", INK="#13212e";
+// register zoom plugin (cdnjs UMD global)
+const ZP = window.ChartZoom || window['chartjs-plugin-zoom'] || window.chartjsPluginZoom;
+if (ZP) Chart.register(ZP.default || ZP);
+
+const DAY=864e5;
+const pts=(key)=>S.map(r=>({x:Date.parse(r.d), y:r[key]}));
+const yr=v=>new Date(v).getUTCFullYear();
+const fullMin=Date.parse(S[0].d), fullMax=Date.parse(S[S.length-1].d);
+const grid={grid:{color:"#edf1f4"},ticks:{color:"#5b6b78",font:{size:11}}};
+const opts=(yl)=>({responsive:true,maintainAspectRatio:false,animation:false,parsing:false,normalized:true,
+  interaction:{mode:"index",intersect:false},
+  plugins:{legend:{display:false},
+    tooltip:{callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
+  scales:{x:{type:"linear",min:fullMin,max:fullMax,...grid,
+             ticks:{...grid.ticks,maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
+          y:{...grid,title:{display:true,text:yl,color:"#5b6b78"}}}});
+
+// auto-fit every y-axis to whatever x-window is visible — TradingView style
+function fitY(chart){
+  const lo=chart.scales.x.min, hi=chart.scales.x.max;
+  Object.keys(chart.scales).filter(k=>k!=="x").forEach(id=>{
+    let mn=Infinity, mx=-Infinity;
+    chart.data.datasets.forEach(ds=>{
+      if((ds.yAxisID||"y")!==id) return;
+      ds.data.forEach(p=>{ if(p.y!=null && p.x>=lo && p.x<=hi){ if(p.y<mn)mn=p.y; if(p.y>mx)mx=p.y; } });
+    });
+    if(mn===Infinity) return;
+    const sc=chart.options.scales[id];
+    if(sc.type==="logarithmic"){ sc.min=mn*0.9; sc.max=mx*1.1; }
+    else { const pad=(mx-mn)*0.08 || Math.abs(mx)*0.05 || 1; sc.min=mn-pad; sc.max=mx+pad; }
+  });
+  chart.update("none");
+}
+
+const charts=[];
+charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
+  {data:pts("v"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+]},options:opts("$ trillion")}));
+
+charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
+  {data:pts("ys"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
+  {data:pts("y"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
+]},options:opts("% YoY")}));
+
+// ---- liquidity-leads overlays (TGL at real date vs asset shifted back 90 days) ----
+const LAG=(D.lag_days||90)*DAY;
+const tglPts=pts("v");                                   // TGL, real dates, left axis
+const assetPts=(arr)=>arr.map(a=>({x:Date.parse(a.d)-LAG, y:a.p}));  // asset lagged 90d, right axis
+function opts2(rightLabel){
+  const o=opts("TGL  $tn");
+  o.plugins.legend={display:true,labels:{color:INK,boxWidth:12,font:{size:11},usePointStyle:true}};
+  o.scales.y.position="left";
+  o.scales.y1={type:"logarithmic",position:"right",grid:{drawOnChartArea:false},
+    ticks:{color:"#5b6b78",font:{size:11},callback:v=>{const n=[1,2,5];const e=Math.log10(v);return (Math.abs(e-Math.round(e))<.01||[2,5].includes(v/Math.pow(10,Math.floor(e))))?(v>=1000?(v/1000).toFixed(0)+"k":v):"";}},
+    title:{display:true,text:rightLabel,color:"#5b6b78"}};
+  return o;
+}
+function overlay(canvas,assetArr,rightLabel,assetColor){
+  return new Chart(canvas,{type:"line",data:{datasets:[
+    {label:"Global liquidity (leads 90d)",data:tglPts,borderColor:ACCENT,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:rightLabel,data:assetPts(assetArr),borderColor:assetColor,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:opts2(rightLabel)});
+}
+charts.push(overlay(btcChart, D.btc, "BTC", "#f7931a"));
+charts.push(overlay(ndxChart, D.ndx, "NDX", "#c0392b"));
+
+// charts 0,1 (Index, YoY) auto-fit their single y-axis to the visible window.
+// charts 2,3 (overlays) are MANUALLY scaled: each axis scales & slides on its own.
+charts.forEach((c,i)=>c.$auto = (i<2));
+
+// keep all charts on the same time window
+function syncX(src){
+  const lo=src.scales.x.min, hi=src.scales.x.max;
+  charts.forEach(c=>{ if(c===src) return;
+    c.options.scales.x.min=lo; c.options.scales.x.max=hi;
+    if(c.$auto) fitY(c); else c.update("none");
+  });
+}
+
+// TradingView-style control: plot area moves time; each axis scales/slides independently
+const valAt=(s,px)=>s.getValueForPixel(px);
+function regionOf(chart, ox){
+  const a=chart.chartArea;
+  if(ox < a.left) return "y";
+  if(chart.scales.y1 && ox > a.right) return "y1";
+  return "x";
+}
+function scaleAround(chart, id, focus, f){
+  const s=chart.scales[id], o=chart.options.scales[id];
+  if(o.type==="logarithmic"){
+    const lf=Math.log10(focus), lo=Math.log10(s.min), hi=Math.log10(s.max);
+    o.min=Math.pow(10, lf+(lo-lf)*f); o.max=Math.pow(10, lf+(hi-lf)*f);
+  } else { o.min=focus+(s.min-focus)*f; o.max=focus+(s.max-focus)*f; }
+}
+function attach(canvas, chart){
+  canvas.addEventListener("wheel", e=>{
+    e.preventDefault();
+    const f = e.deltaY<0 ? 0.85 : 1/0.85;     // up = zoom in
+    const reg = regionOf(chart, e.offsetX);
+    if(reg==="x"){
+      scaleAround(chart,"x", valAt(chart.scales.x, e.offsetX), f);
+      chart.update("none"); if(chart.$auto) fitY(chart); syncX(chart);
+    } else {
+      scaleAround(chart, reg, valAt(chart.scales[reg], e.offsetY), f);
+      chart.update("none");                    // scale just this axis
+    }
+  }, {passive:false});
+
+  let drag=null;
+  canvas.addEventListener("mousedown", e=>{ drag={reg:regionOf(chart,e.offsetX), x:e.clientX, y:e.clientY}; });
+  window.addEventListener("mousemove", e=>{
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
+    const a=chart.chartArea;
+    if(drag.reg==="x"){
+      const s=chart.scales.x, o=chart.options.scales.x, k=(s.max-s.min)/(a.right-a.left);
+      o.min=s.min - dx*k; o.max=s.max - dx*k;
+      chart.update("none"); if(chart.$auto) fitY(chart); syncX(chart);
+    } else {
+      const s=chart.scales[drag.reg], o=chart.options.scales[drag.reg];
+      if(o.type==="logarithmic"){
+        const mid=(a.top+a.bottom)/2, r=valAt(s, mid+dy)/valAt(s, mid);
+        o.min=s.min*r; o.max=s.max*r;
+      } else {
+        const k=(s.max-s.min)/(a.bottom-a.top);
+        o.min=s.min + dy*k; o.max=s.max + dy*k;
+      }
+      chart.update("none");                    // slide just this axis
+    }
+  });
+  window.addEventListener("mouseup", ()=>{ drag=null; });
+  canvas.addEventListener("dblclick", ()=>fitY(chart));   // auto-fit this chart's axes
+}
+[levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
+
+// range buttons
+const RANGES=[["1M",30],["3M",91],["6M",182],["1Y",365],["5Y",1825],["All",null]];
+const rdiv=document.getElementById("ranges");
+function setRange(days, btn){
+  charts.forEach(c=>{
+    if(days===null){ c.options.scales.x.min=fullMin; c.options.scales.x.max=fullMax; }
+    else{ c.options.scales.x.min=fullMax-days*DAY; c.options.scales.x.max=fullMax; }
+    c.update("none");                 // apply the x-window first
+    if(c.$auto) fitY(c);              // overlays keep their manual axis scaling
+  });
+  [...rdiv.children].forEach(b=>b.classList.remove("on"));
+  if(btn) btn.classList.add("on");
+}
+RANGES.forEach(([lbl,d])=>{
+  const b=document.createElement("button"); b.textContent=lbl;
+  b.onclick=()=>setRange(d,b); rdiv.appendChild(b);
+});
+setRange(null, rdiv.lastChild);          // default = All
+charts.forEach(c=>{ if(!c.$auto) fitY(c); });   // give overlays a sensible starting alignment
+window.charts=charts; window.setRange=setRange; window.fitY=fitY;
+</script>
+</body>
+</html>
