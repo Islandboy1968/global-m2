@@ -249,8 +249,8 @@ function opts2(){
 }
 function overlay(canvas, leftPts, rightPts, rightLabel, leftLabel, lagDays){
   return new Chart(canvas,{type:"line",data:{datasets:[
-    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05,yAxisID:"y"},
-    {label:rightLabel,data:rightPts,borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05,yAxisID:"y1"}
+    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:rightLabel,data:rightPts,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:opts2()});
 }
 function leadDesc(d){ d=+d; if(d>0) return " (leads "+d+"d)"; if(d<0) return " (lags "+(-d)+"d)"; return " (no shift)"; }
@@ -384,11 +384,11 @@ const GLOBAL = (function(){
   const ptsBN=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
+    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
-    {data:pts("ys"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
-    {data:pts("y"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
+    {data:pts("ys"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
+    {data:pts("y"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   const DEF=(DATA.lag_days||90);
   const tglPts=ptsBN("v");
@@ -417,18 +417,18 @@ const US = (function(){
   const PBN=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(usLevel,{type:"line",data:{datasets:[
-    {data:PBN("vn"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
+    {data:PBN("vn"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoy,{type:"line",data:{datasets:[
-    {data:P("yns"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
-    {data:P("yn"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
+    {data:P("yns"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
+    {data:P("yn"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   charts.push(new Chart(usLevelOld,{type:"line",data:{datasets:[
-    {data:PBN("vo"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
+    {data:PBN("vo"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoyOld,{type:"line",data:{datasets:[
-    {data:P("yos"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
-    {data:P("yo"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
+    {data:P("yos"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
+    {data:P("yo"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));

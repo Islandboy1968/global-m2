@@ -64,7 +64,7 @@ Built to the Claude Design template PNG + CSS spec. All tokens are CSS vars in `
   `rgba(19,19,22,.6/.45)`. Borders `rgba(19,19,22,.12)`.
 - **Series colours:** index/level + overlay-liquidity lines = black `#131316`; YoY lines and all
   overlay asset lines (BTC/NDX) = hot pink `#f12a5a`; 3m-avg companion = faint `rgba(19,19,22,.16)`
-  (`SMOOTH`). All series lines are **1.5px** (companion 1px) — deliberately thin to match the
+  (`SMOOTH`). All series lines are **1px** (companion 0.75px) — a fine hairline to match the
   GMI house chart. Chart grid `rgba(19,19,22,.07)`, x baseline `rgba(19,19,22,.6)`. **Axis tick
   colour matches its series** — level y ticks black, YoY y ticks pink, overlay right (log) ticks pink.
 - **Index/level charts are shown in $BN** (data is $tn, multiplied ×1000 at plot time via `ptsBN`
