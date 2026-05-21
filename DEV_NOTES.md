@@ -66,13 +66,15 @@ Built to the Claude Design template PNG + CSS spec. All tokens are CSS vars in `
 - **Index/level charts are shown in $BN** (data is $tn, multiplied ×1000 at plot time via `ptsBN`
   / `PBN`; tick formatter `fmtBN` adds thousands separators). YoY stays % (`fmtPCT`). The big
   on-page stat readouts were replaced by the `.ccap` captions (latest value / YoY in the header).
-- **Type (Google Fonts, in `<head>`):** Oswald (Tungsten substitute) for `GMI` wordmark, section
-  titles, `.h1title`, tabs; DM Sans (AT Aero substitute) for legends/body; DM Mono for the
-  masthead sub-wordmark, kicker, descriptor, captions, range/lag pills, footer, axis ticks.
-  `Chart.defaults.font.family` = DM Sans (tooltips).
-- **NOTE on fonts:** Tungsten + AT Aero are licensed and not embeddable from the brand PDF, so
-  Oswald/DM Sans stand in. To go pixel-exact, drop the licensed `.woff2` files in and add
-  `@font-face` rules, then swap the `font-family` stacks (search "Oswald"/"DM Sans").
+- **Type:** Oswald (Google, Tungsten substitute) for the `GMI` wordmark, section titles,
+  `.h1title`, tabs; **AT Aero — the real brand font, self-hosted** — for legends, body, notes,
+  source lines and chart tooltips; DM Mono (Google) for the masthead sub-wordmark, kicker,
+  descriptor, captions, range/lag pills, footer, axis ticks. `Chart.defaults.font.family` = AT Aero.
+- **AT Aero is embedded** via `@font-face` at the top of `<style>`, served from `fonts/`
+  (`AtAero-Regular` = weight 400, `AtAero-Medium` = weight 500; both `.woff2` + `.woff`).
+- **NOTE on fonts:** only **Tungsten** is still substituted (by Oswald) — the licensed Tungsten
+  webfont was not supplied. To finish, drop a Tungsten `.woff2` in `fonts/`, add an `@font-face`,
+  and swap the `font-family:"Oswald"` stacks.
 
 ## How data flows (unchanged, important)
 Nothing is fetched in the browser. The browser only reads the static file `data/data.js`,
