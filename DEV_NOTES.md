@@ -51,13 +51,15 @@ Live at: https://islandboy1968.github.io/global-m2/
   `buildLag()` recomputes the asset dataset on the fly (`x = date − days`), rewrites the series
   label and the header caption, then `fitY`. The shipped data still carries the default
   `lag_days` (90); the control just re-shifts client-side, so no pipeline change.
-- **Lock / persist (all tabs).** A single `Lock` button (top-right of the tab row) freezes every
-  chart and saves each one's view (x/y/y1 min-max + lead) to `localStorage` (`tec_locked`,
-  `tec_layout`). On reload a locked layout is restored, so the arrangement survives. While locked,
-  mouse zoom/pan/axis-drag and the lead inputs are disabled; the timeline range buttons still work
-  and re-save on use. Unlock to move things by hand again. Implemented by `snapshot`/`applySnap`/
-  `saveLayout`/`applyLayout`/`setLocked`; `attach()` no-ops while `LOCKED`; charts register into
-  `ALL_CHARTS`; each lead control exposes `chart.$relag`/`$leadInput`/`$lead` for restore.
+- **Per-chart lock / persist.** Every chart has its own lock toggle (the small padlock top-right of
+  each panel). Locking a chart saves *that chart's* view (x/y/y1 min-max + lead) to `localStorage`
+  under `tec_charts` (a map keyed by canvas id; presence of an entry = locked). On reload each locked
+  chart restores its saved view; unlocked charts fall back to their default view. While a chart is
+  locked, its mouse zoom/pan/axis-drag and its lead input are disabled, but its timeline range buttons
+  still work and re-save. Implemented by `snapshot`/`applySnap`/`saveChart`/`toggleChartLock`/`lockUI`/
+  `addLock`; `attach()` no-ops when `chart.$locked`; `addLock()` (called from `controls`/`controlsFwd`)
+  injects the `.locktoggle` button and registers the chart in `ALL_CHARTS`; lead controls expose
+  `chart.$relag`/`$leadInput`/`$lead` for restore. A final pass restores locked charts then sets `READY`.
 - **Big Picture leads:** charts 1 (births) and 4 (interest) carry forward leads; chart 3 (debt) also
   has an adjustable lead box (default 0 = coincident) for testing a debt-vs-liquidity lead/lag.
 - **Frequency:** the Global tab is **daily** (M2 monthly, forward-filled; FX daily). The US tab

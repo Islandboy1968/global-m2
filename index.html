@@ -37,12 +37,15 @@
   .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:12px;line-height:1.55;color:var(--mut);text-align:right;max-width:340px}
   .tabrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .tabs{display:flex;gap:8px}
-  .lockbtn{display:inline-flex;align-items:center;gap:6px;font-family:"DM Mono",monospace;font-size:11px;font-weight:500;
-    letter-spacing:1px;text-transform:uppercase;color:var(--mut);background:#fff;border:1px solid var(--line);
-    border-radius:8px;padding:7px 13px;cursor:pointer;transition:all .15s}
-  .lockbtn:hover{border-color:var(--pink);color:var(--pink)}
-  .lockbtn.on{background:var(--pink);border-color:var(--pink);color:#fff}
-  .lockbtn svg{width:13px;height:13px;display:block}
+  .lockhint{display:inline-flex;align-items:center;gap:5px;font-family:"DM Mono",monospace;font-size:10px;
+    letter-spacing:.5px;color:var(--mut2)}
+  .lockhint svg{width:12px;height:12px}
+  .locktoggle{position:absolute;top:12px;right:14px;z-index:2;width:26px;height:26px;display:inline-flex;
+    align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.85);border:1px solid var(--line);
+    border-radius:7px;color:var(--mut);cursor:pointer;transition:all .12s}
+  .locktoggle:hover{border-color:var(--pink);color:var(--pink)}
+  .locktoggle.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .locktoggle svg{width:14px;height:14px;display:block}
   .tabs button{font-family:"Teko",sans-serif;font-size:17px;font-weight:400;letter-spacing:.4px;line-height:1;
     color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 15px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--pink);color:var(--pink)}
@@ -104,7 +107,7 @@
       <button data-tab="us">US Liquidity</button>
       <button data-tab="big">The Big Picture</button>
     </div>
-    <button class="lockbtn" id="lockbtn" title="Lock all charts so your zoom, scale and lead/lag stay put on reload">Lock</button>
+    <span class="lockhint">Lock any chart with the <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> to keep it fixed on reload</span>
   </div>
 
   <!-- ============ GLOBAL TAB ============ -->
@@ -256,10 +259,11 @@ const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~7-11% per notch, smooth on
 const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
 
 const DAY=864e5;
-// ----- lock state (persists each chart's view across reloads via localStorage) -----
-let LOCKED=false, READY=false;
+// ----- per-chart lock state (each chart's view persists across reloads via localStorage) -----
+let READY=false;
 const ALL_CHARTS=[];
-try{ LOCKED = localStorage.getItem('tec_locked')==='1'; }catch(e){}
+let LOCKS={};
+try{ LOCKS = JSON.parse(localStorage.getItem('tec_charts')||'{}'); }catch(e){ LOCKS={}; }
 const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.5"/></svg>';
 const yr=v=>new Date(v).getUTCFullYear();
@@ -328,7 +332,7 @@ function scaleAround(chart, id, focus, f){
 }
 function attach(canvas, chart){
   canvas.addEventListener("wheel", e=>{
-    if(LOCKED) return;                     // locked: let the page scroll normally
+    if(chart.$locked) return;                     // locked: let the page scroll normally
     e.preventDefault();
     let dy=e.deltaY;                       // normalise wheel units across devices
     if(e.deltaMode===1) dy*=16; else if(e.deltaMode===2) dy*=400;
@@ -344,7 +348,7 @@ function attach(canvas, chart){
     }
   }, {passive:false});
   let drag=null;
-  canvas.addEventListener("mousedown", e=>{ if(LOCKED) return; drag={reg:regionOf(chart,e.offsetX), x:e.clientX, y:e.clientY}; });
+  canvas.addEventListener("mousedown", e=>{ if(chart.$locked) return; drag={reg:regionOf(chart,e.offsetX), x:e.clientX, y:e.clientY}; });
   window.addEventListener("mousemove", e=>{
     if(!drag) return;
     const dx=e.clientX-drag.x, dy=e.clientY-drag.y; drag.x=e.clientX; drag.y=e.clientY;
@@ -367,7 +371,7 @@ function attach(canvas, chart){
     }
   });
   window.addEventListener("mouseup", ()=>{ drag=null; });
-  canvas.addEventListener("dblclick", ()=>{ if(LOCKED) return; fitY(chart); });
+  canvas.addEventListener("dblclick", ()=>{ if(chart.$locked) return; fitY(chart); });
 }
 
 // ----- per-chart x-extent (over all datasets) -----
@@ -387,7 +391,7 @@ function buildRanges(chart, container){
     fitY(chart);
     [...container.children].forEach(b=>b.classList.remove("on"));
     if(btn) btn.classList.add("on");
-    if(LOCKED) saveLayout();
+    if(chart.$locked) saveChart(chart);
   }
   RANGES.forEach(([lbl,d])=>{
     const b=document.createElement("button"); b.textContent=lbl;
@@ -410,7 +414,7 @@ function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
     fitY(chart);
     chart.$relag=relag; chart.$leadInput=input; chart.$lead=days;
     if(input.value!=String(days)) input.value=days;
-    if(LOCKED) saveLayout();
+    if(chart.$locked) saveChart(chart);
   }
   const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead/Lag"; container.appendChild(k);
   const input=document.createElement("input"); input.type="number"; input.step="5"; input.value=def;
@@ -427,6 +431,7 @@ function controls(chart, lag){
   const panel=chart.canvas.closest(".panel");
   buildRanges(chart, panel.querySelector(".ranges"));
   if(lag) buildLag(chart, panel.querySelector(".lagctl"), lag.asset, lag.leftLabel, lag.pairLbl, lag.leadEl, lag.def);
+  addLock(chart);
 }
 
 const DATA = window.TGL_DATA || null;
@@ -461,7 +466,7 @@ function buildLagFwd(chart, container, asset, pairLbl, leadEl, def){
     fitY(chart);
     chart.$relag=relag; chart.$leadInput=input; chart.$lead=days;
     if(input.value!=String(days)) input.value=days;
-    if(LOCKED) saveLayout();
+    if(chart.$locked) saveChart(chart);
   }
   const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; container.appendChild(k);
   const input=document.createElement("input"); input.type="number"; input.step="30"; input.value=def;
@@ -476,6 +481,7 @@ function controlsFwd(chart, lag){
   const panel=chart.canvas.closest(".panel");
   buildLagFwd(chart, panel.querySelector(".lagctl"), lag.asset, lag.pairLbl, lag.leadEl, lag.def);
   buildRanges(chart, panel.querySelector(".ranges"));
+  addLock(chart);
 }
 
 // ===================== GLOBAL TAB =====================
@@ -584,7 +590,7 @@ const BIG = (function(){
   return {charts};
 })();
 
-// ===================== lock / persist layout (all charts, all tabs) =====================
+// ===================== per-chart lock / persist (each chart independent, all tabs) =====================
 function snapshot(c){
   const o=c.options.scales; const s={xmin:o.x.min,xmax:o.x.max,ymin:o.y.min,ymax:o.y.max};
   if(o.y1){ s.y1min=o.y1.min; s.y1max=o.y1.max; }
@@ -599,31 +605,34 @@ function applySnap(c,s){
   if(o.y1 && s.y1min!=null){ o.y1.min=s.y1min; o.y1.max=s.y1max; }
   c.update("none");
 }
-function saveLayout(){
-  if(!READY) return;
-  const m={}; ALL_CHARTS.forEach(c=>{ m[c.canvas.id]=snapshot(c); });
-  try{ localStorage.setItem('tec_layout', JSON.stringify(m)); }catch(e){}
+function persistLocks(){ try{ localStorage.setItem('tec_charts', JSON.stringify(LOCKS)); }catch(e){} }
+function saveChart(c){ if(!READY || !c.$locked) return; LOCKS[c.canvas.id]=snapshot(c); persistLocks(); }
+function lockUI(c){
+  if(c.$leadInput) c.$leadInput.disabled=c.$locked;
+  const box=c.canvas.closest('.chartbox'); if(box) box.style.cursor=c.$locked?'default':'grab';
+  const b=c.$lockBtn;
+  if(b){ b.classList.toggle('on',c.$locked); b.innerHTML=c.$locked?LOCK_SVG:UNLOCK_SVG;
+    b.title=c.$locked?'Locked — click to unlock':'Lock this chart in place'; }
 }
-function applyLayout(){
-  let m={}; try{ m=JSON.parse(localStorage.getItem('tec_layout')||'{}'); }catch(e){}
-  ALL_CHARTS.forEach(c=>{ if(m[c.canvas.id]) applySnap(c,m[c.canvas.id]); });
+function toggleChartLock(c){
+  c.$locked=!c.$locked;
+  if(c.$locked) LOCKS[c.canvas.id]=snapshot(c); else delete LOCKS[c.canvas.id];
+  persistLocks(); lockUI(c);
 }
-function setLocked(v){
-  LOCKED=v; try{ localStorage.setItem('tec_locked', v?'1':'0'); }catch(e){}
-  ALL_CHARTS.forEach(c=>{ if(c.$leadInput) c.$leadInput.disabled=v; });
-  document.querySelectorAll('.chartbox').forEach(b=>b.style.cursor=v?'default':'grab');
-  const btn=document.getElementById('lockbtn');
-  if(btn){ btn.classList.toggle('on',v); btn.innerHTML=(v?LOCK_SVG:UNLOCK_SVG)+'<span>'+(v?'Locked':'Lock')+'</span>'; }
+// called from controls()/controlsFwd() as each chart is wired (function decl is hoisted)
+function addLock(chart){
+  ALL_CHARTS.push(chart);
+  const b=document.createElement('button'); b.className='locktoggle'; b.type='button';
+  b.addEventListener('click', ()=>toggleChartLock(chart));
+  chart.canvas.closest('.panel').appendChild(b);
+  chart.$lockBtn=b;
+  chart.$locked=!!LOCKS[chart.canvas.id];
+  lockUI(chart);
 }
 
-[GLOBAL,US,BIG].forEach(g=>{ if(g) g.charts.forEach(c=>ALL_CHARTS.push(c)); });
-if(LOCKED) applyLayout();      // restore saved positions before enabling
-setLocked(LOCKED);             // sync icon, cursor, input-disabled state
+// restore the saved view of any chart that was left locked, then go live
+ALL_CHARTS.forEach(c=>{ if(c.$locked && LOCKS[c.canvas.id]) applySnap(c, LOCKS[c.canvas.id]); });
 READY=true;
-document.getElementById('lockbtn').addEventListener('click', ()=>{
-  if(!LOCKED){ setLocked(true); saveLayout(); }   // lock: freeze + snapshot current views
-  else { setLocked(false); }                       // unlock: re-enable manual moves
-});
 
 // ===================== tab switching =====================
 const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big")};
