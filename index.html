@@ -4,53 +4,63 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Everything Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
 <script src="data.js"></script>
 <script>window.TGL_DATA||document.write('<scr'+'ipt src="data/data.js"><\/scr'+'ipt>');</script>
 <style>
-  :root{--bg1:#eef1f5;--bg2:#fbfcfd;--ink:#13212e;--ink2:#5b6b78;--line:#e2e7ec;--accent:#0e7490}
+  /* GMI palette — hot pink #F12A5A, slate #22233F, light report-chart theme */
+  :root{--bg1:#ffd9e2;--bg2:#ffedf1;--ink:#22233f;--ink2:#6e7088;--line:#ece2e8;
+        --accent:#f12a5a;--card:#ffffff;--gridline:#efe6ec;--linedark:#1a1a22;--smooth:#bcb6c6}
   *{box-sizing:border-box}
-  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
-       color:var(--ink);background:linear-gradient(165deg,var(--bg1),var(--bg2) 55%,#fff);min-height:100vh}
+  body{margin:0;font-family:"DM Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+       color:var(--ink);background:linear-gradient(158deg,var(--bg1),var(--bg2) 42%,#fbfcfd 100%);
+       background-attachment:fixed;min-height:100vh}
   .wrap{max-width:1000px;margin:0 auto;padding:34px 22px 56px}
-  .maintitle{font-size:26px;margin:0;font-weight:800;letter-spacing:2px;text-transform:uppercase}
-  .subtitle{font-size:17px;font-weight:600;color:var(--ink);margin-top:4px;letter-spacing:.2px}
-  .updated{font-size:12px;color:var(--ink2);margin-top:3px}
-  .card{background:#ffffffd9;border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-top:22px;
-        box-shadow:0 1px 3px #13212e0a;backdrop-filter:blur(4px)}
+  .maintitle{font-family:"Oswald",sans-serif;font-size:34px;line-height:1;margin:0;font-weight:700;
+       letter-spacing:1.5px;text-transform:uppercase;color:var(--ink)}
+  .subtitle{font-family:"DM Mono",monospace;font-size:12.5px;font-weight:500;color:var(--accent);
+       margin-top:7px;letter-spacing:3px;text-transform:uppercase}
+  .updated{font-family:"DM Mono",monospace;font-size:11px;color:var(--ink2);margin-top:8px;letter-spacing:.3px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-top:20px;
+        box-shadow:0 2px 10px rgba(34,35,63,.05)}
   .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
-  .row h2{font-size:13px;margin:0;color:var(--ink2);font-weight:600;text-transform:uppercase;letter-spacing:.8px}
-  .big{font-size:30px;font-weight:700}
-  .big small{font-size:13px;font-weight:600;color:var(--ink2);margin-left:7px}
-  .leadlbl{font-size:12px;color:var(--ink2);font-weight:600}
+  .row h2{font-family:"Oswald",sans-serif;font-size:17px;margin:0;color:var(--ink);font-weight:600;
+       text-transform:uppercase;letter-spacing:.6px}
+  .big{font-family:"DM Sans",sans-serif;font-size:30px;font-weight:700;color:var(--ink)}
+  .big small{font-family:"DM Mono",monospace;font-size:12px;font-weight:400;color:var(--ink2);margin-left:8px;letter-spacing:.2px}
+  .leadlbl{font-family:"DM Mono",monospace;font-size:11.5px;color:var(--ink2);font-weight:400;letter-spacing:.2px}
   .chartbox{position:relative;height:360px;cursor:grab}
   .chartbox:active{cursor:grabbing}
-  .hint{font-size:11px;color:var(--ink2);text-align:right;margin-top:8px;opacity:.8}
+  .hint{font-family:"DM Mono",monospace;font-size:10.5px;color:var(--ink2);text-align:right;margin-top:8px;opacity:.75;letter-spacing:.2px}
   .ctrls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
   .ranges{display:flex;gap:6px;flex-wrap:wrap}
-  .ranges button{font:inherit;font-size:12px;font-weight:600;color:var(--ink2);background:#fff;
-    border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
+  .ranges button{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink2);background:#fff;
+    border:1px solid var(--line);border-radius:7px;padding:5px 11px;cursor:pointer;transition:all .12s}
   .ranges button:hover{border-color:var(--accent);color:var(--accent)}
   .ranges button.on{background:var(--accent);border-color:var(--accent);color:#fff}
   .lagctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .lagctl .lagk{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2)}
-  .lagctl button{font:inherit;font-size:12px;font-weight:600;color:var(--ink2);background:#fff;
-    border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+  .lagctl .lagk{font-family:"DM Mono",monospace;font-size:10.5px;font-weight:500;text-transform:uppercase;letter-spacing:1px;color:var(--ink2)}
+  .lagctl button{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink2);background:#fff;
+    border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer;transition:all .12s}
   .lagctl button:hover{border-color:var(--accent);color:var(--accent)}
   .lagctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .lagctl input{font:inherit;font-size:12px;font-weight:600;color:var(--ink);width:64px;text-align:center;
-    border:1px solid var(--line);border-radius:8px;padding:5px 6px}
+  .lagctl input{font-family:"DM Mono",monospace;font-size:11.5px;font-weight:500;color:var(--ink);width:62px;text-align:center;
+    border:1px solid var(--line);border-radius:7px;padding:5px 6px}
   .lagctl input:focus{outline:none;border-color:var(--accent)}
-  .lagctl .lagunit{font-size:11px;color:var(--ink2)}
-  .tabs{display:flex;gap:8px;margin-bottom:18px}
-  .tabs button{font:inherit;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--ink2);background:#fff;
-    border:1px solid var(--line);border-radius:10px;padding:9px 18px;cursor:pointer;transition:all .15s}
+  .lagctl .lagunit{font-family:"DM Mono",monospace;font-size:10.5px;color:var(--ink2)}
+  .tabs{display:flex;gap:8px;margin-bottom:22px}
+  .tabs button{font-family:"Oswald",sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+    color:var(--ink2);background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 20px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--accent);color:var(--accent)}
-  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 1px 4px #0e749033}
+  .tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(241,42,90,.28)}
   .pane[hidden]{display:none}
-  .note{font-size:13px;color:var(--ink2);background:#fff8e6;border:1px solid #f0e0b0;border-radius:12px;padding:14px 16px;margin-top:18px}
+  .note{font-family:"DM Sans",sans-serif;font-size:13px;color:var(--ink);background:#fff;border:1px solid var(--accent);
+    border-left:4px solid var(--accent);border-radius:10px;padding:14px 16px;margin-top:18px}
 </style>
 </head>
 <body>
@@ -147,23 +157,24 @@
 </div>
 
 <script>
-const ACCENT="#0e7490", INK="#13212e";
+const ACCENT="#f12a5a", INK="#22233f", LINE="#1a1a22", SMOOTH="#bcb6c6";  // GMI: pink accent, black liquidity line
 // --- interaction sensitivity (lower = calmer) ---
 const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~11% per mouse notch, smooth on trackpad
 const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
 const ZP = window.ChartZoom || window['chartjs-plugin-zoom'] || window.chartjsPluginZoom;
 if (ZP) Chart.register(ZP.default || ZP);
+if (window.Chart) Chart.defaults.font.family = "'DM Sans', sans-serif";
 
 const DAY=864e5;
 const yr=v=>new Date(v).getUTCFullYear();
-const grid={grid:{color:"#edf1f4"},ticks:{color:"#5b6b78",font:{size:11}}};
+const grid={grid:{color:"#efe6ec"},ticks:{color:"#6e7088",font:{size:11,family:"'DM Mono', monospace"}}};
 function opts(yl){return{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,normalized:true,
   interaction:{mode:"index",intersect:false},
   plugins:{legend:{display:false},
     tooltip:{callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
   scales:{x:{type:"linear",...grid,
              ticks:{...grid.ticks,maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
-          y:{...grid,title:{display:true,text:yl,color:"#5b6b78"}}}};}
+          y:{...grid,title:{display:true,text:yl,color:"#6e7088",font:{family:"'DM Mono', monospace"}}}}};}
 
 // auto-fit every y-axis to whatever x-window is visible — TradingView style
 function fitY(chart){
@@ -187,13 +198,13 @@ function opts2(rightLabel, leftLabel){
   o.plugins.legend={display:true,labels:{color:INK,boxWidth:12,font:{size:11},usePointStyle:true}};
   o.scales.y.position="left";
   o.scales.y1={type:"logarithmic",position:"right",grid:{drawOnChartArea:false},
-    ticks:{color:"#5b6b78",font:{size:11},callback:v=>{const e=Math.log10(v);return (Math.abs(e-Math.round(e))<.01||[2,5].includes(v/Math.pow(10,Math.floor(e))))?(v>=1000?(v/1000).toFixed(0)+"k":v):"";}},
-    title:{display:true,text:rightLabel,color:"#5b6b78"}};
+    ticks:{color:"#6e7088",font:{size:11,family:"'DM Mono', monospace"},callback:v=>{const e=Math.log10(v);return (Math.abs(e-Math.round(e))<.01||[2,5].includes(v/Math.pow(10,Math.floor(e))))?(v>=1000?(v/1000).toFixed(0)+"k":v):"";}},
+    title:{display:true,text:rightLabel,color:"#6e7088",font:{family:"'DM Mono', monospace"}}};
   return o;
 }
 function overlay(canvas, leftPts, rightPts, rightLabel, assetColor, leftLabel, lagDays){
   return new Chart(canvas,{type:"line",data:{datasets:[
-    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:ACCENT,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:LINE,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
     {label:rightLabel,data:rightPts,borderColor:assetColor,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:opts2(rightLabel, leftLabel)});
 }
@@ -336,17 +347,17 @@ const GLOBAL = (function(){
   const pts=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]}));
   const charts=[];
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:pts("v"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:pts("v"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
   ]},options:opts("$ trillion")}));
   charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
-    {data:pts("ys"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:pts("y"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:pts("ys"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
+    {data:pts("y"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
   ]},options:opts("% YoY")}));
   const DEF=(DATA.lag_days||90);
   const tglPts=pts("v");
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
-  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "BTC", "#f7931a", "TGL  $tn", DEF));
-  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "NDX", "#c0392b", "TGL  $tn", DEF));
+  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "BTC", ACCENT, "TGL  $tn", DEF));
+  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "NDX", ACCENT, "TGL  $tn", DEF));
   charts.forEach((c,i)=>c.$auto=(i<2));
   [levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]);
@@ -368,22 +379,22 @@ const US = (function(){
   const P=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]}));
   const charts=[];
   charts.push(new Chart(usLevel,{type:"line",data:{datasets:[
-    {data:P("vn"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:P("vn"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
   ]},options:opts("$ trillion")}));
   charts.push(new Chart(usYoy,{type:"line",data:{datasets:[
-    {data:P("yns"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yn"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:P("yns"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
+    {data:P("yn"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
   ]},options:opts("% YoY")}));
   charts.push(new Chart(usLevelOld,{type:"line",data:{datasets:[
-    {data:P("vo"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:P("vo"),borderColor:LINE,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
   ]},options:opts("$ trillion")}));
   charts.push(new Chart(usYoyOld,{type:"line",data:{datasets:[
-    {data:P("yos"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yo"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:P("yos"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
+    {data:P("yo"),borderColor:LINE,borderWidth:2.4,pointRadius:0,tension:.05}
   ]},options:opts("% YoY")}));
   const DEF=(U.lag_days||90);
-  charts.push(overlay(usNdx, P("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "NDX", "#c0392b", "US liq  $tn", DEF));
-  charts.push(overlay(usBtc, P("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "BTC", "#f7931a", "US liq (Narrow)  $tn", DEF));
+  charts.push(overlay(usNdx, P("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "NDX", ACCENT, "US liq  $tn", DEF));
+  charts.push(overlay(usBtc, P("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "BTC", ACCENT, "US liq (Narrow)  $tn", DEF));
   charts.forEach((c,i)=>c.$auto=(i<4));
   [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]);

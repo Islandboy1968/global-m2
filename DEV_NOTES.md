@@ -5,9 +5,10 @@ Working state of the project, kept in the repo so any fresh session can pick up 
 name and on-page branding changed.)
 
 ## What it is
-A multi-tab dashboard (Chart.js, light theme, teal accent `#0e7490`) with TradingView-style
-per-axis zoom/pan and range buttons. The product is **The Everything Code (TEC)** — liquidity
-is the first section; more TEC sections (tabs) will be added over time.
+A multi-tab dashboard (Chart.js) with TradingView-style per-axis zoom/pan and range buttons,
+styled in the **GMI brand "light report-chart" theme** (see Styling below). The product is
+**The Everything Code (TEC)** — liquidity is the first section; more TEC sections (tabs) will
+be added over time.
 
 Every tab shows **THE EVERYTHING CODE** as the main title (`.maintitle`, all caps) with a
 section name beneath it (`.subtitle`) and a one-line descriptor (`.updated`).
@@ -40,6 +41,23 @@ Live at: https://islandboy1968.github.io/global-m2/
   `f = exp(clamp(normalisedDeltaY) * ZOOM_SENS)` with `ZOOM_SENS=0.0011` (~7–11% per notch,
   smooth on trackpads). Value-axis drag (slide) is damped by `AXIS_DRAG_DAMP=0.55` so overlay
   alignment is fine-grained. Both constants are at the top of the app `<script>`.
+
+## Styling (GMI light report-chart theme)
+Applied from the GMI Visual Guidance brand system. All tokens are CSS vars in `:root`.
+- **Palette:** background = soft pink gradient (`#ffd9e2 → #ffedf1 → #fbfcfd`, fixed attachment);
+  cards = white `#ffffff`; text/ink = Slate `#22233f`, muted = `#6e7088`; borders `#ece2e8`;
+  **accent = GMI hot pink `#f12a5a`**; chart grid `#efe6ec`.
+- **Series colours:** liquidity lines = near-black `#1a1a22` (`LINE`); overlay asset lines
+  (BTC/NDX) = hot pink `#f12a5a` (`ACCENT`); 3m-avg companion line = muted mauve `#bcb6c6`
+  (`SMOOTH`). These four constants live at the top of the app `<script>`.
+- **Type (Google Fonts, loaded in `<head>`):** Oswald (Tungsten substitute) for titles —
+  `.maintitle`, `.subtitle` wrapper aside, chart `h2`, tab buttons, all uppercase; DM Sans
+  (AT Aero substitute) for body + the big stat numbers; DM Mono for small UI labels (subtitle
+  line, `.updated`, range/lag buttons, hints, axis ticks/titles). `Chart.defaults.font.family`
+  is set to DM Sans so tooltips match.
+- **NOTE on fonts:** Tungsten + AT Aero are licensed and not embeddable from the brand PDF, so
+  Oswald/DM Sans stand in. To go pixel-exact, drop the licensed `.woff2` files in and add
+  `@font-face` rules, then swap the `font-family` stacks (search "Oswald"/"DM Sans").
 
 ## How data flows (unchanged, important)
 Nothing is fetched in the browser. The browser only reads the static file `data/data.js`,
@@ -115,8 +133,7 @@ local reruns. The Action runs without them (full pull each time), which is fine.
 ## Notes / parked ideas
 - China M2 lags ~1 month on TradingView; `CHINA_M2_OVERRIDE` in update_data.py carries the
   latest official PBoC print. Update one line each month.
-- **Pending: GMI design-system restyle.** The current look is the placeholder teal/light theme.
-  A full GMI visual pass (GMI fonts, colour palette, chart styling from the GMI design system)
-  is still to be applied — waiting on the design-system files / Claude Design workup.
+- Done (was pending): GMI design-system restyle — light report-chart theme applied (see Styling).
+  Optional follow-up: embed the real licensed Tungsten/AT Aero webfonts for a pixel-exact match.
 - Parked: more overlay assets (gold, S&P); a money-vs-FX decomposition panel; more TEC tabs.
 - Done (was parked): adjustable lead/lag on the overlay charts.
