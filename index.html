@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GMI Liquidity Dashboard</title>
+<title>The Everything Code</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
@@ -15,7 +15,8 @@
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
        color:var(--ink);background:linear-gradient(165deg,var(--bg1),var(--bg2) 55%,#fff);min-height:100vh}
   .wrap{max-width:1000px;margin:0 auto;padding:34px 22px 56px}
-  h1{font-size:23px;margin:0;letter-spacing:.2px}
+  .maintitle{font-size:26px;margin:0;font-weight:800;letter-spacing:2px;text-transform:uppercase}
+  .subtitle{font-size:17px;font-weight:600;color:var(--ink);margin-top:4px;letter-spacing:.2px}
   .updated{font-size:12px;color:var(--ink2);margin-top:3px}
   .card{background:#ffffffd9;border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-top:22px;
         box-shadow:0 1px 3px #13212e0a;backdrop-filter:blur(4px)}
@@ -27,12 +28,23 @@
   .chartbox{position:relative;height:360px;cursor:grab}
   .chartbox:active{cursor:grabbing}
   .hint{font-size:11px;color:var(--ink2);text-align:right;margin-top:8px;opacity:.8}
-  .ranges{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0 2px}
+  .ctrls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:6px 0 12px}
+  .ranges{display:flex;gap:6px;flex-wrap:wrap}
   .ranges button{font:inherit;font-size:12px;font-weight:600;color:var(--ink2);background:#fff;
     border:1px solid var(--line);border-radius:8px;padding:5px 12px;cursor:pointer}
   .ranges button:hover{border-color:var(--accent);color:var(--accent)}
   .ranges button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-  .tabs{display:flex;gap:8px;margin-bottom:6px}
+  .lagctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .lagctl .lagk{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2)}
+  .lagctl button{font:inherit;font-size:12px;font-weight:600;color:var(--ink2);background:#fff;
+    border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer}
+  .lagctl button:hover{border-color:var(--accent);color:var(--accent)}
+  .lagctl button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .lagctl input{font:inherit;font-size:12px;font-weight:600;color:var(--ink);width:64px;text-align:center;
+    border:1px solid var(--line);border-radius:8px;padding:5px 6px}
+  .lagctl input:focus{outline:none;border-color:var(--accent)}
+  .lagctl .lagunit{font-size:11px;color:var(--ink2)}
+  .tabs{display:flex;gap:8px;margin-bottom:18px}
   .tabs button{font:inherit;font-size:13px;font-weight:700;letter-spacing:.3px;color:var(--ink2);background:#fff;
     border:1px solid var(--line);border-radius:10px;padding:9px 18px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--accent);color:var(--accent)}
@@ -52,15 +64,14 @@
   <!-- ============ GLOBAL TAB ============ -->
   <section id="tab-global" class="pane">
     <header>
-      <h1>Total Global Liquidity Index</h1>
+      <h1 class="maintitle">The Everything Code</h1>
+      <div class="subtitle">Global Liquidity</div>
       <div class="updated">Broad money across <span id="necon">47</span> economies, in US dollars · daily · updated <span id="updated">—</span></div>
     </header>
 
     <div id="global-missing" class="note" hidden>
       Global series not loaded (<code>data.js</code> missing beside this page). Deploy with <code>data.js</code> present, or run the daily pipeline, to see the global charts.
     </div>
-
-    <div class="ranges" data-group="global"></div>
 
     <div class="card">
       <div class="row"><h2>Index</h2><div class="big" id="lvl">—</div></div>
@@ -74,13 +85,13 @@
     </div>
 
     <div class="card">
-      <div class="row"><h2>Liquidity leads Bitcoin</h2><div class="leadlbl">TGL vs BTC · liquidity leads 90 days</div></div>
+      <div class="row"><h2>Liquidity leads Bitcoin</h2><div class="leadlbl" id="btcLead">TGL vs BTC · liquidity leads 90 days</div></div>
       <div class="chartbox"><canvas id="btcChart"></canvas></div>
       <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>Liquidity leads Nasdaq 100</h2><div class="leadlbl">TGL vs NDX · liquidity leads 90 days</div></div>
+      <div class="row"><h2>Liquidity leads Nasdaq 100</h2><div class="leadlbl" id="ndxLead">TGL vs NDX · liquidity leads 90 days</div></div>
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
       <div class="hint">plot: scroll/drag = time · left axis (TGL) &amp; right axis (NDX): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
     </div>
@@ -89,48 +100,47 @@
   <!-- ============ US TAB ============ -->
   <section id="tab-us" class="pane" hidden>
     <header>
-      <h1>US Total Liquidity</h1>
-      <div class="updated">Fed balance sheet − TGA − RRP + bank loans (broad) · weekly FRED · latest <span id="us-updated">—</span></div>
+      <h1 class="maintitle">The Everything Code</h1>
+      <div class="subtitle">US Liquidity</div>
+      <div class="updated">Fed balance sheet − TGA − RRP + bank loans (Broad) · weekly FRED · latest <span id="us-updated">—</span></div>
     </header>
 
     <div id="us-missing" class="note" hidden>
       US series not present in <code>data.js</code> yet. It is generated by the daily pipeline (<code>us_liquidity.py</code>); run the GitHub Action once to populate it.
     </div>
 
-    <div class="ranges" data-group="us"></div>
-
     <div class="card">
-      <div class="row"><h2>US Total Liquidity</h2><div class="big" id="us-lvl">—</div></div>
+      <div class="row"><h2>US Total Liquidity (Broad)</h2><div class="big" id="us-lvl">—</div></div>
       <div class="chartbox"><canvas id="usLevel"></canvas></div>
       <div class="hint">scroll to zoom · drag to pan · auto-scales to view · double-click to reset</div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>US Total Liquidity — Year-on-year</h2><div class="big" id="us-yoy">—</div></div>
+      <div class="row"><h2>US Total Liquidity (Broad) — Year-on-year</h2><div class="big" id="us-yoy">—</div></div>
       <div class="chartbox"><canvas id="usYoy"></canvas></div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>US Total Liquidity — old narrow measure</h2><div class="leadlbl">… − TGA − RRP + Treasury securities held by banks</div></div>
+      <div class="row"><h2>US Total Liquidity (Narrow)</h2><div class="leadlbl">… − TGA − RRP + Treasury securities held by banks</div></div>
       <div class="chartbox"><canvas id="usLevelOld"></canvas></div>
       <div class="hint">scroll to zoom · drag to pan · auto-scales to view · double-click to reset</div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>US Total Liquidity (old measure) — Year-on-year</h2><div class="big" id="us-yoy-old">—</div></div>
+      <div class="row"><h2>US Total Liquidity (Narrow) — Year-on-year</h2><div class="big" id="us-yoy-old">—</div></div>
       <div class="chartbox"><canvas id="usYoyOld"></canvas></div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>US liquidity leads Nasdaq 100</h2><div class="leadlbl">US TGL vs NDX · liquidity leads 90 days (3 months)</div></div>
+      <div class="row"><h2>US Liquidity (Broad) leads Nasdaq 100</h2><div class="leadlbl" id="usNdxLead">US TGL (Broad) vs NDX · liquidity leads 90 days</div></div>
       <div class="chartbox"><canvas id="usNdx"></canvas></div>
       <div class="hint">plot: scroll/drag = time · left axis (US liq) &amp; right axis (NDX): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
     </div>
 
     <div class="card">
-      <div class="row"><h2>US liquidity (old) leads Bitcoin</h2><div class="leadlbl">US TGL (old) vs BTC · liquidity leads 90 days (3 months)</div></div>
+      <div class="row"><h2>US Liquidity (Narrow) leads Bitcoin</h2><div class="leadlbl" id="usBtcLead">US TGL (Narrow) vs BTC · liquidity leads 90 days</div></div>
       <div class="chartbox"><canvas id="usBtc"></canvas></div>
-      <div class="hint">plot: scroll/drag = time · left axis (US liq, old) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
+      <div class="hint">plot: scroll/drag = time · left axis (US liq, Narrow) &amp; right axis (BTC): scroll or drag each to stretch &amp; slide for best fit · double-click to auto-fit</div>
     </div>
   </section>
 
@@ -138,6 +148,9 @@
 
 <script>
 const ACCENT="#0e7490", INK="#13212e";
+// --- interaction sensitivity (lower = calmer) ---
+const ZOOM_SENS=0.0011;     // wheel zoom intensity; ~11% per mouse notch, smooth on trackpad
+const AXIS_DRAG_DAMP=0.55;  // damping on value-axis slide so overlay alignment is fine-grained
 const ZP = window.ChartZoom || window['chartjs-plugin-zoom'] || window.chartjsPluginZoom;
 if (ZP) Chart.register(ZP.default || ZP);
 
@@ -178,14 +191,15 @@ function opts2(rightLabel, leftLabel){
     title:{display:true,text:rightLabel,color:"#5b6b78"}};
   return o;
 }
-function overlay(canvas, leftPts, rightPts, rightLabel, assetColor, leftLabel){
+function overlay(canvas, leftPts, rightPts, rightLabel, assetColor, leftLabel, lagDays){
   return new Chart(canvas,{type:"line",data:{datasets:[
-    {label:(leftLabel||"Liquidity")+" (leads 90d)",data:leftPts,borderColor:ACCENT,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:ACCENT,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
     {label:rightLabel,data:rightPts,borderColor:assetColor,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:opts2(rightLabel, leftLabel)});
 }
+function leadDesc(d){ d=+d; if(d>0) return " (leads "+d+"d)"; if(d<0) return " (lags "+(-d)+"d)"; return " (no shift)"; }
 
-// ----- TradingView-style per-axis control (shared by every chart) -----
+// ----- TradingView-style per-axis control (each chart is fully independent) -----
 const valAt=(s,px)=>s.getValueForPixel(px);
 function regionOf(chart, ox){
   const a=chart.chartArea;
@@ -200,21 +214,17 @@ function scaleAround(chart, id, focus, f){
     o.min=Math.pow(10, lf+(lo-lf)*f); o.max=Math.pow(10, lf+(hi-lf)*f);
   } else { o.min=focus+(s.min-focus)*f; o.max=focus+(s.max-focus)*f; }
 }
-function syncX(src, group){
-  const lo=src.scales.x.min, hi=src.scales.x.max;
-  group.charts.forEach(c=>{ if(c===src) return;
-    c.options.scales.x.min=lo; c.options.scales.x.max=hi;
-    if(c.$auto) fitY(c); else c.update("none");
-  });
-}
-function attach(canvas, chart, group){
+function attach(canvas, chart){
   canvas.addEventListener("wheel", e=>{
     e.preventDefault();
-    const f = e.deltaY<0 ? 0.85 : 1/0.85;
+    let dy=e.deltaY;                       // normalise wheel units across devices
+    if(e.deltaMode===1) dy*=16; else if(e.deltaMode===2) dy*=400;
+    if(dy> 60) dy= 60; if(dy<-60) dy=-60;  // clamp big trackpad flicks
+    const f = Math.exp(dy*ZOOM_SENS);      // >1 zooms out, <1 zooms in; proportional & smooth
     const reg = regionOf(chart, e.offsetX);
     if(reg==="x"){
       scaleAround(chart,"x", valAt(chart.scales.x, e.offsetX), f);
-      chart.update("none"); if(chart.$auto) fitY(chart); syncX(chart, group);
+      chart.update("none"); if(chart.$auto) fitY(chart);
     } else {
       scaleAround(chart, reg, valAt(chart.scales[reg], e.offsetY), f);
       chart.update("none");
@@ -229,21 +239,88 @@ function attach(canvas, chart, group){
     if(drag.reg==="x"){
       const s=chart.scales.x, o=chart.options.scales.x, k=(s.max-s.min)/(a.right-a.left);
       o.min=s.min - dx*k; o.max=s.max - dx*k;
-      chart.update("none"); if(chart.$auto) fitY(chart); syncX(chart, group);
+      chart.update("none"); if(chart.$auto) fitY(chart);
     } else {
+      const ddy=dy*AXIS_DRAG_DAMP;
       const s=chart.scales[drag.reg], o=chart.options.scales[drag.reg];
       if(o.type==="logarithmic"){
-        const mid=(a.top+a.bottom)/2, r=valAt(s, mid+dy)/valAt(s, mid);
+        const mid=(a.top+a.bottom)/2, r=valAt(s, mid+ddy)/valAt(s, mid);
         o.min=s.min*r; o.max=s.max*r;
       } else {
         const k=(s.max-s.min)/(a.bottom-a.top);
-        o.min=s.min + dy*k; o.max=s.max + dy*k;
+        o.min=s.min + ddy*k; o.max=s.max + ddy*k;
       }
       chart.update("none");
     }
   });
   window.addEventListener("mouseup", ()=>{ drag=null; });
   canvas.addEventListener("dblclick", ()=>fitY(chart));
+}
+
+// ----- per-chart x-extent (over all datasets) -----
+function xExtent(chart){
+  let lo=Infinity, hi=-Infinity;
+  chart.data.datasets.forEach(ds=>ds.data.forEach(p=>{ if(p.x<lo)lo=p.x; if(p.x>hi)hi=p.x; }));
+  return [lo,hi];
+}
+
+// ----- per-chart range buttons (1M/3M/6M/1Y/5Y/All), independent of every other chart -----
+const RANGES=[["1M",30],["3M",91],["6M",182],["1Y",365],["5Y",1825],["All",null]];
+function buildRanges(chart, container){
+  function setRange(days, btn){
+    const [lo,hi]=xExtent(chart);
+    if(days===null){ chart.options.scales.x.min=lo; chart.options.scales.x.max=hi; }
+    else{ chart.options.scales.x.max=hi; chart.options.scales.x.min=hi-days*DAY; }
+    fitY(chart);
+    [...container.children].forEach(b=>b.classList.remove("on"));
+    if(btn) btn.classList.add("on");
+  }
+  RANGES.forEach(([lbl,d])=>{
+    const b=document.createElement("button"); b.textContent=lbl;
+    b.onclick=()=>setRange(d,b); container.appendChild(b);
+  });
+  setRange(null, container.lastChild);
+  chart.$setRange=setRange;
+}
+
+// ----- per-chart lead/lag control (overlay charts only) -----
+const LAG_PRESETS=[-90,0,90,120,180];
+function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
+  function relag(days){
+    days=Math.round(+days)||0;
+    chart.data.datasets[1].data = (asset||[]).map(a=>({x:Date.parse(a.d)-days*DAY, y:a.p}));
+    chart.data.datasets[0].label = leftLabel + leadDesc(days);
+    if(leadEl){
+      const verb = days>0?("leads "+days+" days") : days<0?("lags "+(-days)+" days") : "no shift";
+      leadEl.textContent = pairLbl+" · liquidity "+verb;
+    }
+    fitY(chart);
+    [...container.querySelectorAll("button")].forEach(b=>b.classList.toggle("on", (+b.dataset.d)===days));
+    if(input.value!=String(days)) input.value=days;
+  }
+  const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead/Lag"; container.appendChild(k);
+  LAG_PRESETS.forEach(d=>{
+    const b=document.createElement("button"); b.dataset.d=d;
+    b.textContent=(d>0?"+":"")+d; b.onclick=()=>relag(d); container.appendChild(b);
+  });
+  const input=document.createElement("input"); input.type="number"; input.step="5"; input.value=def;
+  input.title="Set any lead (+) or lag (−) in days";
+  input.addEventListener("change", ()=>relag(input.value));
+  input.addEventListener("keydown", e=>{ if(e.key==="Enter") relag(input.value); });
+  container.appendChild(input);
+  const u=document.createElement("span"); u.className="lagunit"; u.textContent="days"; container.appendChild(u);
+  relag(def);
+}
+
+// ----- build the controls bar inside a chart's card -----
+function controls(chart, lag){
+  const card=chart.canvas.closest(".card");
+  const bar=document.createElement("div"); bar.className="ctrls";
+  const ranges=document.createElement("div"); ranges.className="ranges"; bar.appendChild(ranges);
+  if(lag){ const lc=document.createElement("div"); lc.className="lagctl"; bar.appendChild(lc);
+    buildLag(chart, lc, lag.asset, lag.leftLabel, lag.pairLbl, lag.leadEl, lag.def); }
+  card.querySelector(".chartbox").insertAdjacentElement("beforebegin", bar);
+  buildRanges(chart, ranges);
 }
 
 const DATA = window.TGL_DATA || null;
@@ -257,7 +334,6 @@ const GLOBAL = (function(){
   document.getElementById("lvl").innerHTML="$"+su.total_tn+"T <small>"+su.latest+"</small>";
   document.getElementById("yoy").innerHTML=su.yoy+"% <small>3m avg "+su.yoy_s+"%</small>";
   const pts=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]}));
-  const fullMin=Date.parse(S[0].d), fullMax=Date.parse(S[S.length-1].d);
   const charts=[];
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
     {data:pts("v"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
@@ -266,15 +342,17 @@ const GLOBAL = (function(){
     {data:pts("ys"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
     {data:pts("y"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
   ]},options:opts("% YoY")}));
-  const LAG=(DATA.lag_days||90)*DAY;
+  const DEF=(DATA.lag_days||90);
   const tglPts=pts("v");
-  const lag=arr=>arr.map(a=>({x:Date.parse(a.d)-LAG, y:a.p}));
-  charts.push(overlay(btcChart, tglPts, lag(DATA.btc), "BTC", "#f7931a", "TGL  $tn"));
-  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx), "NDX", "#c0392b", "TGL  $tn"));
+  const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
+  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "BTC", "#f7931a", "TGL  $tn", DEF));
+  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "NDX", "#c0392b", "TGL  $tn", DEF));
   charts.forEach((c,i)=>c.$auto=(i<2));
-  const g={charts,fullMin,fullMax};
-  [levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i],g));
-  return g;
+  [levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]);
+  controls(charts[2],{asset:DATA.btc, leftLabel:"TGL  $tn", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
+  controls(charts[3],{asset:DATA.ndx, leftLabel:"TGL  $tn", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
+  return {charts};
 })();
 
 // ===================== US TAB (reads TGL_DATA.us; BTC/NDX reused from global) =====================
@@ -288,7 +366,6 @@ const US = (function(){
   document.getElementById("us-yoy").innerHTML=sgn(su.yoy_new)+"% <small>3m avg "+su.yoy_new_s+"%</small>";
   document.getElementById("us-yoy-old").innerHTML=sgn(su.yoy_old)+"% <small>3m avg "+su.yoy_old_s+"%</small>";
   const P=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]}));
-  const fullMin=Date.parse(S[0].d), fullMax=Date.parse(S[S.length-1].d);
   const charts=[];
   charts.push(new Chart(usLevel,{type:"line",data:{datasets:[
     {data:P("vn"),borderColor:ACCENT,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
@@ -304,40 +381,16 @@ const US = (function(){
     {data:P("yos"),borderColor:"#93a3ae",borderWidth:1.3,pointRadius:0,tension:.05},
     {data:P("yo"),borderColor:ACCENT,borderWidth:2.4,pointRadius:0,tension:.05}
   ]},options:opts("% YoY")}));
-  const LAG=(U.lag_days||90)*DAY;
-  const lag=arr=>(arr||[]).map(a=>({x:Date.parse(a.d)-LAG, y:a.p}));
-  charts.push(overlay(usNdx, P("vn"), lag(DATA.ndx), "NDX", "#c0392b", "US liq  $tn"));
-  charts.push(overlay(usBtc, P("vo"), lag(DATA.btc), "BTC", "#f7931a", "US liq (old)  $tn"));
+  const DEF=(U.lag_days||90);
+  charts.push(overlay(usNdx, P("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "NDX", "#c0392b", "US liq  $tn", DEF));
+  charts.push(overlay(usBtc, P("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "BTC", "#f7931a", "US liq (Narrow)  $tn", DEF));
   charts.forEach((c,i)=>c.$auto=(i<4));
-  const g={charts,fullMin,fullMax};
-  [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i],g));
-  return g;
+  [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]);
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"US liq  $tn", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
+  controls(charts[5],{asset:DATA.btc, leftLabel:"US liq (Narrow)  $tn", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
+  return {charts};
 })();
-
-// ===================== range buttons (per tab) =====================
-const RANGES=[["1M",30],["3M",91],["6M",182],["1Y",365],["5Y",1825],["All",null]];
-function buildRanges(group, container){
-  if(!group||!container) return;
-  function setRange(days, btn){
-    group.charts.forEach(c=>{
-      if(days===null){ c.options.scales.x.min=group.fullMin; c.options.scales.x.max=group.fullMax; }
-      else{ c.options.scales.x.min=group.fullMax-days*DAY; c.options.scales.x.max=group.fullMax; }
-      c.update("none");
-      if(c.$auto) fitY(c);
-    });
-    [...container.children].forEach(b=>b.classList.remove("on"));
-    if(btn) btn.classList.add("on");
-  }
-  RANGES.forEach(([lbl,d])=>{
-    const b=document.createElement("button"); b.textContent=lbl;
-    b.onclick=()=>setRange(d,b); container.appendChild(b);
-  });
-  setRange(null, container.lastChild);
-  group.charts.forEach(c=>{ if(!c.$auto) fitY(c); });
-  group.setRange=setRange;
-}
-buildRanges(GLOBAL, document.querySelector('.ranges[data-group="global"]'));
-buildRanges(US, document.querySelector('.ranges[data-group="us"]'));
 
 // ===================== tab switching =====================
 const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us")};

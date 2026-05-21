@@ -1,20 +1,47 @@
-# GMI Liquidity Dashboard — Dev Notes
+# The Everything Code (TEC) — Dev Notes
 
 Working state of the project, kept in the repo so any fresh session can pick up instantly.
+(Formerly "GMI Liquidity Dashboard". The repo slug is still `global-m2`; only the product
+name and on-page branding changed.)
 
 ## What it is
-A two-tab liquidity dashboard (Chart.js, light theme, teal accent `#0e7490`) with
-TradingView-style per-axis zoom/pan and range buttons.
+A multi-tab dashboard (Chart.js, light theme, teal accent `#0e7490`) with TradingView-style
+per-axis zoom/pan and range buttons. The product is **The Everything Code (TEC)** — liquidity
+is the first section; more TEC sections (tabs) will be added over time.
+
+Every tab shows **THE EVERYTHING CODE** as the main title (`.maintitle`, all caps) with a
+section name beneath it (`.subtitle`) and a one-line descriptor (`.updated`).
 
 - **Global Liquidity tab** — Total Global Liquidity: broad money across 47 economies,
   each converted to USD at spot FX and summed (the GMI method). ~135T, ~8% YoY.
-  Four charts: Index level, YoY, liquidity-leads-BTC, liquidity-leads-NDX (assets lagged 90d).
-- **US Liquidity tab** — US Total Liquidity (net liquidity). Six charts: new-measure level,
-  new-measure YoY, old-measure level, old-measure YoY, new-vs-NDX (90d lag), old-vs-BTC (90d lag).
+  Four charts: Index level, YoY, liquidity-leads-BTC, liquidity-leads-NDX.
+- **US Liquidity tab** — US Total Liquidity (net liquidity). Six charts: Broad level,
+  Broad YoY, Narrow level, Narrow YoY, Broad-vs-NDX, Narrow-vs-BTC.
+  ("Broad" = the new measure, "Narrow" = the former "old" measure. Same formulas as before;
+  only the labels changed.)
 
 Live at: https://islandboy1968.github.io/global-m2/
 
-## How data flows (important)
+## UI behaviour (changed — read this)
+- **Every chart is fully independent.** There is no longer any cross-chart x-axis sync
+  (`syncX` was removed). Zooming, panning, range selection and lead/lag on one chart never
+  touch any other chart.
+- **Range buttons are per-chart.** Each card has its own `1M / 3M / 6M / 1Y / 5Y / All` row
+  (built by `buildRanges(chart, container)` into a `.ctrls > .ranges` bar inserted above the
+  canvas). Each set acts only on its own chart, anchored to that chart's own data extent
+  (`xExtent`). Picking a range also auto-fits Y (`fitY`).
+- **Lead/lag is adjustable per overlay chart.** The lead/lag charts (global BTC & NDX, US NDX
+  & BTC) have a `.lagctl` control: presets `[-90, 0, +90, +120, +180]` plus a free numeric
+  input for any value. Positive = liquidity leads (asset shifted back), negative = liquidity
+  lags. `buildLag()` recomputes the asset dataset on the fly (`x = date − days`), rewrites the
+  series label and the `.leadlbl` caption, then `fitY`. The shipped data still carries the
+  default `lag_days` (90); the control just re-shifts client-side, so no pipeline change.
+- **Zoom sensitivity is calmer.** Wheel zoom is now magnitude-aware and clamped:
+  `f = exp(clamp(normalisedDeltaY) * ZOOM_SENS)` with `ZOOM_SENS=0.0011` (~7–11% per notch,
+  smooth on trackpads). Value-axis drag (slide) is damped by `AXIS_DRAG_DAMP=0.55` so overlay
+  alignment is fine-grained. Both constants are at the top of the app `<script>`.
+
+## How data flows (unchanged, important)
 Nothing is fetched in the browser. The browser only reads the static file `data/data.js`,
 which assigns one object to `window.TGL_DATA`. That file is regenerated once a day by the
 GitHub Action and committed back to the repo. "Live" means "refreshed daily server-side",
@@ -26,10 +53,12 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
 `GITHUB_TOKEN` (needs Settings -> Actions -> General -> Workflow permissions -> Read and write).
 
 ## Files
-- `index.html` — the dashboard. Tab nav + two chart groups. All chart options, the
-  `overlay()` helper, the per-axis zoom/pan (`attach`), `fitY`, and the range buttons are
-  shared by both tabs. Reads `TGL_DATA` (global) and `TGL_DATA.us` (US). Reuses
-  `TGL_DATA.btc` / `TGL_DATA.ndx` for the US overlay charts.
+- `index.html` — the dashboard. Tab nav + two chart groups. Shared helpers: `opts`/`opts2`
+  (chart options), `overlay()` (lead/lag chart builder, takes initial lag), `fitY` (auto-fit
+  each y-axis to the visible x-window), `attach` (per-axis wheel-zoom + drag-pan, fully local
+  to one chart), `xExtent`, `buildRanges` (per-chart range buttons), `buildLag` (per-chart
+  lead/lag control), `controls()` (injects the `.ctrls` bar into a card). Reads `TGL_DATA`
+  (global) and `TGL_DATA.us` (US). Reuses `TGL_DATA.btc` / `TGL_DATA.ndx` for the overlays.
 - `update_data.py` — daily pipeline. Builds the global series from TradingView, then calls
   `build_us()` and writes everything (incl. `us`) to `data/data.js` and `data/data.json`.
   A US failure is caught and never breaks the global build.
@@ -50,27 +79,32 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
   us: {
     lag_days,
     summary: { latest, new_tn, old_tn, yoy_new, yoy_new_s, yoy_old, yoy_old_s },
-    series:  [ { d, vn, vo, yn, yns, yo, yos } ]  // new/old level $tn, YoY %, 3m-avg YoY %
+    series:  [ { d, vn, vo, yn, yns, yo, yos } ]  // new(Broad)/old(Narrow) level $tn, YoY %, 3m-avg YoY %
   }
 }
 ```
+Note: the data keys still use `new`/`old` / `vn`/`vo`; only the on-screen labels say
+Broad/Narrow. (new = Broad, old = Narrow.)
 
 ## Formulas
 - Global level = sum over economies of (national M2 in local ccy x USD-per-local FX), in $tn.
   YoY = 365-day offset on a daily grid. 3m avg = 91-day trailing.
 - US, weekly (FRED WALCL Wednesday grid), in $tn:
-  - NEW (broad) = WALCL - WTREGEN - RRPONTSYD*1000 + TOTLL*1000
-  - OLD (narrow) = WALCL - WTREGEN - RRPONTSYD*1000 + SBCACBW027NBOG*1000
+  - Broad (new) = WALCL - WTREGEN - RRPONTSYD*1000 + TOTLL*1000
+  - Narrow (old) = WALCL - WTREGEN - RRPONTSYD*1000 + SBCACBW027NBOG*1000
   - (WALCL/TGA are $M; RRP/loans/securities are $B, so x1000 to $M, then /1e6 to $tn.)
   - YoY = 52-week offset. 3m avg = 13-week trailing.
-- Overlay charts: liquidity plotted at real dates; the asset is shifted back by `lag_days`
-  (90), so liquidity visually leads. Right axis is logarithmic.
+- Overlay charts: liquidity plotted at real dates; the asset is shifted back by the chart's
+  current lead/lag (default `lag_days`=90, adjustable in the UI). Right axis is logarithmic.
 
 ## Run / iterate
 - Clone (public, read-only, no token): `git clone https://github.com/Islandboy1968/global-m2`
 - Regenerate data locally: `pip install -r requirements.txt && python update_data.py`
   (the TradingView pull of ~95 symbols takes a few minutes; FRED part is fast).
 - US block only, quick check: `python us_liquidity.py`.
+- Frontend sanity check (no browser): load `index.html` in jsdom with a fake `Chart` and the
+  real `data/data.js`; assert 10 `.ranges` rows, 60 range buttons, 4 `.lagctl` controls, and
+  that a lead/lag change rewrites the `.leadlbl` caption. (Used during the last edit.)
 - Pushing requires a fine-grained PAT with Contents + Workflows + Actions write.
   NEVER commit a token to this repo (it is public). Paste it into the chat when a push is needed.
 
@@ -81,5 +115,8 @@ local reruns. The Action runs without them (full pull each time), which is fine.
 ## Notes / parked ideas
 - China M2 lags ~1 month on TradingView; `CHINA_M2_OVERRIDE` in update_data.py carries the
   latest official PBoC print. Update one line each month.
-- Parked: adjustable lag slider on the lead/lag charts; more overlay assets (gold, S&P);
-  a money-vs-FX decomposition panel.
+- **Pending: GMI design-system restyle.** The current look is the placeholder teal/light theme.
+  A full GMI visual pass (GMI fonts, colour palette, chart styling from the GMI design system)
+  is still to be applied — waiting on the design-system files / Claude Design workup.
+- Parked: more overlay assets (gold, S&P); a money-vs-FX decomposition panel; more TEC tabs.
+- Done (was parked): adjustable lead/lag on the overlay charts.

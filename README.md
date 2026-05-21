@@ -1,9 +1,11 @@
-# Total Global Liquidity (TGL) Index
+# The Everything Code (TEC)
+
+*Repo slug is still `global-m2`; product/branding renamed to The Everything Code. Live at https://islandboy1968.github.io/global-m2/*
 
 A self-updating dashboard tracking global liquidity as **broad money across 47 economies, valued in US dollars** — the GMI method. It reproduces the GMI Total Liquidity level (~$135T). Two charts: the Index level and its year-on-year growth. Built on a **daily** grid (M2 prints monthly and is forward-filled; FX moves daily), so the line updates every day.
 
 ## What's here
-- `index.html` — the dashboard (loads `data/data.js`, renders with Chart.js)
+- `index.html` — the dashboard (loads `data/data.js`, renders with Chart.js). Each chart has its own range buttons and scales independently; overlay charts have an adjustable lead/lag control.
 - `update_data.py` — the daily pipeline (pulls data, computes everything, writes `data/`)
 - `tv_pull.py` — TradingView history puller
 - `econ.py` — the 47-economy table (ticker + FX + currency)
