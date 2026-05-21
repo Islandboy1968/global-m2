@@ -63,6 +63,13 @@ Live at: https://islandboy1968.github.io/global-m2/
   `addLock`; `attach()` no-ops when `chart.$locked`; `addLock()` (called from `controls`/`controlsFwd`)
   injects the `.locktoggle` button and registers the chart in `ALL_CHARTS`; lead controls expose
   `chart.$relag`/`$leadInput`/`$lead` for restore. A final pass restores locked charts then sets `READY`.
+- **Published default layout (shared baseline).** `data/layout.js` ships `window.TEC_DEFAULT_LOCKS`
+  (loaded in `<head>` after `data.js`). At startup `LOCKS = {...TEC_DEFAULT_LOCKS, ...localStorage}`,
+  so every visitor opens to the published arrangement and resets to it on reload (localStorage is
+  per-device, never shared via the link); a visitor's own locks only override on their machine.
+  The **Copy layout** button (top-right of the tab row) writes the current locked charts as a
+  ready-to-commit `window.TEC_DEFAULT_LOCKS = {...};` string to the clipboard — paste it into
+  `data/layout.js` and commit to publish a new default. The daily Action does not touch this file.
 - **Big Picture leads:** charts 1 (births) and 4 (interest) carry forward leads; chart 3 (debt) also
   has an adjustable lead box (default 0 = coincident) for testing a debt-vs-liquidity lead/lag.
 - **Frequency:** the Global tab is **daily** (M2 monthly, forward-filled; FX daily). The US tab

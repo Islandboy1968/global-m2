@@ -12,6 +12,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
 <script src="data.js"></script>
 <script>window.TGL_DATA||document.write('<scr'+'ipt src="data/data.js"><\/scr'+'ipt>');</script>
+<script src="data/layout.js"></script>
 <style>
   @font-face{font-family:"AT Aero";src:url("fonts/AtAero-Regular.woff2") format("woff2"),url("fonts/AtAero-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:"AT Aero";src:url("fonts/AtAero-Medium.woff2") format("woff2"),url("fonts/AtAero-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
@@ -37,9 +38,9 @@
   .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:12px;line-height:1.55;color:var(--mut);text-align:right;max-width:340px}
   .tabrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .tabs{display:flex;gap:8px}
-  .lockhint{display:inline-flex;align-items:center;gap:5px;font-family:"DM Mono",monospace;font-size:10px;
-    letter-spacing:.5px;color:var(--mut2)}
-  .lockhint svg{width:12px;height:12px}
+  .toolbtn{font-family:"DM Mono",monospace;font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;
+    color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;transition:all .15s}
+  .toolbtn:hover{border-color:var(--pink);color:var(--pink)}
   .locktoggle{position:absolute;top:12px;right:14px;z-index:2;width:26px;height:26px;display:inline-flex;
     align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.85);border:1px solid var(--line);
     border-radius:7px;color:var(--mut);cursor:pointer;transition:all .12s}
@@ -107,7 +108,7 @@
       <button data-tab="us">US Liquidity</button>
       <button data-tab="big">The Big Picture</button>
     </div>
-    <span class="lockhint">Lock any chart with the <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> to keep it fixed on reload</span>
+    <button class="toolbtn" id="copylayout" type="button" title="Copy your current locked layout — paste it back to publish it as the shared default everyone sees">Copy layout</button>
   </div>
 
   <!-- ============ GLOBAL TAB ============ -->
@@ -263,7 +264,11 @@ const DAY=864e5;
 let READY=false;
 const ALL_CHARTS=[];
 let LOCKS={};
-try{ LOCKS = JSON.parse(localStorage.getItem('tec_charts')||'{}'); }catch(e){ LOCKS={}; }
+try{
+  const DEF = window.TEC_DEFAULT_LOCKS || {};   // published baseline shipped in the repo (data/layout.js)
+  let personal={}; try{ personal=JSON.parse(localStorage.getItem('tec_charts')||'{}'); }catch(e){}
+  LOCKS = Object.assign({}, DEF, personal);      // your own local locks override the published default
+}catch(e){ LOCKS={}; }
 const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.5"/></svg>';
 const yr=v=>new Date(v).getUTCFullYear();
@@ -641,6 +646,19 @@ function addLock(chart){
 // restore the saved view of any chart that was left locked, then go live
 ALL_CHARTS.forEach(c=>{ if(c.$locked && LOCKS[c.canvas.id]) applySnap(c, LOCKS[c.canvas.id]); });
 READY=true;
+
+// "Copy layout" — export the current locked arrangement so it can be published as the shared default
+(function(){
+  const btn=document.getElementById('copylayout'); if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    const out={}; ALL_CHARTS.forEach(c=>{ if(c.$locked) out[c.canvas.id]=snapshot(c); });
+    const txt='window.TEC_DEFAULT_LOCKS = '+JSON.stringify(out)+';';
+    const flash=()=>{ const o=btn.textContent; btn.textContent='Copied'; setTimeout(()=>btn.textContent=o,1500); };
+    if(navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(txt).then(flash).catch(()=>window.prompt('Copy this layout:', txt));
+    else window.prompt('Copy this layout:', txt);
+  });
+})();
 
 // ===================== tab switching =====================
 const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big")};
