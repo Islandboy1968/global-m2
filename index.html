@@ -549,6 +549,14 @@ const BIG = (function(){
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
   controls(charts[1]); controls(charts[2]);
   controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Narrow) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
+  // default view windows matched to the official GMI charts (range buttons still override)
+  const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
+    chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
+    [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));};
+  bigStart(charts[0],"2004-01-01");   // LFPR vs births (+16y projection runs to ~2040)
+  bigStart(charts[1],"2001-01-01");   // LFPR vs debt
+  bigStart(charts[2],"2010-01-01");   // narrow liquidity (its data starts ~2010) vs debt
+  bigStart(charts[3],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
   return {charts};
 })();
 
