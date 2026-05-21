@@ -1,51 +1,27 @@
-# Global M2 Dashboard
+# Total Global Liquidity (TGL) Index
 
-A live dashboard tracking Global M2 — the sum of broad money (M2/M3) across the G5 economies, USD-normalised, daily cadence, 4-year rolling window.
+A self-updating dashboard tracking global liquidity as **broad money across 47 economies, valued in US dollars** — the GMI method. It reproduces the GMI Total Liquidity level (~$135T). Two charts: the Index level and its year-on-year growth. Built on a **daily** grid (M2 prints monthly and is forward-filled; FX moves daily), so the line updates every day.
 
-## What you get
+## What's here
+- `index.html` — the dashboard (loads `data/data.js`, renders with Chart.js)
+- `update_data.py` — the daily pipeline (pulls data, computes everything, writes `data/`)
+- `tv_pull.py` — TradingView history puller
+- `econ.py` — the 47-economy table (ticker + FX + currency)
+- `data/data.js` + `data/data.json` — generated data
+- `.github/workflows/update.yml` — daily refresh at 06:30 UTC
 
-- `index.html` — the dashboard. Three hero stats, two charts (level and YoY %), and a per-country breakdown table.
-- `update_data.py` — the data pipeline. Pulls five M2 series and four FX series, builds a daily grid, writes `data/data.js`.
-- `.github/workflows/update.yml` — runs daily at 06:30 UTC, commits a refreshed `data.js`.
+## Deploy (one-time, ~5 minutes)
+1. Create a **public** GitHub repo and upload every file in this folder, keeping the folder structure (`data/` and `.github/workflows/` included).
+2. **Settings → Pages**: set "Deploy from a branch", branch `main`, folder `/ (root)`. Save. Your dashboard goes live at `https://<your-username>.github.io/<repo>/`.
+3. **Settings → Actions → General → Workflow permissions**: choose **Read and write permissions**. Save.
+4. **Actions** tab → "Update TGL data" → **Run workflow** once to confirm the daily refresh works.
 
-## Data sources (no API keys anywhere)
+That's it. The page updates itself every morning.
 
-| Country | Source | Notes |
-|---|---|---|
-| US M2 | FRED `M2SL` | Native USD billions |
-| Eurozone M3 | ECB Data Portal SDMX | EUR mn |
-| China M2 | chinadata.live (PBoC mirror) | CNY 100mn |
-| Japan M2 | FRED `MABMM301JPM189N` | **Stale to Nov 2023** — BoJ direct is geo-blocked from cloud sandboxes; last value carried forward, FX still moves daily |
-| UK M2 | BoE IADB `LPMVWYH` | GBP mn |
-| FX | ECB daily reference rates | Cross-rates through EUR |
+## Updating China's M2 by hand (optional, ~30 seconds/month)
+TradingView's China M2 feed lags about a month. When the PBoC releases a new figure, edit the `CHINA_M2_OVERRIDE` dict near the top of `update_data.py`, e.g. add `"2026-05": 354.5e12` (value in yuan). Everything else updates automatically.
 
-## How the daily series is built
+## Method (short)
+Each economy's M2 / broad money is converted to USD at spot FX and summed. The money-vs-FX split holds FX at the year-ago level to separate domestic money growth from dollar translation. Central-bank net liquidity = Fed assets − TGA − reverse repo, plus PBoC/ECB/BoJ/BoE balance sheets in USD, shown for comparison only (it is flat and not part of the headline).
 
-1. Each native M2 series is fetched at its native monthly cadence.
-2. A daily grid is created over the rolling 4-year window.
-3. Native series are forward-filled onto the grid.
-4. Each value is converted to USD billions using that day's ECB FX (cross-rates through EUR).
-5. The G5 values are summed → Global M2.
-6. YoY % is computed as today vs the same calendar day one year prior.
-
-## Deployment
-
-1. Create a new empty public GitHub repository.
-2. Push these files to it.
-3. **Settings → Pages** → Deploy from `main`, root folder.
-4. **Settings → Actions → General → Workflow permissions** → set to "Read and write".
-5. Open the **Actions** tab → "Update Global M2 data" → "Run workflow" once.
-
-After that, the workflow runs every morning at 06:30 UTC and pushes a refreshed `data.js`. The Pages site picks it up automatically.
-
-## Latest reading
-
-| | USD value |
-|---|---|
-| Global M2 (G5) | ~$109T |
-| YoY | +8% |
-| 4-year change | ~+20% |
-
-## Adding more countries
-
-The `load_components()` dict is the only place you'd edit. Add a fetcher and append to the dict. The FX layer already supports any ECB-quoted currency.
+Sources: TradingView ECONOMICS (M2 & central bank balance sheets), TradingView FX, FRED (Fed net-liquidity components). All public, no API key.

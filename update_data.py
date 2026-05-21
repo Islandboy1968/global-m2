@@ -1,315 +1,179 @@
+#!/usr/bin/env python3
 """
-Global M2 Dashboard — data pipeline.
+Total Global Liquidity (TGL) Index — daily data pipeline.
 
-Global M2 = sum of broad money (M2/M3) for the G5 economies, USD-normalised,
-daily cadence with FX revaluation, 4-year rolling window.
+Broad money across 47 economies, each valued in USD at spot FX and summed
+(the GMI method). National M2 prints monthly; FX moves daily, so the index
+is built on a DAILY calendar grid: M2 forward-filled between monthly prints,
+FX forward-filled from its daily series (the latest daily point is spot).
 
-Sources (all public, no API keys):
-    US M2        FRED M2SL                                  monthly  USD bn
-    EZ M3        ECB SDMX BSI.M.U2.Y.V.M30.X.1.U2.2300.Z01.E   monthly  EUR mn
-    China M2     chinadata.live /api/v2/data                 monthly  CNY 100mn
-    Japan M2     FRED MABMM301JPM189N                        monthly  JPY (stale to Nov 2023)
-    UK M2        BoE IADB LPMVWYH                            monthly  GBP mn
-
-FX  ECB daily reference rates (vs EUR) for USD CNY JPY GBP
-
-Output: data/data.js (JS file defining window.GLOBAL_M2_DATA)
+Sources (public, no API key): TradingView ECONOMICS (M2) + TradingView FX.
+Writes data/data.json and data/data.js for the dashboard.
 """
+import json, os, time, datetime as dt
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from tv_pull import pull_series
+from econ import ECON
 
-from __future__ import annotations
+HERE = os.path.dirname(os.path.abspath(__file__))
+M2_CACHE = os.path.join(HERE, "series_cache.json")
+FX_CACHE = os.path.join(HERE, "fx_daily_cache.json")
+START = dt.date(2010, 1, 1)
+M2_BARS = 220     # monthly, ~18yr
+FX_BARS = 6200    # daily, ~17yr
 
-import csv
-import io
-import json
-import urllib.request
-import datetime as dt
-from pathlib import Path
+# China's TradingView M2 lags ~1 month; override with latest official PBoC prints (yuan).
+CHINA_M2_OVERRIDE = {"2026-03": 353.86e12, "2026-04": 353.04e12}
 
-OUT_DIR = Path(__file__).resolve().parent / "data"
-OUT_DIR.mkdir(exist_ok=True)
+# Risk assets for the liquidity-leads overlay charts (symbol, daily bars)
+ASSETS = {"btc": ("INDEX:BTCUSD", 4300), "ndx": ("NASDAQ:NDX", 6200)}
 
-TODAY = dt.date.today()
-WINDOW_YEARS = 4
-START_DATE = dt.date(TODAY.year - WINDOW_YEARS, TODAY.month, TODAY.day)
+# ------------------------------------------------------------------ pulls
+def pull_into(cache_path, symbols, resolution, bars):
+    cache = json.load(open(cache_path)) if os.path.exists(cache_path) else {}
+    todo = [s for s in symbols if s not in cache]
+    if todo:
+        print(f"  pulling {len(todo)} @ {resolution}")
+        def g(s): return s, pull_series(s, resolution, bars)
+        with ThreadPoolExecutor(max_workers=6) as ex:
+            for i, f in enumerate(as_completed([ex.submit(g, s) for s in todo]), 1):
+                try:
+                    s, d = f.result(); cache[s] = d
+                except Exception as e:
+                    print("   ERR", str(e)[:70])
+                if i % 6 == 0: json.dump(cache, open(cache_path, "w"))
+        json.dump(cache, open(cache_path, "w"))
+    return cache
 
-# ---------------------------------------------------------------------------
-# fetch helpers
-# ---------------------------------------------------------------------------
+def get_data():
+    m2_syms = sorted({t for t, f, c in ECON.values()})
+    fx_syms = sorted({f for t, f, c in ECON.values() if f})
+    m2c = pull_into(M2_CACHE, m2_syms, "1M", M2_BARS)
+    fxc = pull_into(FX_CACHE, fx_syms, "1D", FX_BARS)
+    # risk assets share the daily cache (with their own bar depth)
+    for code, (sym, bars) in ASSETS.items():
+        if sym not in fxc:
+            try:
+                fxc[sym] = pull_series(sym, "1D", bars)
+            except Exception as e:
+                print("  asset ERR", sym, str(e)[:60])
+    json.dump(fxc, open(FX_CACHE, "w"))
+    return m2c, fxc
 
-def _get(url: str, ua: str | None = None, timeout: int = 30) -> bytes:
-    req = urllib.request.Request(url)
-    if ua:
-        req.add_header("User-Agent", ua)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
-
-
-def fetch_fred_csv(series_id: str) -> dict[str, float]:
-    """FRED CSV. Important: do NOT set Mozilla UA — Akamai blocks it."""
-    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-    raw = _get(url).decode("utf-8")
-    out: dict[str, float] = {}
-    for row in csv.DictReader(io.StringIO(raw)):
-        date_str = row.get("observation_date") or row.get("DATE")
-        val_str = row.get(series_id, "").strip()
-        if not date_str or not val_str or val_str == ".":
-            continue
-        try:
-            out[date_str] = float(val_str)
-        except ValueError:
-            continue
+# ------------------------------------------------------------------ build
+def _backfill(out):
+    """Fill leading None with the first available value (so a series that starts
+    late contributes a constant before its data begins, avoiding step-jumps)."""
+    first = next((v for v in out if v is not None), None)
+    for i in range(len(out)):
+        if out[i] is None: out[i] = first
+        else: break
     return out
 
+def sanitize_fx(points):
+    """Drop bad FX prints (some illiquid TradingView pairs return inverted/garbage
+    bars in early history). Most points are correct, so the median is trusted;
+    keep only points within a wide 100x band around it."""
+    vals = sorted(v for _, v in points if v not in (None, 0))
+    if not vals:
+        return points
+    med = vals[len(vals)//2]
+    lo, hi = med/100.0, med*100.0
+    return [(t, v) for t, v in points if v not in (None, 0) and lo <= v <= hi]
 
-def fetch_ecb_m3() -> dict[str, float]:
-    url = (
-        "https://data-api.ecb.europa.eu/service/data/BSI/"
-        "M.U2.Y.V.M30.X.1.U2.2300.Z01.E?format=csvdata"
-    )
-    raw = _get(url).decode("utf-8")
-    out: dict[str, float] = {}
-    for row in csv.DictReader(io.StringIO(raw)):
-        date_str = row["TIME_PERIOD"]
-        try:
-            val = float(row["OBS_VALUE"])
-        except (ValueError, KeyError):
-            continue
-        out[f"{date_str}-01"] = val
-    return out
-
-
-def fetch_china_m2() -> dict[str, float]:
-    url = "https://chinadata.live/api/v2/data/china-m2-money-supply"
-    payload = json.loads(_get(url, ua="Mozilla/5.0").decode("utf-8"))
-    out: dict[str, float] = {}
-    for pt in payload["data"]["data"]:
-        date_str = pt["date"]
-        out[f"{date_str}-01"] = float(pt["value"]) * 1e8  # 100mn CNY -> CNY
-    return out
-
-
-def fetch_boe_uk_m2() -> dict[str, float]:
-    url = (
-        "https://www.bankofengland.co.uk/boeapps/database/_iadb-fromshowcolumns.asp"
-        "?csv.x=yes&Datefrom=01/Jan/2021&Dateto=01/Dec/2026"
-        "&SeriesCodes=LPMVWYH&UsingCodes=Y&CSVF=TT&VPD=Y&VFD=N"
-    )
-    raw = _get(url, ua="Mozilla/5.0").decode("utf-8")
-    out: dict[str, float] = {}
-    data_started = False
-    for line in raw.splitlines():
-        if line.startswith("DATE,"):
-            data_started = True
-            continue
-        if not data_started or not line.strip():
-            continue
-        try:
-            date_str, val_str = line.split(",", 1)
-            d = dt.datetime.strptime(date_str.strip(), "%d %b %Y").date()
-            out[d.isoformat()] = float(val_str.strip())
-        except Exception:
-            continue
-    return out
-
-
-def fetch_ecb_fx(currency: str) -> dict[str, float]:
-    url = (
-        "https://data-api.ecb.europa.eu/service/data/EXR/"
-        f"D.{currency}.EUR.SP00.A?format=csvdata"
-    )
-    raw = _get(url).decode("utf-8")
-    out: dict[str, float] = {}
-    for row in csv.DictReader(io.StringIO(raw)):
-        date_str = row["TIME_PERIOD"]
-        try:
-            out[date_str] = float(row["OBS_VALUE"])
-        except (ValueError, KeyError):
-            continue
-    return out
-
-
-# ---------------------------------------------------------------------------
-# catalogue
-# ---------------------------------------------------------------------------
-
-def load_components() -> dict[str, dict]:
-    print("Fetching M2 series...", flush=True)
-    out = {}
-
-    us = fetch_fred_csv("M2SL")
-    print(f"  US M2:   {len(us)} obs, last {max(us)} = {us[max(us)]:.1f} (USD bn)")
-    out["US M2"] = {"currency": "USD", "native_unit_to_bn": 1.0, "values": us, "country": "United States"}
-
-    ez = fetch_ecb_m3()
-    print(f"  EZ M3:   {len(ez)} obs, last {max(ez)} = {ez[max(ez)]:.0f} (EUR mn)")
-    out["EZ M3"] = {"currency": "EUR", "native_unit_to_bn": 1e-3, "values": ez, "country": "Eurozone"}
-
-    cn = fetch_china_m2()
-    print(f"  China:   {len(cn)} obs, last {max(cn)} = {cn[max(cn)]:,.0f} (CNY)")
-    out["China M2"] = {"currency": "CNY", "native_unit_to_bn": 1e-9, "values": cn, "country": "China"}
-
-    jp = fetch_fred_csv("MABMM301JPM189N")
-    stale = max(jp) < (TODAY.isoformat()[:7] + "-01")
-    print(f"  Japan:   {len(jp)} obs, last {max(jp)} = {jp[max(jp)]:,.0f} (JPY){'  STALE' if stale else ''}")
-    out["Japan M2"] = {"currency": "JPY", "native_unit_to_bn": 1e-9, "values": jp, "country": "Japan"}
-
-    uk = fetch_boe_uk_m2()
-    print(f"  UK M2:   {len(uk)} obs, last {max(uk)} = {uk[max(uk)]:,.0f} (GBP mn)")
-    out["UK M2"] = {"currency": "GBP", "native_unit_to_bn": 1e-3, "values": uk, "country": "United Kingdom"}
-
-    return out
-
-
-# ---------------------------------------------------------------------------
-# transformation
-# ---------------------------------------------------------------------------
-
-def daily_grid(start: dt.date, end: dt.date) -> list[str]:
-    out = []
-    d = start
-    while d <= end:
-        out.append(d.isoformat())
-        d += dt.timedelta(days=1)
-    return out
-
-
-def reindex_to_daily(values: dict[str, float], grid: list[str]) -> list[float | None]:
-    items = sorted(values.items())
-    out: list[float | None] = []
-    last_val = None
-    idx = 0
-    for day in grid:
-        while idx < len(items) and items[idx][0] <= day:
-            last_val = items[idx][1]
-            idx += 1
-        out.append(last_val)
-    return out
-
-
-def build_daily_usd_series(component: dict, fx_to_eur: dict, grid: list[str]) -> list[float | None]:
-    native_daily = reindex_to_daily(component["values"], grid)
-    ccy = component["currency"]
-    to_bn = component["native_unit_to_bn"]
-    out = []
-    for i in range(len(grid)):
-        v = native_daily[i]
-        if v is None:
-            out.append(None); continue
-        v_bn_native = v * to_bn
-        if ccy == "EUR":
-            v_eur_bn = v_bn_native
-        else:
-            rate = fx_to_eur[ccy][i]
-            if not rate: out.append(None); continue
-            v_eur_bn = v_bn_native / rate
-        usd_per_eur = fx_to_eur["USD"][i]
-        if not usd_per_eur: out.append(None); continue
-        out.append(v_eur_bn * usd_per_eur)
-    return out
-
-
-def yoy_pct(series: list[float | None], grid: list[str]) -> list[float | None]:
-    out = []
-    by_date = {grid[i]: i for i in range(len(grid))}
+def daily_ffill(points, grid):
+    """points: list[(epoch, value)] -> value forward-filled onto calendar grid (list[date])."""
+    points = sanitize_fx(points)
+    pts = sorted((dt.datetime.utcfromtimestamp(int(t)).date(), v) for t, v in points)
+    out = [None]*len(grid); j = 0; cur = None
     for i, day in enumerate(grid):
-        d = dt.date.fromisoformat(day)
-        try:
-            ly = dt.date(d.year - 1, d.month, d.day).isoformat()
-        except ValueError:
-            ly = dt.date(d.year - 1, d.month, 28).isoformat()
-        j = by_date.get(ly)
-        v = series[i]
-        if j is None or v is None:
-            out.append(None); continue
-        v0 = series[j]
-        if v0 is None or v0 == 0:
-            out.append(None); continue
-        out.append((v / v0 - 1) * 100.0)
-    return out
+        while j < len(pts) and pts[j][0] <= day:
+            cur = pts[j][1]; j += 1
+        out[i] = cur
+    return _backfill(out)
 
+def monthly_ffill_by_day(points, grid, override=None):
+    """Monthly series -> daily array (forward-fill by month)."""
+    mp = {}
+    for t, v in points:
+        mp[dt.datetime.utcfromtimestamp(int(t)).date().strftime("%Y-%m")] = v
+    if override: mp.update(override)
+    months = sorted(mp)
+    # forward-fill across the month axis
+    out = [None]*len(grid); cur = None; mi = 0
+    ff = {}
+    allm = sorted({d.strftime("%Y-%m") for d in grid} | set(mp))
+    last = None
+    for m in allm:
+        if m in mp: last = mp[m]
+        ff[m] = last
+    for i, day in enumerate(grid):
+        out[i] = ff.get(day.strftime("%Y-%m"))
+    return _backfill(out)
 
-def main() -> None:
-    print(f"=== Global M2 build: {TODAY.isoformat()} ===")
-    components = load_components()
+def build():
+    m2c, fxc = get_data()
+    today = dt.datetime.utcnow().date()
+    grid = [START + dt.timedelta(days=k) for k in range((today-START).days + 1)]
 
-    print("Fetching ECB FX...", flush=True)
-    fx = {}
-    for c in ["USD", "GBP", "JPY", "CNY"]:
-        fx[c] = fetch_ecb_fx(c)
-        print(f"  {c}/EUR: {len(fx[c])} obs, last {max(fx[c])} = {fx[c][max(fx[c])]:.4f}")
+    # per-economy daily USD leg
+    legs = {}
+    for code, (m2t, fxs, ccy) in ECON.items():
+        m2_arr = monthly_ffill_by_day(m2c[m2t], grid, CHINA_M2_OVERRIDE if code == "CN" else None)
+        if fxs is None:
+            fx_arr = [1.0]*len(grid)
+        else:
+            fx_arr = daily_ffill(fxc[fxs], grid)
+        legs[code] = [ (m*f if (m is not None and f is not None) else None) for m, f in zip(m2_arr, fx_arr) ]
 
-    grid = daily_grid(START_DATE, TODAY)
-    n = len(grid)
-    print(f"Daily grid: {n} days, {grid[0]} -> {grid[-1]}")
+    total = []
+    for i in range(len(grid)):
+        vals = [legs[c][i] for c in ECON]
+        total.append(sum(v for v in vals if v is not None) if legs["US"][i] and legs["CN"][i] else None)
 
-    fx_daily = {c: reindex_to_daily(fx[c], grid) for c in ["USD", "GBP", "JPY", "CNY"]}
-    fx_daily["EUR"] = [1.0] * n
+    # YoY on a 365-day offset (calendar grid)
+    yoy = [None]*len(grid)
+    for i in range(len(grid)):
+        j = i - 365
+        if j >= 0 and total[i] and total[j]:
+            yoy[i] = total[i]/total[j] - 1
+    # 91-day trailing average ("3-month")
+    def trail(arr, n):
+        out = [None]*len(arr)
+        for i in range(len(arr)):
+            w = [v for v in arr[max(0, i-n+1):i+1] if v is not None]
+            out[i] = sum(w)/len(w) if w else None
+        return out
+    yoy_s = trail(yoy, 91)
 
-    component_usd: dict[str, list[float | None]] = {}
-    component_latest: dict[str, dict] = {}
-    for name, comp in components.items():
-        usd = build_daily_usd_series(comp, fx_daily, grid)
-        component_usd[name] = usd
-        latest_native_date = max(comp["values"])
-        latest_native_val = comp["values"][latest_native_date]
-        last_usd_today = next((v for v in reversed(usd) if v is not None), None)
-        component_latest[name] = {
-            "country": comp["country"],
-            "currency": comp["currency"],
-            "native_date": latest_native_date,
-            "native_value": latest_native_val,
-            "usd_bn_today": last_usd_today,
-        }
+    # emit (skip the warm-up before first valid total)
+    series = []
+    for i, day in enumerate(grid):
+        if total[i] is None: continue
+        series.append({"d": day.strftime("%Y-%m-%d"),
+                       "v": round(total[i]/1e12, 2),
+                       "y": (round(yoy[i]*100, 2) if yoy[i] is not None else None),
+                       "ys": (round(yoy_s[i]*100, 2) if yoy_s[i] is not None else None)})
+    last = series[-1]
+    summary = {"latest": last["d"], "total_tn": last["v"], "yoy": last["y"],
+               "yoy_s": last["ys"], "n_economies": len(ECON)}
+    # risk assets (raw daily close), for the liquidity-leads overlays
+    assets = {}
+    for code, (sym, bars) in ASSETS.items():
+        pts = sorted((dt.datetime.utcfromtimestamp(int(t)).date(), v) for t, v in fxc[sym])
+        assets[code] = [{"d": d.strftime("%Y-%m-%d"), "p": round(v, 2)}
+                        for d, v in pts if d >= START and v]
 
-    # Global M2 = sum of all M2 components
-    total: list[float | None] = []
-    for i in range(n):
-        s = 0.0
-        valid = True
-        for name in components:
-            v = component_usd[name][i]
-            if v is None: valid = False; break
-            s += v
-        total.append(s if valid else None)
+    data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
+            "btc": assets["btc"], "ndx": assets["ndx"]}
 
-    total_yoy = yoy_pct(total, grid)
-
-    last_idx = next((i for i in range(n - 1, -1, -1) if total[i] is not None), None)
-    print()
-    print(f"Latest reading ({grid[last_idx]}):")
-    print(f"  Global M2:  ${total[last_idx]/1000:.2f}T  YoY {total_yoy[last_idx]:+.2f}%")
-    print()
-    for name, info in component_latest.items():
-        if info["usd_bn_today"] is None: continue
-        print(f"  {name:<12}  native last {info['native_date']:<12} USD ${info['usd_bn_today']/1000:>7.2f}T  ({info['country']})")
-
-    payload = {
-        "generated_at": dt.datetime.utcnow().isoformat() + "Z",
-        "today": TODAY.isoformat(),
-        "window_start": START_DATE.isoformat(),
-        "dates": grid,
-        "global_m2_usd_bn": total,
-        "global_m2_yoy_pct": total_yoy,
-        "components": {
-            name: {
-                "country": components[name]["country"],
-                "currency": components[name]["currency"],
-                "values_usd_bn": component_usd[name],
-                "latest": component_latest[name],
-            }
-            for name in components
-        },
-        "notes": {
-            "Japan M2": "FRED mirror MABMM301JPM189N stops late 2023; last value carried forward. BoJ direct API is geo-blocked from typical sandboxes. JPY/USD FX still moves daily so the USD contribution still wobbles correctly, just on a flat native base.",
-        },
-    }
-    out_json = OUT_DIR / "data.json"
-    out_json.write_text(json.dumps(payload, default=lambda x: None))
-    out_js = OUT_DIR / "data.js"
-    out_js.write_text("window.GLOBAL_M2_DATA = " + json.dumps(payload, default=lambda x: None) + ";")
-    print(f"\nWrote {out_json} ({out_json.stat().st_size:,} bytes)")
-    print(f"Wrote {out_js} ({out_js.stat().st_size:,} bytes)")
-
+    os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
+    json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
+    with open(os.path.join(HERE, "data", "data.js"), "w") as f:
+        f.write("window.TGL_DATA = " + json.dumps(data, default=str) + ";")
+    print(f"WROTE {len(series)} daily points | {summary['latest']} "
+          f"${summary['total_tn']}T  YoY {summary['yoy']}% (3m {summary['yoy_s']}%)")
 
 if __name__ == "__main__":
-    main()
+    build()
