@@ -27,9 +27,9 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
 - **The Big Picture tab** — structural macro, all FRED. Four linear dual-axis charts:
   (1) LFPR vs US births/1,000 with the births +16yr forward lead; (2) LFPR vs Federal debt/GDP
   with the right axis **inverted**; (3) US Total Liquidity (Narrow, $BN) vs debt/GDP;
-  (4) US Total Liquidity (Narrow) vs Federal interest payments with the interest +36mo forward
-  lead. Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` (`vo`×1000) for the narrow
-  liquidity line — no liquidity series is duplicated.
+  (4) US Total Liquidity (Broad) vs Federal interest payments with the interest +36mo forward
+  lead. Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` for the liquidity lines
+  (`vo`×1000 = Narrow on chart 3, `vn`×1000 = Broad on chart 4) — no liquidity series is duplicated.
 
 Live at: https://islandboy1968.github.io/global-m2/
 

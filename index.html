@@ -223,7 +223,7 @@
 
     <div class="chead"><span class="cnum">04</span><h2>Interest payments and US liquidity</h2><span class="ccap" id="bigLiqIntr">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Federal interest payments — 36mo lead ($BN, RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Federal interest payments — 36mo lead ($BN, RHS)</span></div>
       <div class="chartbox"><canvas id="bigLiqIntrC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
@@ -533,6 +533,7 @@ const BIG = (function(){
   const U = DATA && DATA.us;
   const lfpr = A(B.lfpr);
   const liqN = (U && U.series) ? U.series.filter(r=>r.vo!=null).map(r=>({x:Date.parse(r.d), y:r.vo*1000})) : [];
+  const liqB = (U && U.series) ? U.series.filter(r=>r.vn!=null).map(r=>({x:Date.parse(r.d), y:r.vn*1000})) : [];
   const fmtPct = v=>Math.round(v)+"%";
   const fmtNum = v=>Math.round(v).toLocaleString("en-US");
   const charts=[];
@@ -542,13 +543,13 @@ const BIG = (function(){
   charts.push(overlayLin(bigLfprDebtC, lfpr, A(B.debt), fmtPct, true, fmtPct));
   // 03 US Total Liquidity Narrow ($BN) vs debt/GDP
   charts.push(overlayLin(bigLiqDebtC, liqN, A(B.debt), fmtNum, false, fmtPct));
-  // 04 US Total Liquidity Narrow ($BN) vs interest payments (+36mo forward lead)
-  charts.push(overlayLin(bigLiqIntrC, liqN, [], fmtNum, false, fmtNum));
+  // 04 US Total Liquidity Broad ($BN) vs interest payments (+36mo forward lead)
+  charts.push(overlayLin(bigLiqIntrC, liqB, [], fmtNum, false, fmtNum));
   charts.forEach(c=>c.$auto=false);
   [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
   controls(charts[1]); controls(charts[2]);
-  controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Narrow) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
+  controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Broad) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
   // default view windows matched to the official GMI charts (range buttons still override)
   const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
