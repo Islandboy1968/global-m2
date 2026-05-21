@@ -94,6 +94,7 @@
   <div class="tabs" id="tabnav">
     <button data-tab="global" class="on">Global Liquidity</button>
     <button data-tab="us">US Liquidity</button>
+    <button data-tab="big">The Big Picture</button>
   </div>
 
   <!-- ============ GLOBAL TAB ============ -->
@@ -187,6 +188,45 @@
       <div class="chartbox"><canvas id="usBtc"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
+    </div>
+  </section>
+
+  <!-- ============ THE BIG PICTURE TAB ============ -->
+  <section id="tab-big" class="pane" hidden>
+    <div id="big-missing" class="note" hidden>
+      The Big Picture series are generated server-side by the daily pipeline (<code>big_picture.py</code>, FRED). They will appear here once the GitHub Action has run with this update.
+    </div>
+
+    <div class="chead"><span class="cnum">01</span><h2>Labour force participation and births</h2><span class="ccap" id="bigLfprBirth">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Labor Force Participation Rate</span><span class="lg pink"><i class="sw pnk"></i>US Birth Rate per 1,000 — 16yr lead (RHS)</span></div>
+      <div class="chartbox"><canvas id="bigLfprBirthC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED (BLS, World Bank) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">02</span><h2>LFPR vs government debt (inverted)</h2><span class="ccap">US LFPR vs Federal debt as % of GDP, inverted</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Labor Force Participation Rate</span><span class="lg pink"><i class="sw pnk"></i>US Govt Debt as % of GDP (RHS, inverted)</span></div>
+      <div class="chartbox"><canvas id="bigLfprDebtC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (BLS, U.S. Treasury / BEA) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">03</span><h2>US liquidity vs government debt</h2><span class="ccap">US Total Liquidity (Narrow) vs Federal debt as % of GDP</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>US Govt Debt as % of GDP (RHS)</span></div>
+      <div class="chartbox"><canvas id="bigLiqDebtC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Source: FRED (Federal Reserve, U.S. Treasury / BEA) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">04</span><h2>Interest payments and US liquidity</h2><span class="ccap" id="bigLiqIntr">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Federal interest payments — 36mo lead ($BN, RHS)</span></div>
+      <div class="chartbox"><canvas id="bigLiqIntrC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -370,7 +410,51 @@ function controls(chart, lag){
 }
 
 const DATA = window.TGL_DATA || null;
-let descrGlobal="—", descrUS="";
+let descrGlobal="—", descrUS="", descrBig="US structural macro — labour, demographics, debt and liquidity · FRED · monthly to quarterly";
+
+// ----- linear dual-axis overlay (for The Big Picture); right axis can be reversed -----
+function optsLin(leftFmt, rightReverse, rightFmt){
+  const o=opts(BLACK, leftFmt);
+  o.scales.y.position="left";
+  o.scales.y1={type:"linear",position:"right",grid:{drawOnChartArea:false},border:{display:false},reverse:!!rightReverse,
+    ticks:{color:PINK,font:{size:11,family:MONO},callback:rightFmt}};
+  return o;
+}
+function overlayLin(canvas, leftPts, rightPts, leftFmt, rightReverse, rightFmt){
+  return new Chart(canvas,{type:"line",data:{datasets:[
+    {label:"left",data:leftPts,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"right",data:rightPts,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(leftFmt, rightReverse, rightFmt)});
+}
+function leadHuman(days){
+  const a=Math.abs(days); if(!days) return "coincident";
+  const dir=days>0?"leads":"lags";
+  if(a>=365) return dir+" "+(a/365).toFixed(a%365?1:0)+" yrs";
+  return dir+" "+Math.round(a/30.44)+" mo";
+}
+// forward-lead control: the RIGHT series is shifted into the future by N days
+function buildLagFwd(chart, container, asset, pairLbl, leadEl, def){
+  function relag(days){
+    days=Math.round(+days)||0;
+    chart.data.datasets[1].data=(asset||[]).map(a=>({x:Date.parse(a.d)+days*DAY, y:a.v}));
+    if(leadEl) leadEl.textContent=pairLbl+" · "+leadHuman(days)+" ("+days+"d)";
+    fitY(chart);
+    if(input.value!=String(days)) input.value=days;
+  }
+  const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; container.appendChild(k);
+  const input=document.createElement("input"); input.type="number"; input.step="30"; input.value=def;
+  input.title="Days the right series leads into the future (e.g. 5840 ≈ 16y, 1095 ≈ 36m)";
+  input.addEventListener("change", ()=>relag(input.value));
+  input.addEventListener("keydown", e=>{ if(e.key==="Enter") relag(input.value); });
+  container.appendChild(input);
+  const u=document.createElement("span"); u.className="lagunit"; u.textContent="days"; container.appendChild(u);
+  relag(def);
+}
+function controlsFwd(chart, lag){
+  const panel=chart.canvas.closest(".panel");
+  buildLagFwd(chart, panel.querySelector(".lagctl"), lag.asset, lag.pairLbl, lag.leadEl, lag.def);
+  buildRanges(chart, panel.querySelector(".ranges"));
+}
 
 // ===================== GLOBAL TAB =====================
 const GLOBAL = (function(){
@@ -441,14 +525,42 @@ const US = (function(){
   return {charts};
 })();
 
+// ===================== THE BIG PICTURE TAB (FRED structural series; narrow liq reused from us) =====================
+const BIG = (function(){
+  const B = DATA && DATA.big;
+  if(!B || !B.lfpr || !B.lfpr.length){ document.getElementById("big-missing").hidden=false; return null; }
+  const A = arr => (arr||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
+  const U = DATA && DATA.us;
+  const lfpr = A(B.lfpr);
+  const liqN = (U && U.series) ? U.series.filter(r=>r.vo!=null).map(r=>({x:Date.parse(r.d), y:r.vo*1000})) : [];
+  const fmtPct = v=>Math.round(v)+"%";
+  const fmtNum = v=>Math.round(v).toLocaleString("en-US");
+  const charts=[];
+  // 01 LFPR vs births/1000 (births +16yr forward lead)
+  charts.push(overlayLin(bigLfprBirthC, lfpr, [], fmtPct, false, fmtNum));
+  // 02 LFPR vs debt/GDP (right axis inverted)
+  charts.push(overlayLin(bigLfprDebtC, lfpr, A(B.debt), fmtPct, true, fmtPct));
+  // 03 US Total Liquidity Narrow ($BN) vs debt/GDP
+  charts.push(overlayLin(bigLiqDebtC, liqN, A(B.debt), fmtNum, false, fmtPct));
+  // 04 US Total Liquidity Narrow ($BN) vs interest payments (+36mo forward lead)
+  charts.push(overlayLin(bigLiqIntrC, liqN, [], fmtNum, false, fmtNum));
+  charts.forEach(c=>c.$auto=false);
+  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC].forEach((cv,i)=>attach(cv,charts[i]));
+  controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
+  controls(charts[1]); controls(charts[2]);
+  controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Narrow) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
+  return {charts};
+})();
+
 // ===================== tab switching =====================
-const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us")};
+const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big")};
 const secTitle=document.getElementById("secTitle"), secDescr=document.getElementById("secDescr");
+const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}};
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
-  secTitle.textContent = t==="global" ? "Global Liquidity" : "US Liquidity";
-  secDescr.textContent = t==="global" ? descrGlobal : descrUS;
-  const g = t==="global" ? GLOBAL : US;
+  secTitle.textContent = TABMETA[t].t;
+  secDescr.textContent = t==="global" ? descrGlobal : t==="us" ? descrUS : descrBig;
+  const g = t==="global" ? GLOBAL : t==="us" ? US : BIG;
   if(g){ g.charts.forEach(c=>{ c.resize(); c.update("none"); }); }
 }
 document.getElementById("tabnav").addEventListener("click", e=>{
@@ -459,7 +571,7 @@ document.getElementById("tabnav").addEventListener("click", e=>{
 });
 secDescr.textContent=descrGlobal;
 
-window.GLOBAL=GLOBAL; window.US=US;
+window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG;
 </script>
 </body>
 </html>

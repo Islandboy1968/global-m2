@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tv_pull import pull_series
 from econ import ECON
 from us_liquidity import build_us
+from big_picture import build_big
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -176,9 +177,18 @@ def build():
         us = None
         print("  US build FAILED:", str(e)[:100])
 
+    # The Big Picture — structural macro series (FRED). Same fail-safe pattern:
+    # a failure here never breaks the rest of the build.
+    try:
+        big = build_big()
+        print("  BIG: " + ", ".join(f"{k} {len(v)}" for k, v in big.items()))
+    except Exception as e:
+        big = None
+        print("  BIG build FAILED:", str(e)[:100])
+
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
-            "btc": assets["btc"], "ndx": assets["ndx"], "us": us}
+            "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)

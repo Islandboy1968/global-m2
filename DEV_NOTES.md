@@ -24,6 +24,12 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
   Broad YoY, Narrow level, Narrow YoY, Broad-vs-NDX, Narrow-vs-BTC.
   ("Broad" = the new measure, "Narrow" = the former "old" measure. Same formulas as before;
   only the labels changed.)
+- **The Big Picture tab** — structural macro, all FRED. Four linear dual-axis charts:
+  (1) LFPR vs US births/1,000 with the births +16yr forward lead; (2) LFPR vs Federal debt/GDP
+  with the right axis **inverted**; (3) US Total Liquidity (Narrow, $BN) vs debt/GDP;
+  (4) US Total Liquidity (Narrow) vs Federal interest payments with the interest +36mo forward
+  lead. Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` (`vo`×1000) for the narrow
+  liquidity line — no liquidity series is duplicated.
 
 Live at: https://islandboy1968.github.io/global-m2/
 
@@ -99,10 +105,14 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
   lead/lag control), `controls()` (injects the `.ctrls` bar into a card). Reads `TGL_DATA`
   (global) and `TGL_DATA.us` (US). Reuses `TGL_DATA.btc` / `TGL_DATA.ndx` for the overlays.
 - `update_data.py` — daily pipeline. Builds the global series from TradingView, then calls
-  `build_us()` and writes everything (incl. `us`) to `data/data.js` and `data/data.json`.
-  A US failure is caught and never breaks the global build.
+  `build_us()` and `build_big()` and writes everything (incl. `us`, `big`) to `data/data.js`
+  and `data/data.json`. US and Big failures are each caught and never break the global build.
 - `us_liquidity.py` — US series, computed server-side from FRED's KEYLESS csv endpoint
   (`fredgraph.csv`). No API key in the repo. Two transports (urllib then curl) for resilience.
+- `big_picture.py` — The Big Picture FRED series via `build_big()`, reusing `us_liquidity._fetch`.
+  Returns `{lfpr, births, debt, interest}`, each `[{d, v}]`. Series: `CIVPART` (LFPR %, monthly),
+  `SPDYNCBRTINUSA` (birth rate /1,000, annual), `GFDEGDQ188S` (debt % GDP, quarterly),
+  `A091RC1Q027SBEA` (Federal interest payments, $bn, quarterly).
 - `tv_pull.py` — TradingView websocket history puller (no API key).
 - `econ.py` — the 47-economy table (M2 ticker, FX symbol, currency).
 - `requirements.txt` — `websocket-client` (only third-party dep; us_liquidity uses stdlib + curl).
@@ -119,6 +129,12 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
     lag_days,
     summary: { latest, new_tn, old_tn, yoy_new, yoy_new_s, yoy_old, yoy_old_s },
     series:  [ { d, vn, vo, yn, yns, yo, yos } ]  // new(Broad)/old(Narrow) level $tn, YoY %, 3m-avg YoY %
+  },
+  big: {                                          // The Big Picture — FRED structural series
+    lfpr:     [ { d, v } ],   // CIVPART, % monthly
+    births:   [ { d, v } ],   // SPDYNCBRTINUSA, per 1,000 annual
+    debt:     [ { d, v } ],   // GFDEGDQ188S, % of GDP quarterly
+    interest: [ { d, v } ]    // A091RC1Q027SBEA, $bn quarterly
   }
 }
 ```
