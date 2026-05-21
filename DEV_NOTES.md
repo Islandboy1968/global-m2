@@ -56,7 +56,10 @@ Live at: https://islandboy1968.github.io/global-m2/
   under `tec_charts` (a map keyed by canvas id; presence of an entry = locked). On reload each locked
   chart restores its saved view; unlocked charts fall back to their default view. While a chart is
   locked, its mouse zoom/pan/axis-drag and its lead input are disabled, but its timeline range buttons
-  still work and re-save. Implemented by `snapshot`/`applySnap`/`saveChart`/`toggleChartLock`/`lockUI`/
+  still work and re-save. **Tracking new data:** a lock taken while viewing up to the latest point
+  slides forward on reload (keeping the same span + y-scale) to include new prints; a deliberately
+  historical lock stays fixed (`snapshot` stores `span` + `atLatest`; `applySnap` re-anchors when
+  `atLatest`). Implemented by `snapshot`/`applySnap`/`saveChart`/`toggleChartLock`/`lockUI`/
   `addLock`; `attach()` no-ops when `chart.$locked`; `addLock()` (called from `controls`/`controlsFwd`)
   injects the `.locktoggle` button and registers the chart in `ALL_CHARTS`; lead controls expose
   `chart.$relag`/`$leadInput`/`$lead` for restore. A final pass restores locked charts then sets `READY`.

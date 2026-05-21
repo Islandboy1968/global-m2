@@ -592,7 +592,10 @@ const BIG = (function(){
 
 // ===================== per-chart lock / persist (each chart independent, all tabs) =====================
 function snapshot(c){
-  const o=c.options.scales; const s={xmin:o.x.min,xmax:o.x.max,ymin:o.y.min,ymax:o.y.max};
+  const o=c.options.scales, ext=xExtent(c);
+  const s={xmin:o.x.min, xmax:o.x.max, span:(o.x.max-o.x.min),
+           atLatest:(o.x.max>=ext[1]-2*DAY),   // were we viewing right up to the newest data?
+           ymin:o.y.min, ymax:o.y.max};
   if(o.y1){ s.y1min=o.y1.min; s.y1max=o.y1.max; }
   if(c.$lead!=null) s.lead=c.$lead;
   return s;
@@ -600,8 +603,13 @@ function snapshot(c){
 function applySnap(c,s){
   if(s.lead!=null && c.$relag) c.$relag(s.lead);   // restore lead first (it re-fits Y)
   const o=c.options.scales;
-  if(s.xmin!=null){ o.x.min=s.xmin; o.x.max=s.xmax; }
-  if(s.ymin!=null){ o.y.min=s.ymin; o.y.max=s.ymax; }
+  if(s.xmin!=null){
+    if(s.atLatest){                                 // keep the same span+scale, slide to newest data
+      const hi=xExtent(c)[1], span=s.span||(s.xmax-s.xmin);
+      o.x.max=hi; o.x.min=hi-span;
+    } else { o.x.min=s.xmin; o.x.max=s.xmax; }       // a deliberately historical window stays put
+  }
+  if(s.ymin!=null){ o.y.min=s.ymin; o.y.max=s.ymax; }   // y-scale preserved either way
   if(o.y1 && s.y1min!=null){ o.y1.min=s.y1min; o.y1.max=s.y1max; }
   c.update("none");
 }
