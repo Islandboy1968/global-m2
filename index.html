@@ -6,7 +6,7 @@
 <title>The Everything Code</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
@@ -15,7 +15,11 @@
 <style>
   @font-face{font-family:"AT Aero";src:url("fonts/AtAero-Regular.woff2") format("woff2"),url("fonts/AtAero-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:"AT Aero";src:url("fonts/AtAero-Medium.woff2") format("woff2"),url("fonts/AtAero-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
-  /* GMI brand — light report-chart template (Claude Design). Titles = Oswald (Tungsten sub); body = AT Aero; labels = DM Mono */
+  @font-face{font-family:"Teko";src:url("fonts/Teko-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("fonts/Teko-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("fonts/Teko-SemiBold.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("fonts/Teko-Bold.woff2") format("woff2");font-weight:700;font-style:normal;font-display:swap}
+  /* GMI brand — light report-chart template (Claude Design). Titles = Teko; body = AT Aero; labels = DM Mono */
   :root{--pink:#f12a5a;--ink:#131316;--mut:rgba(19,19,22,.6);--mut2:rgba(19,19,22,.45);
         --line:rgba(19,19,22,.12);--grid:rgba(19,19,22,.07);
         --panel:linear-gradient(180deg,#ECC2EA 0%,#F8DDEF 60%,#FBE7F2 100%)}
@@ -25,21 +29,21 @@
   .topbar{height:5px;background:var(--pink);width:100%}
   .wrap{max-width:1000px;margin:0 auto;padding:0 24px 40px}
   .brand{display:flex;justify-content:space-between;align-items:center;padding:22px 0 8px}
-  .brand .gmi{font-family:"Oswald",sans-serif;font-weight:700;font-size:24px;letter-spacing:.5px;color:var(--ink)}
+  .brand .gmi{font-family:"Teko",sans-serif;font-weight:600;font-size:30px;line-height:1;letter-spacing:.5px;color:var(--ink)}
   .brand .gmin{font-family:"DM Mono",monospace;font-weight:500;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--ink)}
   .titlewrap{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:26px 0 18px}
   .kicker{font-family:"DM Mono",monospace;font-weight:500;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:7px}
-  .h1title{font-family:"Oswald",sans-serif;font-weight:700;font-size:31px;line-height:1;color:var(--ink)}
+  .h1title{font-family:"Teko",sans-serif;font-weight:600;font-size:38px;line-height:.95;color:var(--ink)}
   .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:11px;line-height:1.55;color:var(--mut);text-align:right;max-width:320px}
   .tabs{display:flex;gap:8px;margin-bottom:14px}
-  .tabs button{font-family:"Oswald",sans-serif;font-size:14px;font-weight:600;letter-spacing:.4px;
-    color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 18px;cursor:pointer;transition:all .15s}
+  .tabs button{font-family:"Teko",sans-serif;font-size:18px;font-weight:500;letter-spacing:.4px;line-height:1;
+    color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:7px 18px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--pink);color:var(--pink)}
   .tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
   .pane[hidden]{display:none}
   .chead{display:flex;align-items:baseline;gap:12px;margin:32px 0 9px}
   .cnum{font-family:"DM Mono",monospace;font-size:11px;font-weight:500;letter-spacing:2px;color:var(--pink)}
-  .chead h2{font-family:"Oswald",sans-serif;font-weight:600;font-size:23px;margin:0;color:var(--ink)}
+  .chead h2{font-family:"Teko",sans-serif;font-weight:600;font-size:28px;line-height:1;margin:0;color:var(--ink)}
   .ccap{margin-left:auto;font-family:"DM Mono",monospace;font-size:11px;color:var(--mut);text-align:right}
   .panel{position:relative;background:var(--panel);border-radius:6px;padding:18px 22px 14px}
   .legend{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:6px}
@@ -245,8 +249,8 @@ function opts2(){
 }
 function overlay(canvas, leftPts, rightPts, rightLabel, leftLabel, lagDays){
   return new Chart(canvas,{type:"line",data:{datasets:[
-    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:BLACK,borderWidth:2.2,pointRadius:0,tension:.05,yAxisID:"y"},
-    {label:rightLabel,data:rightPts,borderColor:PINK,borderWidth:1.6,pointRadius:0,tension:.05,yAxisID:"y1"}
+    {label:(leftLabel||"Liquidity")+leadDesc(lagDays),data:leftPts,borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:rightLabel,data:rightPts,borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:opts2()});
 }
 function leadDesc(d){ d=+d; if(d>0) return " (leads "+d+"d)"; if(d<0) return " (lags "+(-d)+"d)"; return " (no shift)"; }
@@ -335,8 +339,7 @@ function buildRanges(chart, container){
   chart.$setRange=setRange;
 }
 
-// ----- per-chart lead/lag control (overlay charts only) -----
-const LAG_PRESETS=[-90,0,90,120,180];
+// ----- per-chart lead/lag control (overlay charts only) — free numeric entry -----
 function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
   function relag(days){
     days=Math.round(+days)||0;
@@ -347,16 +350,11 @@ function buildLag(chart, container, asset, leftLabel, pairLbl, leadEl, def){
       leadEl.textContent = pairLbl+" · "+verb;
     }
     fitY(chart);
-    [...container.querySelectorAll("button")].forEach(b=>b.classList.toggle("on", (+b.dataset.d)===days));
     if(input.value!=String(days)) input.value=days;
   }
   const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead/Lag"; container.appendChild(k);
-  LAG_PRESETS.forEach(d=>{
-    const b=document.createElement("button"); b.dataset.d=d;
-    b.textContent=(d>0?"+":"")+d; b.onclick=()=>relag(d); container.appendChild(b);
-  });
   const input=document.createElement("input"); input.type="number"; input.step="5"; input.value=def;
-  input.title="Set any lead (+) or lag (−) in days";
+  input.title="Type any lead (+) or lag (−) in days, e.g. 90, 120 or -90";
   input.addEventListener("change", ()=>relag(input.value));
   input.addEventListener("keydown", e=>{ if(e.key==="Enter") relag(input.value); });
   container.appendChild(input);
@@ -386,11 +384,11 @@ const GLOBAL = (function(){
   const ptsBN=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:ptsBN("v"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
-    {data:pts("ys"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:pts("y"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:pts("ys"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
+    {data:pts("y"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   const DEF=(DATA.lag_days||90);
   const tglPts=ptsBN("v");
@@ -419,18 +417,18 @@ const US = (function(){
   const PBN=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
   charts.push(new Chart(usLevel,{type:"line",data:{datasets:[
-    {data:PBN("vn"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:PBN("vn"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoy,{type:"line",data:{datasets:[
-    {data:P("yns"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yn"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:P("yns"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
+    {data:P("yn"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   charts.push(new Chart(usLevelOld,{type:"line",data:{datasets:[
-    {data:PBN("vo"),borderColor:BLACK,borderWidth:2.2,pointRadius:0,fill:false,tension:.05}
+    {data:PBN("vo"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
   charts.push(new Chart(usYoyOld,{type:"line",data:{datasets:[
-    {data:P("yos"),borderColor:SMOOTH,borderWidth:1.3,pointRadius:0,tension:.05},
-    {data:P("yo"),borderColor:PINK,borderWidth:2.4,pointRadius:0,tension:.05}
+    {data:P("yos"),borderColor:SMOOTH,borderWidth:1,pointRadius:0,tension:.05},
+    {data:P("yo"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));

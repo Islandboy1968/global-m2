@@ -40,11 +40,14 @@ Live at: https://islandboy1968.github.io/global-m2/
   functional requirement — to switch to one master row, move the `.ranges` bar out of the
   panels and have `setRange` loop all charts.)
 - **Lead/lag is adjustable per overlay chart.** The lead/lag charts (global BTC & NDX, US NDX
-  & BTC) have a `.lagctl` control: presets `[-90, 0, +90, +120, +180]` plus a free numeric
-  input for any value. Positive = liquidity leads (asset shifted back), negative = liquidity
-  lags. `buildLag()` recomputes the asset dataset on the fly (`x = date − days`), rewrites the
-  series label and the `.leadlbl` caption, then `fitY`. The shipped data still carries the
-  default `lag_days` (90); the control just re-shifts client-side, so no pipeline change.
+  & BTC) have a `.lagctl` control = a single free numeric input box (the preset buttons were
+  removed). Type any value: positive = liquidity leads (asset shifted back), negative = lags.
+  `buildLag()` recomputes the asset dataset on the fly (`x = date − days`), rewrites the series
+  label and the header caption, then `fitY`. The shipped data still carries the default
+  `lag_days` (90); the control just re-shifts client-side, so no pipeline change.
+- **Frequency:** the Global tab is **daily** (M2 monthly, forward-filled; FX daily). The US tab
+  is **weekly** (FRED WALCL is a Wednesday weekly series) — it can't be made truly daily without
+  inventing intra-week data. The lead/lag unit is **days** on both, so 90d ≈ 13 weekly US points.
 - **Zoom sensitivity is calmer.** Wheel zoom is now magnitude-aware and clamped:
   `f = exp(clamp(normalisedDeltaY) * ZOOM_SENS)` with `ZOOM_SENS=0.0011` (~7–11% per notch,
   smooth on trackpads). Value-axis drag (slide) is damped by `AXIS_DRAG_DAMP=0.55` so overlay
@@ -61,20 +64,21 @@ Built to the Claude Design template PNG + CSS spec. All tokens are CSS vars in `
   `rgba(19,19,22,.6/.45)`. Borders `rgba(19,19,22,.12)`.
 - **Series colours:** index/level + overlay-liquidity lines = black `#131316`; YoY lines and all
   overlay asset lines (BTC/NDX) = hot pink `#f12a5a`; 3m-avg companion = faint `rgba(19,19,22,.16)`
-  (`SMOOTH`). Chart grid `rgba(19,19,22,.07)`, x baseline `rgba(19,19,22,.6)`. **Axis tick colour
-  matches its series** — level y ticks black, YoY y ticks pink, overlay right (log) ticks pink.
+  (`SMOOTH`). All series lines are **1.5px** (companion 1px) — deliberately thin to match the
+  GMI house chart. Chart grid `rgba(19,19,22,.07)`, x baseline `rgba(19,19,22,.6)`. **Axis tick
+  colour matches its series** — level y ticks black, YoY y ticks pink, overlay right (log) ticks pink.
 - **Index/level charts are shown in $BN** (data is $tn, multiplied ×1000 at plot time via `ptsBN`
   / `PBN`; tick formatter `fmtBN` adds thousands separators). YoY stays % (`fmtPCT`). The big
   on-page stat readouts were replaced by the `.ccap` captions (latest value / YoY in the header).
-- **Type:** Oswald (Google, Tungsten substitute) for the `GMI` wordmark, section titles,
-  `.h1title`, tabs; **AT Aero — the real brand font, self-hosted** — for legends, body, notes,
-  source lines and chart tooltips; DM Mono (Google) for the masthead sub-wordmark, kicker,
-  descriptor, captions, range/lag pills, footer, axis ticks. `Chart.defaults.font.family` = AT Aero.
-- **AT Aero is embedded** via `@font-face` at the top of `<style>`, served from `fonts/`
-  (`AtAero-Regular` = weight 400, `AtAero-Medium` = weight 500; both `.woff2` + `.woff`).
-- **NOTE on fonts:** only **Tungsten** is still substituted (by Oswald) — the licensed Tungsten
-  webfont was not supplied. To finish, drop a Tungsten `.woff2` in `fonts/`, add an `@font-face`,
-  and swap the `font-family:"Oswald"` stacks.
+- **Type (all three brand fonts self-hosted in `fonts/`):** **Teko** (the GMI display face) for
+  the `GMI` wordmark, section titles, `.h1title`, tabs — SemiBold (600) for titles, Medium (500)
+  for tabs; **AT Aero** for legends, body, notes, source lines and chart tooltips; **DM Mono**
+  (Google) for the masthead sub-wordmark, kicker, descriptor, captions, range/lag pills, footer,
+  axis ticks. `Chart.defaults.font.family` = AT Aero.
+- **Embedded via `@font-face`** at the top of `<style>`: Teko (`Teko-Regular/Medium/SemiBold/Bold`,
+  weights 400/500/600/700, `.woff2`, converted from the supplied `.ttf` with fontTools); AT Aero
+  (`AtAero-Regular`=400, `AtAero-Medium`=500, `.woff2`+`.woff`). No webfonts are pulled from
+  Google except DM Mono. Nothing is substituted any more — Teko replaced the earlier Oswald stand-in.
 
 ## How data flows (unchanged, important)
 Nothing is fetched in the browser. The browser only reads the static file `data/data.js`,
