@@ -3,14 +3,14 @@
 US Total Liquidity — computed server-side from FRED, written into data.js as TGL_DATA["us"].
 
 Net liquidity (the GMI "US Total Liquidity" measure):
-    NEW (broad) = Fed balance sheet (WALCL) - TGA - RRP + bank loans
+    NEW (broad) = Fed balance sheet (WALCL) - TGA - RRP + total bank credit (loans + securities)
     OLD (narrow)= Fed balance sheet (WALCL) - TGA - RRP + Treasury securities held by banks
 
 All series come from FRED's KEYLESS csv endpoint (fredgraph.csv) so there is no
 API key in the repo and no browser CORS problem — the GitHub Action fetches the
 numbers and bakes them into data.js. The browser only ever reads static data.
 
-Units: WALCL & TGA are $millions; RRP, TOTLL, SBCACBW are $billions (x1000 -> $M).
+Units: WALCL & TGA are $millions; RRP, TOTBKCR, SBCACBW are $billions (x1000 -> $M).
 Output values are in $ trillions to match the global series.
 
 BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
@@ -25,7 +25,7 @@ SERIES = {
     "WALCL":          1.0,     # Fed balance sheet, $M, weekly (Wed)
     "WTREGEN":        1.0,     # Treasury General Account, $M, weekly (Wed)
     "RRPONTSYD":      1000.0,  # Overnight reverse repo, $B -> $M, daily
-    "TOTLL":          1000.0,  # Loans & leases in bank credit, $B -> $M, weekly (Wed)
+    "TOTBKCR":        1000.0,  # Bank credit, all commercial banks (loans + securities), $B -> $M, monthly
     "SBCACBW027NBOG": 1000.0,  # Treasury & agency securities held by banks, $B -> $M, weekly (Wed)
 }
 
@@ -82,7 +82,7 @@ def _fetch(series_id, start=START, timeout=30, retries=3):
     raise RuntimeError(f"FRED {series_id}: failed after {retries} tries: {last}")
 
 
-def _closest_before(m, ds, lookback=14):
+def _closest_before(m, ds, lookback=45):
     """Latest value on or before ds (handles weekly vs daily frequency gaps)."""
     if ds in m:
         return m[ds]
@@ -109,7 +109,7 @@ def build_us():
 
     walcl = raw["WALCL"]
     tga, rrp = raw["WTREGEN"], raw["RRPONTSYD"]
-    loans, secs = raw["TOTLL"], raw["SBCACBW027NBOG"]
+    credit, secs = raw["TOTBKCR"], raw["SBCACBW027NBOG"]
 
     dates = sorted(walcl)  # WALCL weekly grid is the master calendar
     rows = []
@@ -117,12 +117,12 @@ def build_us():
         w = walcl[d]
         t = _closest_before(tga, d)
         r = _closest_before(rrp, d)
-        l = _closest_before(loans, d)
+        c = _closest_before(credit, d)   # bank credit is monthly -> forward-filled on the weekly grid
         s = _closest_before(secs, d)
-        if None in (t, r, l, s):
+        if None in (t, r, c, s):
             continue
         base = w - t - r * SERIES["RRPONTSYD"]
-        new_liq = (base + l * SERIES["TOTLL"]) / 1e6   # $tn
+        new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
         old_liq = (base + s * SERIES["SBCACBW027NBOG"]) / 1e6
         rows.append({"d": d, "vn": new_liq, "vo": old_liq})
 

@@ -154,7 +154,7 @@ Broad/Narrow. (new = Broad, old = Narrow.)
 - Global level = sum over economies of (national M2 in local ccy x USD-per-local FX), in $tn.
   YoY = 365-day offset on a daily grid. 3m avg = 91-day trailing.
 - US, weekly (FRED WALCL Wednesday grid), in $tn:
-  - Broad (new) = WALCL - WTREGEN - RRPONTSYD*1000 + TOTLL*1000
+  - Broad (new) = WALCL - WTREGEN - RRPONTSYD*1000 + TOTBKCR*1000   (total bank credit; ~$24T)
   - Narrow (old) = WALCL - WTREGEN - RRPONTSYD*1000 + SBCACBW027NBOG*1000
   - (WALCL/TGA are $M; RRP/loans/securities are $B, so x1000 to $M, then /1e6 to $tn.)
   - YoY = 52-week offset. 3m avg = 13-week trailing.
