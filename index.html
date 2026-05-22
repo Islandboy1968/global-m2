@@ -112,6 +112,7 @@
       <button data-tab="cycle">The Business Cycle</button>
     </div>
     <button class="toolbtn" id="copylayout" type="button" title="Copy your current locked layout — paste it back to publish it as the shared default everyone sees">Copy layout</button>
+    <button class="toolbtn" id="revertlayout" type="button" title="Clear your local changes and snap every chart back to the published default layout">Revert to defaults</button>
   </div>
 
   <!-- ============ GLOBAL TAB ============ -->
@@ -825,6 +826,16 @@ READY=true;
     if(navigator.clipboard && navigator.clipboard.writeText)
       navigator.clipboard.writeText(txt).then(flash).catch(()=>window.prompt('Copy this layout:', txt));
     else window.prompt('Copy this layout:', txt);
+  });
+})();
+
+// "Revert to defaults" — wipe this device's local changes and reload to the published baseline
+(function(){
+  const btn=document.getElementById('revertlayout'); if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    if(!window.confirm('Revert every chart to the published default layout? This clears the changes saved on this device.')) return;
+    try{ localStorage.removeItem('tec_charts'); }catch(e){}
+    location.reload();
   });
 })();
 
