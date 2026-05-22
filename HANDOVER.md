@@ -2,13 +2,16 @@
 
 Read this first, then `DEV_NOTES.md` for the deep architecture detail. This is the "how to work
 on this safely" guide plus the current state and next-task brief. Last updated end of the session
-that built **The Business Cycle tab** and the **GMI Financial Conditions Index (FCI) reconstruction**.
+that added the **Global liquidity level+momentum panel**, rebuilt the **Business Cycle tab**
+(FCI recolour + dual-axis split, ISM-vs-GDP, ISM-vs-capex and ISM-vs-capex-growth), and fixed
+the hover tooltip. See "What's built this session" below.
 
 ## Live state
 - Repo (public): https://github.com/Islandboy1968/global-m2  (slug is still `global-m2`)
 - Live site: https://islandboy1968.github.io/global-m2/  (GitHub Pages, root of `main`)
-- Latest `main` at handover: `2437dae` (FCI lead set to 12 months). Data refreshes daily.
-- Product name: **The Everything Code (TEC)**. Four tabs now: Global Liquidity, US Liquidity,
+- Latest `main` at handover: the "Business Cycle expansion + capex" commit pushed this session
+  (run `git log --oneline -5`). The daily Action commits a "data: refresh" on top each day.
+- Product name: **The Everything Code (TEC)**. Four tabs: Global Liquidity, US Liquidity,
   The Big Picture, **The Business Cycle**.
 - **PAT expires 2026-06-20** — ask Raoul for a fresh fine-grained token after that. Never commit it.
 
@@ -38,7 +41,56 @@ that built **The Business Cycle tab** and the **GMI Financial Conditions Index (
    # (the Action commits a "data: refresh" on top of your push).
    ```
 
-## What's built this session (on top of the prior liquidity/Big-Picture work)
+## What's built THIS session (momentum + capex/GDP + hover fix)
+- **Global Liquidity tab reordered.** New **01 Level & momentum** (`momoChart`) is the primary read:
+  outright level (black, L) + 3m and 6m annualised rate-of-change of the level (pink/faint-pink, R,
+  30-day smoothed). The momentum is the base-effect-free gauge. **02 Index** (old level chart),
+  **03 Year-on-year** demoted with a pink comp-path caveat under it (YoY is base-effect distorted;
+  easy comps lift it into autumn 2026, hard Q1-2027 comps collapse it). 04 BTC, 05 NDX unchanged.
+- **Business Cycle tab rebuilt.** Now 01–07 visible (the old SVG-dominoes reference is **01**):
+  02 ISM vs liquidity YoY, 03 ISM vs New Orders, **04 ISM vs GMI FCI blend** (ex-oil REMOVED here;
+  ISM on left axis, FCI blend on its own right axis — two independent axes; lead box, def 12mo),
+  **05 ISM vs FCI ex-oil** (same dual-axis pattern, own lead def 12mo), **06 ISM vs GDP QoQ
+  annualised** (`cycGdpC`, ISM L / GDP R, lead def coincident), **07 ISM vs US capex % of GDP**
+  (`cycCapexC`, lead def 0), **08 ISM vs US capex growth** (`cycCapexGC`, ISM L / capex YoY R,
+  default shift puts capex ~3 quarters behind ISM since ISM LEADS capex growth by ~3q, r≈0.64).
+- **FCI recoloured to the brand palette** — the orphan blue (`#2f6fae`) and light-blue (`#9cc0e8`)
+  are gone. FCI blend = hot pink `PINK`, FCI ex-oil = faint pink `rgba(241,42,90,.4)` (the same
+  faint-pink used for the 6m momentum line). `FCOL`/`FCOL2` consts in the CYCLE IIFE now hold these.
+- **The dominoes overlay chart is PARKED** — both its HTML panel and its JS (`domC`) are commented
+  out (search "dominoes — REMOVED"/"Kept here to revisit"). Un-comment both blocks, re-add `cycDomC`
+  to the attach array + a `cycStart`, to bring it back. It was too busy; revisit later.
+- **Hover/tooltip fixed twice.** Switched all charts to `interaction.mode:"x"` (was `"index"`) so
+  quarterly GDP/capex always show their nearest level on hover even between prints. That introduced
+  double/triple tooltip rows when zoomed out (several monthly points under the cursor), fixed with a
+  `tooltip.filter` that keeps one row per `datasetIndex`. Both live in `opts()`.
+- **New cycle data + pipeline.** `build_cycle.py` now also pulls **gdp** (`ECONOMICS:USGDPQQ`, real
+  GDP QoQ SAAR, quarterly) and computes **capex** (`FRED:PNFI`/`FRED:GDP`×100, nonresidential fixed
+  investment as % of GDP) and **capex_g** (`FRED:PNFI` YoY %). FRED passthrough via TradingView works
+  in BOTH the sandbox and the Action runner. Stored as `cycle.gdp` / `cycle.capex` / `cycle.capex_g`.
+  These were also INJECTED into the committed `data/data.js`+`data/data.json` this session (a tiny
+  script pulled just these and merged them in, leaving the FRED-sourced us/big blocks untouched), so
+  the charts render on deploy without waiting for the Action.
+- **Note:** the FCI chart-04/05 descriptions in the "Prior session" block below are now superseded
+  by the recolour + dual-axis split described above.
+
+## Key macro findings THIS session (for the June "Super Cycle?" piece)
+- **Liquidity: read level + momentum, not YoY.** Latest 3m annualised ≈ +5%, 6m ≈ +10.5%, level at
+  all-time highs — impulse cooled to a pause (shutdown/TGA drain), not a peak. The momentum panel is
+  the gauge; the day the 3m line turns negative off a stalling level is when pause becomes peak.
+- **Capex vs ISM (cross-correlation, since 1995):** the capex/GDP **level** vs ISM is weak at every
+  lag (best |r|≈0.39, slightly inverse coincident) — the pretty 3-year "fit" is spurious trend-matching.
+  The real signal is **ISM leads capex GROWTH by ~3 quarters, r≈0.64**. Nominal capex YoY is
+  accelerating now (≈+2.7% → +7.9% over the last year) while ISM is still sub-50 — capex moving first,
+  the fingerprint of a structural (AI) capex impulse rather than a cyclical follower.
+- **The Super Cycle thesis (Raoul, June 2026 Monthly):** ISM pickup ramps capex, then capex momentum
+  dwarfs the business cycle (Red Queen — competitive imperative removes the off-switch). 1990s is the
+  comp: capex/GDP rose to ~14.7% by 2000 with capex YoY at 9–12% for years, the cycle only broke when
+  capex itself collapsed in 2001. Capex/GDP now ≈14.1% (2000 peak 14.7, 1981 high 15.3 — runway left).
+  Honest risk: the Red Queen guarantees the eventual overbuild/bust; the kill switch is the bond market
+  (long end), not services inflation.
+
+## Prior session — FCI + Business Cycle tab (some styling superseded above)
 - **The Big Picture, chart 05:** LFPR (black, LHS, with its own +5-month forward lead) vs the US
   5-year Treasury yield (`DGS5`, pink RHS). Because the LEFT series leads here, it uses
   `controlsFwdLeft`/`buildLagFwdLeft` (shift datasets[0], not [1]).
@@ -104,19 +156,21 @@ MCP "uc" tools (Universal Code corpus, ~13.5k records incl. GMI Monthlies as `gm
 `quote_candidate` level for fuller quotable lines. The Jan-2026 and Feb-2026 Monthlies are the most
 relevant docs for the FCI/liquidity/ISM debate.
 
-## NEXT TASK (where we paused — Raoul's "best path forward")
-Raoul concluded the YoY liquidity read is too base-effect-distorted and we should track liquidity
-**outright**. Agreed next builds:
-1. **Liquidity level + momentum panel** — the LEVEL plus a clean short-window momentum (3m/6m
-   annualised change of the level), and the YoY shown only with its forward comp path flagged so it's
-   never misread as a turn. Make this the PRIMARY liquidity read instead of YoY. (This is the one to
-   build first.)
-2. **Normalised dominoes panel** — ISM, Global Liquidity and FCI all z-scored on ONE standard-deviation
-   axis with adjustable leads (default GLI +6mo, FCI +12mo), so the chain collapses onto one signal and
-   the leads can be slid live. Default the FCI line to **ex-oil** with the blend as the oil-risk overlay.
-3. Optional follow-ups: FCI component-decomposition chart (rates/dollar/oil contributions);
-   demand-conditioned oil weight; broad TWI dollar (FRED) + weekly data for the FCI; lock the new
-   charts into the published `data/layout.js`.
+## NEXT TASK (where we paused this session)
+The momentum panel + the Business Cycle expansion (GDP, capex level, capex growth) are DONE and
+pushed. The agreed-but-not-yet-built next item is the **kill-switch monitor** for the June "Super
+Cycle?" piece:
+1. **Kill-switch trigger panel** — Raoul's three named bond-market triggers, each green/fractured
+   against its threshold: 10y yield > 5.50% (3m rolling avg), NY Fed ACM 10y term premium > 1.50%,
+   real 10y > 2.75%. All pullable via FRED passthrough on TradingView in `build_*`:
+   `FRED:DGS10`, `FRED:THREEFYTP10` (ACM 10y term premium), `FRED:DFII10` (real 10y). Build as a
+   small status panel (or a Big Picture chart) so the dashboard is the operational companion to the
+   article — the case on one screen, the falsification condition on the next. (Raoul said "not now".)
+2. Optional: a "capex decoupling" exhibit for the piece — ISM dips annotated against a capex-growth
+   line that no longer follows them down, with the 1990s overlaid as the comp.
+3. Optional: lock the new charts into the published `data/layout.js` via Copy layout if a fixed
+   shared arrangement is wanted (they currently open at sensible programmatic default windows for
+   everyone via `cycStart`/the momentum 2015 default, so this is cosmetic, not required).
 
 ## Quick reference — recent commits
 - `2437dae` FCI lead → 12mo · `f2304a5` GMI FCI reconstruction + 2 FCI charts · `ef97eab` Big Picture

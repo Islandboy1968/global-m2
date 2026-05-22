@@ -1,6 +1,6 @@
 node_modules/
-node_modules/
-
 __pycache__/
+*.pyc
 harness.js
-node_modules/
+series_cache.json
+fx_daily_cache.json

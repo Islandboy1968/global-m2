@@ -121,7 +121,15 @@
       Global series not loaded (<code>data.js</code> missing beside this page). Deploy with <code>data.js</code> present, or run the daily pipeline, to see the global charts.
     </div>
 
-    <div class="chead"><span class="cnum">01</span><h2>Index</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
+    <div class="chead"><span class="cnum">01</span><h2>Level &amp; momentum</h2><span class="ccap" id="cap-mom">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>Total Liquidity level ($BN)</span><span class="lg pink"><i class="sw pnk"></i>3m annualised %</span><span class="lg"><i class="sw" style="background:rgba(241,42,90,.4)"></i>6m annualised %</span></div>
+      <div class="chartbox"><canvas id="momoChart"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Annualised rate-of-change of the outright level, 30-day smoothed &middot; the base-effect-free read &middot; LSEG Datastream / Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">02</span><h2>Index</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span></div>
       <div class="chartbox"><canvas id="levelChart"></canvas></div>
@@ -129,15 +137,15 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">02</span><h2>Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
+    <div class="chead"><span class="cnum">03</span><h2>Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>TGL YoY %</span></div>
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>TGL YoY %</span><span class="lg" style="color:var(--mut2)"><i class="sw" style="background:rgba(19,19,22,.16)"></i>3m avg</span></div>
       <div class="chartbox"><canvas id="yoyChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
-      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
+      <div class="src" style="color:var(--pink)">Base-effect distorted. Easy comps lift YoY into autumn 2026; hard Q1-2027 comps collapse it mechanically. Read Level &amp; momentum (01) for the true impulse.</div>
     </div>
 
-    <div class="chead"><span class="cnum">03</span><h2>Liquidity leads Bitcoin</h2><span class="ccap" id="btcLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">04</span><h2>Liquidity leads Bitcoin</h2><span class="ccap" id="btcLead">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
       <div class="chartbox"><canvas id="btcChart"></canvas></div>
@@ -145,7 +153,7 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">04</span><h2>Liquidity leads Nasdaq 100</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>Liquidity leads Nasdaq 100</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
@@ -347,19 +355,53 @@
 
     <div class="chead"><span class="cnum">04</span><h2>ISM vs GMI Financial Conditions Index</h2><span class="ccap" id="cycFci">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg"><i class="sw" style="background:#2f6fae"></i>GMI Financial Conditions Index</span><span class="lg"><i class="sw" style="background:#9cc0e8"></i>FCI ex-oil</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Financial Conditions Index (RHS)</span></div>
       <div class="chartbox"><canvas id="cycFciC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
-      <div class="src">FCI reconstruction: 5y yield, dollar &amp; oil (50% weight), inverted, scaled to ISM &middot; gap to ex-oil = oil risk &middot; Global Macro Investor</div>
+      <div class="src">FCI reconstruction: 5y yield, dollar &amp; oil (50% weight), inverted, scaled to ISM &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>The dominoes: ISM, liquidity and financial conditions</h2><span class="ccap" id="cycDom">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>ISM vs FCI ex-oil</h2><span class="ccap" id="cycFciEx">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity YoY% &mdash; 6-mo lead (RHS)</span><span class="lg"><i class="sw" style="background:#2f6fae"></i>GMI FCI &mdash; 12-mo lead</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI FCI ex-oil, rates + dollar (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycFciExC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">FCI ex-oil: rates + dollar only, inverted &amp; scaled to ISM &middot; the cleaner base-case lead &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">06</span><h2>ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycGdp">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>US Real GDP, QoQ annualised % (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycGdpC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: ISM (via TradingView) &middot; US BEA real GDP, seasonally-adjusted annual rate &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">07</span><h2>ISM vs US capex, % of GDP</h2><span class="ccap" id="cycCapex">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Nonresidential fixed investment, % of GDP (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycCapexC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">US private nonresidential fixed investment as a share of GDP &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">08</span><h2>ISM vs US capex growth</h2><span class="ccap" id="cycCapexG">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Nonresidential fixed investment, YoY % (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycCapexGC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">US nonresidential fixed investment, year-on-year growth &middot; ISM leads by ~3 quarters &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
+    </div>
+
+    <!-- 09 dominoes — removed from the page for now (too complex). Kept here to revisit later.
+    <div class="chead"><span class="cnum">06</span><h2>The dominoes: ISM, liquidity and financial conditions</h2><span class="ccap" id="cycDom">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity YoY% &middot; 6-mo lead (RHS)</span><span class="lg"><i class="sw" style="background:rgba(241,42,90,.4)"></i>GMI FCI &middot; 12-mo lead</span></div>
       <div class="chartbox"><canvas id="cycDomC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src">The lead chain: financial conditions lead liquidity-adjusted growth, which leads ISM &middot; GMI &middot; Global Macro Investor</div>
     </div>
+    -->
   </section>
 
   <div class="foot"><span>GMI &middot; The Everything Code</span><span id="footdate">&mdash;</span></div>
@@ -398,9 +440,10 @@ const sgn=v=>(v>=0?"+":"")+v;
 const bn=t=>Math.round(t*1000).toLocaleString("en-US");
 
 function opts(yTickColor, yfmt){return{responsive:true,maintainAspectRatio:false,animation:false,parsing:false,normalized:true,
-  interaction:{mode:"index",intersect:false},
+  interaction:{mode:"x",intersect:false},
   plugins:{legend:{display:false},
-    tooltip:{callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
+    tooltip:{filter:(it,i,a)=>a.findIndex(o=>o.datasetIndex===it.datasetIndex)===i,
+             callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
   scales:{x:{type:"linear",grid:{color:GRID},border:{color:BORDER},
              ticks:{color:BORDER,font:{size:11,family:MONO},maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
           y:{grid:{color:GRID},border:{display:false},
@@ -652,23 +695,61 @@ const GLOBAL = (function(){
   const pts=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]}));
   const ptsBN=key=>S.map(r=>({x:Date.parse(r.d), y:r[key]*1000}));
   const charts=[];
+
+  // ---- 01 · Level & momentum (the base-effect-free primary read) ----
+  const lvlBN=ptsBN("v");
+  // annualised rate-of-change of the OUTRIGHT level over a trailing window (carries no base effect)
+  const annROC=(p,win)=>{
+    const xs=p.map(q=>q.x), out=[];
+    for(let i=0;i<p.length;i++){
+      const tgt=p[i].x-win*DAY; if(tgt<xs[0]) continue;
+      let lo=0,hi=i; while(lo<hi){const m=(lo+hi+1)>>1; if(xs[m]<=tgt) lo=m; else hi=m-1;}
+      const dt=(p[i].x-xs[lo])/DAY; if(dt<=0||p[lo].y<=0) continue;
+      out.push({x:p[i].x, y:(Math.pow(p[i].y/p[lo].y,365/dt)-1)*100});
+    } return out;
+  };
+  const smoothD=(p,win)=>{const out=[],q=[];let s=0;
+    for(let i=0;i<p.length;i++){q.push(p[i]);s+=p[i].y;
+      while(q.length&&q[0].x<p[i].x-win*DAY){s-=q.shift().y;} out.push({x:p[i].x,y:s/q.length});}
+    return out;};
+  const mom3=smoothD(annROC(lvlBN,91),30), mom6=smoothD(annROC(lvlBN,182),30);
+  const lastY=a=>a.length?a[a.length-1].y:null, p1=v=>v==null?"—":(v>=0?"+":"")+v.toFixed(1)+"%";
+  document.getElementById("cap-mom").textContent=
+    "Level "+bn(su.total_tn)+" $BN · 3m "+p1(lastY(mom3))+" ann · 6m "+p1(lastY(mom6))+" ann · "+monthYear(DATA.updated);
+  const optsMom=()=>{const o=opts(BLACK,fmtBN); o.scales.y.position="left";
+    o.scales.y1={type:"linear",position:"right",grid:{drawOnChartArea:false},border:{display:false},
+      ticks:{color:PINK,font:{size:11,family:MONO},callback:v=>(v>0?"+":"")+Math.round(v)+"%"}}; return o;};
+  charts.push(new Chart(momoChart,{type:"line",data:{datasets:[
+    {data:lvlBN,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {data:mom3,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"},
+    {data:mom6,borderColor:"rgba(241,42,90,.4)",borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsMom()}));
+
+  // ---- 02 · Index (level only, full history) ----
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
     {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
+
+  // ---- 03 · Year-on-year (demoted — base-effect distorted, see panel caveat) ----
   charts.push(new Chart(yoyChart,{type:"line",data:{datasets:[
     {data:pts("ys"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
     {data:pts("y"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
+
   const DEF=(DATA.lag_days||90);
   const tglPts=ptsBN("v");
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
   charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
   charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
-  charts.forEach((c,i)=>c.$auto=(i<2));
-  [levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
-  controls(charts[0]); controls(charts[1]);
-  controls(charts[2],{asset:DATA.btc, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
-  controls(charts[3],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
+  charts.forEach((c,i)=>c.$auto=(i<3));
+  [momoChart,levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]);
+  controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
+  // open the momentum panel on a recent window so the % axis isn't compressed by early-history swings
+  (function(){const c=charts[0]; const ext=xExtent(c);
+    c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);
+    [...c.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));})();
   return {charts};
 })();
 
@@ -762,57 +843,79 @@ const CYCLE = (function(){
   const liqYoY = (DATA.series||[]).filter(r=>r.y!=null).map(r=>({d:r.d, v:r.y}));
   const fmtIsm = v=>Math.round(v);
   const fmtPctS = v=>(v>0?"+":"")+Math.round(v)+"%";
-  const FCOL="#2f6fae", FCOL2="#9cc0e8";   // FCI blend + FCI ex-oil
+  const FCOL=PINK, FCOL2="rgba(241,42,90,.4)";   // FCI blend = hot pink, FCI ex-oil = faint pink (brand palette)
   const charts=[];
   // 02 ISM (LHS) vs GMI Total Liquidity YoY (RHS, ~6-month forward lead)
   charts.push(overlayLin(cycIsmLiqC, ism, [], fmtIsm, false, fmtPctS));
   // 03 ISM vs ISM New Orders — same axis, adjustable lead/lag
   charts.push(overlaySame(cycIsmNoC, ism, [], fmtIsm));
-  // 04 ISM vs GMI FCI (blend) + FCI ex-oil — same left axis; one lead shifts both FCI lines
+  // 04 ISM (left axis) vs GMI FCI blend (right axis) — two independent axes; lead shifts the FCI line
   const fciC=new Chart(cycFciC,{type:"line",data:{datasets:[
     {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
-    {label:"GMI FCI",data:[],borderColor:FCOL,borderWidth:1.4,pointRadius:0,tension:.05,yAxisID:"y"},
-    {label:"FCI ex-oil",data:[],borderColor:FCOL2,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"}
-  ]},options:opts(BLACK,fmtIsm)});
+    {label:"GMI FCI",data:[],borderColor:FCOL,borderWidth:1.4,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtIsm)});
   charts.push(fciC);
-  // 05 dominoes: ISM (L) + GMI liquidity YoY (R, +6mo) + GMI FCI (L, +12mo) — fixed leads
+  // 05 ISM (left axis) vs FCI ex-oil (right axis) — two independent axes; own forward lead
+  const fciExC=new Chart(cycFciExC,{type:"line",data:{datasets:[
+    {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"FCI ex-oil",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtIsm)});
+  charts.push(fciExC);
+  // 06 ISM (left axis) vs GDP QoQ annualised (right axis) — the classic business-cycle overlay
+  const gdp = C.gdp ? P(C.gdp) : [];
+  const fmtGdp = v=>(v>0?"+":"")+v.toFixed(0)+"%";
+  const gdpC=new Chart(cycGdpC,{type:"line",data:{datasets:[
+    {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"GDP QoQ ann.",data:gdp,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtGdp)});
+  charts.push(gdpC);
+  // 07 ISM (left axis) vs US capex as % of GDP (right axis) — broad business capex, the phase the ISM responds to
+  const capex = C.capex ? P(C.capex) : [];
+  const fmtCapex = v=>v.toFixed(1)+"%";
+  const capexC=new Chart(cycCapexC,{type:"line",data:{datasets:[
+    {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"Capex % of GDP",data:capex,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtCapex)});
+  charts.push(capexC);
+  // 08 ISM (left axis) vs US capex YoY growth (right axis) — ISM leads ~3 quarters (r~0.64 since 1995)
+  const capexg = C.capex_g ? P(C.capex_g) : [];
+  const fmtCapexG = v=>(v>0?"+":"")+v.toFixed(0)+"%";
+  const capexGC=new Chart(cycCapexGC,{type:"line",data:{datasets:[
+    {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"Capex YoY",data:capexg,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtCapexG)});
+  charts.push(capexGC);
+  // 09 dominoes — REMOVED from the page for now (too complex). Code kept for revisit.
+  // To restore: un-comment this block + charts.push(domC); re-add cycDomC to the attach
+  // array, the controls block and cycStart below, and un-comment the HTML panel (06).
+  /*
   const domC=new Chart(cycDomC,{type:"line",data:{datasets:[
     {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
     {label:"Liquidity YoY",data:liqYoY.map(a=>({x:Date.parse(a.d)+182*DAY,y:a.v})),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"},
-    {label:"GMI FCI",data:(C.fci||[]).map(a=>({x:Date.parse(a.d)+365*DAY,y:a.v})),borderColor:FCOL,borderWidth:1.4,pointRadius:0,tension:.05,yAxisID:"y"}
+    {label:"GMI FCI",data:(C.fci||[]).map(a=>({x:Date.parse(a.d)+365*DAY,y:a.v})),borderColor:FCOL2,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"}
   ]},options:optsLin(fmtIsm,false,fmtPctS)});
   charts.push(domC);
+  */
   charts.forEach(c=>c.$auto=false);
-  [cycIsmLiqC,cycIsmNoC,cycFciC,cycDomC].forEach((cv,i)=>attach(cv,charts[i]));
+  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
   controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
-  // 04 lead control — shifts BOTH FCI lines together (blend + ex-oil)
-  (function(){
-    const panel=fciC.canvas.closest(".panel"), box=panel.querySelector(".lagctl"), leadEl=document.getElementById("cycFci");
-    const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; box.appendChild(k);
-    const input=document.createElement("input"); input.type="number"; input.step="30";
-    input.title="Days the FCI leads ISM into the future (365 ≈ 12 months)"; box.appendChild(input);
-    const u=document.createElement("span"); u.className="lagunit"; u.textContent="days"; box.appendChild(u);
-    function relag(days){
-      days=Math.round(+days)||0;
-      fciC.data.datasets[1].data=(C.fci||[]).map(a=>({x:Date.parse(a.d)+days*DAY,y:a.v}));
-      fciC.data.datasets[2].data=(C.fci_exoil||[]).map(a=>({x:Date.parse(a.d)+days*DAY,y:a.v}));
-      if(leadEl) leadEl.textContent="GMI FCI leads ISM · "+leadHuman(days)+" ("+days+"d)";
-      fitY(fciC);
-      fciC.$relag=relag; fciC.$leadInput=input; fciC.$lead=days;
-      if(input.value!=String(days)) input.value=days;
-      if(fciC.$locked) saveChart(fciC);
-    }
-    input.addEventListener("change",()=>relag(input.value));
-    input.addEventListener("keydown",e=>{ if(e.key==="Enter") relag(input.value); });
-    buildRanges(fciC, panel.querySelector(".ranges"));
-    addLock(fciC);
-    relag(365);
-  })();
-  // 05 dominoes — fixed leads, ranges + lock only
+  // 04 lead control — forward lead on the FCI blend line (default 12 months)
+  controlsFwd(fciC,{asset:C.fci, pairLbl:"GMI FCI leads ISM", leadEl:document.getElementById("cycFci"), def:365});
+  // 05 ex-oil — forward lead on the ex-oil line (default 12 months)
+  controlsFwd(fciExC,{asset:C.fci_exoil, pairLbl:"GMI FCI ex-oil leads ISM", leadEl:document.getElementById("cycFciEx"), def:365});
+  // 06 ISM vs GDP — adjustable lead, default coincident (the classic overlay)
+  controlsFwd(gdpC,{asset:C.gdp, pairLbl:"ISM vs US GDP (QoQ annualised)", leadEl:document.getElementById("cycGdp"), def:0});
+  // 07 ISM vs capex/GDP — adjustable lead, default coincident (ISM tends to lead the capex cycle)
+  controlsFwd(capexC,{asset:C.capex, pairLbl:"ISM vs US capex (% of GDP)", leadEl:document.getElementById("cycCapex"), def:0});
+  // 08 ISM vs capex growth — default shift puts capex ~3 quarters behind ISM (ISM leads)
+  controlsFwd(capexGC,{asset:C.capex_g, pairLbl:"ISM vs US capex growth", leadEl:document.getElementById("cycCapexG"), def:-273});
+  // 09 dominoes — controls kept for revisit (chart currently removed from the page)
+  /*
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
   addLock(domC);
   { const el=document.getElementById("cycDom"); if(el) el.textContent="ISM with GMI liquidity (+6mo) and FCI (+12mo) leads"; }
+  */
   // default view windows (range buttons still override)
   const cycStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
@@ -820,7 +923,10 @@ const CYCLE = (function(){
   cycStart(charts[0],"2010-01-01");   // ISM vs liquidity YoY
   cycStart(charts[1],"2010-01-01");   // ISM vs new orders
   cycStart(charts[2],"2004-01-01");   // ISM vs FCI (long view)
-  cycStart(charts[3],"2010-01-01");   // dominoes
+  cycStart(charts[3],"2004-01-01");   // ISM vs FCI ex-oil (long view)
+  cycStart(charts[4],"2000-01-01");   // ISM vs GDP (classic, recent decades)
+  cycStart(charts[5],"1997-01-01");   // ISM vs capex/GDP
+  cycStart(charts[6],"1997-01-01");   // ISM vs capex growth
   return {charts};
 })();
 
