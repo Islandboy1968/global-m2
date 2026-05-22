@@ -24,11 +24,14 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
   Broad YoY, Narrow level, Narrow YoY, Broad-vs-NDX, Narrow-vs-BTC.
   ("Broad" = the new measure, "Narrow" = the former "old" measure. Same formulas as before;
   only the labels changed.)
-- **The Big Picture tab** — structural macro, all FRED. Four linear dual-axis charts:
+- **The Big Picture tab** — structural macro, all FRED. Five linear dual-axis charts:
   (1) LFPR vs US births/1,000 with the births +16yr forward lead; (2) LFPR vs Federal debt/GDP
   with the right axis **inverted**; (3) US Total Liquidity (Narrow, $BN) vs debt/GDP;
   (4) US Total Liquidity (Broad) vs Federal interest payments with the interest +36mo forward
-  lead. Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` for the liquidity lines
+  lead; (5) LFPR vs the US 5-year Treasury yield (`DGS5`, pink RHS) with the **LFPR** carrying a
+  +5-month forward lead — the left/black series is the leading indicator here, so it uses
+  `controlsFwdLeft`/`buildLagFwdLeft` (shift datasets[0], not datasets[1]).
+  Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` for the liquidity lines
   (`vo`×1000 = Narrow on chart 3, `vn`×1000 = Broad on chart 4) — no liquidity series is duplicated.
 - **The Business Cycle tab** — the ISM as the cycle pivot. Three blocks:
   (1) **The Everything Code Dominoes** — a fixed reference slide reproduced as inline SVG (no
@@ -170,7 +173,8 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
     lfpr:     [ { d, v } ],   // CIVPART, % monthly
     births:   [ { d, v } ],   // SPDYNCBRTINUSA, per 1,000 annual
     debt:     [ { d, v } ],   // GFDEGDQ188S, % of GDP quarterly
-    interest: [ { d, v } ]    // A091RC1Q027SBEA, $bn quarterly
+    interest: [ { d, v } ],   // A091RC1Q027SBEA, $bn quarterly
+    y5:       [ { d, v } ]    // DGS5, US 5-year Treasury yield, % daily
   },
   cycle: {                                        // The Business Cycle — ISM survey series (TradingView)
     ism:       [ { d, v } ],  // ECONOMICS:USBCOI, ISM Manufacturing PMI, monthly

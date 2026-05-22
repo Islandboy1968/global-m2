@@ -11,6 +11,7 @@ Series:
   births   SPDYNCBRTINUSA   Birth rate, crude, per 1,000 people, annual (World Bank)
   debt     GFDEGDQ188S      Federal Debt: Total Public Debt as % of GDP, quarterly
   interest A091RC1Q027SBEA  Federal current expenditures: interest payments, $bn, quarterly
+  y5       DGS5             Market Yield on US Treasury at 5-Year Constant Maturity, %, daily
 
 The dashboard pairs these with the US Total Liquidity (Narrow) series already in
 TGL_DATA["us"], so no liquidity series is duplicated here.
@@ -22,6 +23,7 @@ BIG_SERIES = {
     "births":   "SPDYNCBRTINUSA",
     "debt":     "GFDEGDQ188S",
     "interest": "A091RC1Q027SBEA",
+    "y5":       "DGS5",
 }
 
 START = "1948-01-01"   # full history; the frontend windows it

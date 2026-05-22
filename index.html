@@ -245,6 +245,14 @@
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
     </div>
+
+    <div class="chead"><span class="cnum">05</span><h2>Labour force participation and the 5-year yield</h2><span class="ccap" id="bigLfprY5">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Labor Force Participation Rate (5-month lead)</span><span class="lg pink"><i class="sw pnk"></i>US 5-Year Bond Yield (RHS)</span></div>
+      <div class="chartbox"><canvas id="bigLfprY5C"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED (BLS, U.S. Treasury) &middot; Global Macro Investor</div>
+    </div>
   </section>
 
   <!-- ============ THE BUSINESS CYCLE TAB ============ -->
@@ -589,6 +597,32 @@ function controlsFwd(chart, lag){
   buildRanges(chart, panel.querySelector(".ranges"));
   addLock(chart);
 }
+// forward-lead on the LEFT (black) series — used when the left series is the leading indicator
+function buildLagFwdLeft(chart, container, asset, pairLbl, leadEl, def){
+  function relag(days){
+    days=Math.round(+days)||0;
+    chart.data.datasets[0].data=(asset||[]).map(a=>({x:Date.parse(a.d)+days*DAY, y:a.v}));
+    if(leadEl) leadEl.textContent=pairLbl+" · "+leadHuman(days)+" ("+days+"d)";
+    fitY(chart);
+    chart.$relag=relag; chart.$leadInput=input; chart.$lead=days;
+    if(input.value!=String(days)) input.value=days;
+    if(chart.$locked) saveChart(chart);
+  }
+  const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; container.appendChild(k);
+  const input=document.createElement("input"); input.type="number"; input.step="30"; input.value=def;
+  input.title="Days the LEFT series leads into the future (e.g. 152 ≈ 5 months)";
+  input.addEventListener("change", ()=>relag(input.value));
+  input.addEventListener("keydown", e=>{ if(e.key==="Enter") relag(input.value); });
+  container.appendChild(input);
+  const u=document.createElement("span"); u.className="lagunit"; u.textContent="days"; container.appendChild(u);
+  relag(def);
+}
+function controlsFwdLeft(chart, lag){
+  const panel=chart.canvas.closest(".panel");
+  buildLagFwdLeft(chart, panel.querySelector(".lagctl"), lag.asset, lag.pairLbl, lag.leadEl, lag.def);
+  buildRanges(chart, panel.querySelector(".ranges"));
+  addLock(chart);
+}
 
 // ===================== GLOBAL TAB =====================
 const GLOBAL = (function(){
@@ -669,6 +703,7 @@ const BIG = (function(){
   const liqN = (U && U.series) ? U.series.filter(r=>r.vo!=null).map(r=>({x:Date.parse(r.d), y:r.vo*1000})) : [];
   const liqB = (U && U.series) ? U.series.filter(r=>r.vn!=null).map(r=>({x:Date.parse(r.d), y:r.vn*1000})) : [];
   const fmtPct = v=>Math.round(v)+"%";
+  const fmtPct1 = v=>v.toFixed(1)+"%";
   const fmtNum = v=>Math.round(v).toLocaleString("en-US");
   const charts=[];
   // 01 LFPR vs births/1000 (births +16yr forward lead)
@@ -679,12 +714,15 @@ const BIG = (function(){
   charts.push(overlayLin(bigLiqDebtC, liqN, [], fmtNum, false, fmtPct));
   // 04 US Total Liquidity Broad ($BN) vs interest payments (+36mo forward lead)
   charts.push(overlayLin(bigLiqIntrC, liqB, [], fmtNum, false, fmtNum));
+  // 05 LFPR (5-month forward lead) vs US 5-year Treasury yield (RHS, pink)
+  charts.push(overlayLin(bigLfprY5C, lfpr, A(B.y5), fmtPct1, false, fmtPct));
   charts.forEach(c=>c.$auto=false);
-  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC].forEach((cv,i)=>attach(cv,charts[i]));
+  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC,bigLfprY5C].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
   controls(charts[1]);
   controlsFwd(charts[2],{asset:B.debt, pairLbl:"US liquidity (Narrow) vs debt/GDP", leadEl:document.getElementById("bigLiqDebt"), def:0});
   controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Broad) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
+  controlsFwdLeft(charts[4],{asset:B.lfpr, pairLbl:"LFPR leads US 5-year yield", leadEl:document.getElementById("bigLfprY5"), def:152});
   // default view windows matched to the official GMI charts (range buttons still override)
   const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
@@ -693,6 +731,7 @@ const BIG = (function(){
   bigStart(charts[1],"2001-01-01");   // LFPR vs debt
   bigStart(charts[2],"2010-01-01");   // narrow liquidity (its data starts ~2010) vs debt
   bigStart(charts[3],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
+  bigStart(charts[4],"2021-01-01");   // LFPR (5m lead) vs 5-year yield
   return {charts};
 })();
 
