@@ -65,6 +65,8 @@
   .lg .sw.pnk{background:var(--pink)}
   .chartbox{position:relative;height:360px;cursor:grab}
   .chartbox:active{cursor:grabbing}
+  .dominoes{width:100%}
+  .dominoes svg{width:100%;height:auto;display:block}
   .src{font-family:"AT Aero",sans-serif;font-style:italic;font-size:11px;color:var(--mut2);text-align:right;margin-top:6px}
   .ctrls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
   .ranges{display:flex;gap:6px;flex-wrap:wrap}
@@ -107,6 +109,7 @@
       <button data-tab="global" class="on">Global Liquidity</button>
       <button data-tab="us">US Liquidity</button>
       <button data-tab="big">The Big Picture</button>
+      <button data-tab="cycle">The Business Cycle</button>
     </div>
     <button class="toolbtn" id="copylayout" type="button" title="Copy your current locked layout — paste it back to publish it as the shared default everyone sees">Copy layout</button>
   </div>
@@ -241,6 +244,96 @@
       <div class="chartbox"><canvas id="bigLiqIntrC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
+    </div>
+  </section>
+
+  <!-- ============ THE BUSINESS CYCLE TAB ============ -->
+  <section id="tab-cycle" class="pane" hidden>
+    <div id="cycle-missing" class="note" hidden>
+      The Business Cycle series are generated server-side by the daily pipeline (<code>build_cycle.py</code>, TradingView ISM). They will appear here once the GitHub Action has run with this update.
+    </div>
+
+    <div class="chead"><span class="cnum">01</span><h2>The Everything Code Dominoes</h2><span class="ccap">Reference &middot; the order in which the cycle falls</span></div>
+    <div class="panel">
+      <div class="dominoes">
+        <svg viewBox="0 0 920 470" xmlns="http://www.w3.org/2000/svg" font-family="'AT Aero', sans-serif">
+          <text x="460" y="30" text-anchor="middle" font-family="'Teko', sans-serif" font-size="26" fill="#131316">The Everything Code Dominoes</text>
+          <!-- colored time bands -->
+          <rect x="92.7" y="72" width="44" height="326" rx="6" fill="#F4C879" opacity="0.55"/>
+          <rect x="202"  y="72" width="44" height="326" rx="6" fill="#9AA4E0" opacity="0.55"/>
+          <rect x="366"  y="72" width="44" height="326" rx="6" fill="#7E72BE" opacity="0.55"/>
+          <rect x="530"  y="72" width="44" height="326" rx="6" fill="#F06FA8" opacity="0.60"/>
+          <rect x="694"  y="72" width="44" height="326" rx="6" fill="#C29BD9" opacity="0.60"/>
+          <!-- T markers -->
+          <text x="114.7" y="60" text-anchor="middle" font-size="12" fill="#C2902F">T = &#8804;&#8722;2 Months</text>
+          <text x="224"   y="60" text-anchor="middle" font-size="12" fill="#5560B0">T = 0</text>
+          <text x="388"   y="60" text-anchor="middle" font-size="12" fill="#5E5298">T = +3 Months</text>
+          <text x="552"   y="60" text-anchor="middle" font-size="12" fill="#C23B79">T = +6 Months</text>
+          <text x="716"   y="60" text-anchor="middle" font-size="12" fill="#8A57AE">T = +9 Months</text>
+          <!-- mid dotted baseline -->
+          <line x1="60" y1="235" x2="880" y2="235" stroke="rgba(19,19,22,.45)" stroke-width="1" stroke-dasharray="3 4"/>
+          <!-- T = -2 column -->
+          <g font-size="10" fill="#131316" text-anchor="middle">
+            <rect x="62.7" y="224" width="104" height="20" rx="3" fill="#fff" stroke="rgba(19,19,22,.4)"/><text x="114.7" y="238" font-size="8">Lagging Economic Data</text>
+            <rect x="84.7" y="250" width="60" height="20" rx="3" fill="#F4C879" stroke="rgba(19,19,22,.3)"/><text x="114.7" y="264">GDP</text>
+            <rect x="84.7" y="276" width="60" height="20" rx="3" fill="#F4C879" stroke="rgba(19,19,22,.3)"/><text x="114.7" y="290">CPI</text>
+          </g>
+          <!-- T = 0 column -->
+          <g font-size="10" fill="#131316" text-anchor="middle">
+            <rect x="168" y="224" width="112" height="20" rx="3" fill="#fff"    stroke="rgba(19,19,22,.4)"/><text x="224" y="238">ISM</text>
+            <rect x="168" y="250" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="264">Earnings</text>
+            <rect x="168" y="276" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="290">S&amp;P 500</text>
+            <rect x="168" y="302" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="316">Cyclical Equities</text>
+            <rect x="168" y="328" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="342">Small Caps</text>
+            <rect x="168" y="354" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="368">EM Equities</text>
+            <rect x="168" y="380" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="394">Commodities</text>
+            <rect x="168" y="406" width="112" height="20" rx="3" fill="#9AA4E0" stroke="rgba(19,19,22,.3)"/><text x="224" y="420">Altcoins</text>
+          </g>
+          <!-- T = +3 column -->
+          <g font-size="10" fill="#131316" text-anchor="middle">
+            <rect x="332" y="224" width="112" height="20" rx="3" fill="#fff"    stroke="rgba(19,19,22,.4)"/><text x="388" y="238">Bitcoin</text>
+            <rect x="332" y="250" width="112" height="20" rx="3" fill="#7E72BE" stroke="rgba(19,19,22,.3)"/><text x="388" y="264">Tech Stocks</text>
+            <rect x="332" y="276" width="112" height="20" rx="3" fill="#7E72BE" stroke="rgba(19,19,22,.3)"/><text x="388" y="290">Yield Curve</text>
+          </g>
+          <!-- T = +6 column -->
+          <g font-size="10" fill="#131316" text-anchor="middle">
+            <rect x="496" y="158" width="112" height="20" rx="3" fill="#fff" stroke="rgba(19,19,22,.4)"/><text x="552" y="172">Liquidity</text>
+          </g>
+          <!-- T = +9 column -->
+          <g font-size="10" fill="#131316" text-anchor="middle">
+            <rect x="641" y="132" width="150" height="20" rx="3" fill="#fff"    stroke="rgba(19,19,22,.4)"/><text x="716" y="146">GMI Financial Conditions Index</text>
+            <rect x="660" y="184" width="112" height="20" rx="3" fill="#C29BD9" stroke="rgba(19,19,22,.3)"/><text x="716" y="198">Gold</text>
+          </g>
+          <!-- x axis -->
+          <line x1="60" y1="424" x2="880" y2="424" stroke="rgba(19,19,22,.6)" stroke-width="1"/>
+          <g font-size="10" fill="rgba(19,19,22,.6)" text-anchor="middle" font-family="'DM Mono', monospace">
+            <text x="60"    y="442">-3M</text><text x="114.7" y="442">-2M</text><text x="169.3" y="442">-1M</text>
+            <text x="224"   y="442">0</text>   <text x="278.7" y="442">1M</text>  <text x="333.3" y="442">2M</text>
+            <text x="388"   y="442">3M</text>  <text x="442.7" y="442">4M</text>  <text x="497.3" y="442">5M</text>
+            <text x="552"   y="442">6M</text>  <text x="606.7" y="442">7M</text>  <text x="661.3" y="442">8M</text>
+            <text x="716"   y="442">9M</text>  <text x="770.7" y="442">10M</text> <text x="825.3" y="442">11M</text>
+            <text x="880"   y="442">12M</text>
+          </g>
+          <text x="880" y="464" text-anchor="end" font-size="10" font-style="italic" fill="rgba(19,19,22,.6)">Source: LSEG Datastream &#183; Global Macro Investor</text>
+        </svg>
+      </div>
+      <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs Global Total Liquidity</h2><span class="ccap" id="cycIsmLiq">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity Index YoY% (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycIsmLiqC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: ISM (via TradingView) &middot; GMI Total Liquidity Index &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">03</span><h2>ISM vs ISM New Orders</h2><span class="ccap" id="cycIsmNo">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>ISM Manufacturing New Orders</span></div>
+      <div class="chartbox"><canvas id="cycIsmNoC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: ISM (via TradingView) &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -441,6 +534,7 @@ function controls(chart, lag){
 
 const DATA = window.TGL_DATA || null;
 let descrGlobal="—", descrUS="", descrBig="US structural macro — labour, demographics, debt and liquidity · FRED · monthly to quarterly";
+let descrCycle="The order in which the cycle falls — the ISM as the pivot, liquidity leading it by months, new orders leading the ISM itself · ISM, GMI · monthly";
 
 // ----- linear dual-axis overlay (for The Big Picture); right axis can be reversed -----
 function optsLin(leftFmt, rightReverse, rightFmt){
@@ -455,6 +549,13 @@ function overlayLin(canvas, leftPts, rightPts, leftFmt, rightReverse, rightFmt){
     {label:"left",data:leftPts,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
     {label:"right",data:rightPts,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsLin(leftFmt, rightReverse, rightFmt)});
+}
+// ----- two series sharing ONE left axis (same scale); right series is still datasets[1] so buildLagFwd can shift it -----
+function overlaySame(canvas, leftPts, rightPts, fmt){
+  return new Chart(canvas,{type:"line",data:{datasets:[
+    {label:"left",data:leftPts,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"right",data:rightPts,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"}
+  ]},options:opts(BLACK, fmt)});
 }
 function leadHuman(days){
   const a=Math.abs(days); if(!days) return "coincident";
@@ -595,6 +696,34 @@ const BIG = (function(){
   return {charts};
 })();
 
+// ===================== THE BUSINESS CYCLE TAB (ISM survey series; liquidity YoY reused from the global series) =====================
+const CYCLE = (function(){
+  const C = DATA && DATA.cycle;
+  if(!C || !C.ism || !C.ism.length){ document.getElementById("cycle-missing").hidden=false; return null; }
+  const P = arr => (arr||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
+  const ism = P(C.ism);
+  // GMI Total Liquidity Index YoY (the global series' y field), reused here as the forward-lead asset
+  const liqYoY = (DATA.series||[]).filter(r=>r.y!=null).map(r=>({d:r.d, v:r.y}));
+  const fmtIsm = v=>Math.round(v);
+  const fmtPctS = v=>(v>0?"+":"")+Math.round(v)+"%";
+  const charts=[];
+  // 02 ISM (LHS) vs GMI Total Liquidity YoY (RHS, ~6-month forward lead)
+  charts.push(overlayLin(cycIsmLiqC, ism, [], fmtIsm, false, fmtPctS));
+  // 03 ISM vs ISM New Orders — same axis, adjustable lead/lag
+  charts.push(overlaySame(cycIsmNoC, ism, [], fmtIsm));
+  charts.forEach(c=>c.$auto=false);
+  [cycIsmLiqC,cycIsmNoC].forEach((cv,i)=>attach(cv,charts[i]));
+  controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
+  controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
+  // default view windows (range buttons still override)
+  const cycStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
+    chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
+    [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));};
+  cycStart(charts[0],"2010-01-01");   // ISM vs liquidity YoY (matches the GMI house chart window)
+  cycStart(charts[1],"2010-01-01");   // ISM vs new orders
+  return {charts};
+})();
+
 // ===================== per-chart lock / persist (each chart independent, all tabs) =====================
 function snapshot(c){
   const o=c.options.scales, ext=xExtent(c);
@@ -661,14 +790,16 @@ READY=true;
 })();
 
 // ===================== tab switching =====================
-const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big")};
+const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big"), cycle:document.getElementById("tab-cycle")};
 const secTitle=document.getElementById("secTitle"), secDescr=document.getElementById("secDescr");
-const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}};
+const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}};
+const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle};
+const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE};
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
   secTitle.textContent = TABMETA[t].t;
-  secDescr.textContent = t==="global" ? descrGlobal : t==="us" ? descrUS : descrBig;
-  const g = t==="global" ? GLOBAL : t==="us" ? US : BIG;
+  secDescr.textContent = (DESCR[t]||(()=>descrGlobal))();
+  const g = GROUPS[t];
   if(g){ g.charts.forEach(c=>{ c.resize(); c.update("none"); }); }
 }
 document.getElementById("tabnav").addEventListener("click", e=>{
@@ -679,7 +810,7 @@ document.getElementById("tabnav").addEventListener("click", e=>{
 });
 secDescr.textContent=descrGlobal;
 
-window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG;
+window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE;
 </script>
 </body>
 </html>

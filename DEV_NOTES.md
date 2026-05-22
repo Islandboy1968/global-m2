@@ -30,6 +30,16 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
   (4) US Total Liquidity (Broad) vs Federal interest payments with the interest +36mo forward
   lead. Reads `TGL_DATA.big` (FRED series) and reuses `TGL_DATA.us` for the liquidity lines
   (`vo`×1000 = Narrow on chart 3, `vn`×1000 = Broad on chart 4) — no liquidity series is duplicated.
+- **The Business Cycle tab** — the ISM as the cycle pivot. Three blocks:
+  (1) **The Everything Code Dominoes** — a fixed reference slide reproduced as inline SVG (no
+  Chart.js, no controls): the five time bands T≤−2/0/+3/+6/+9 months with the labelled boxes
+  (Lagging Economic Data→GDP/CPI; ISM→…→Altcoins; Bitcoin/Tech Stocks/Yield Curve; Liquidity;
+  GMI Financial Conditions Index/Gold) on a −3M..12M axis. (2) **ISM vs Global Total Liquidity** —
+  ISM (black, LHS) vs the GMI Total Liquidity Index YoY% (pink, RHS) with an adjustable forward
+  lead defaulting to 6 months (182d). The liquidity line reuses `TGL_DATA.series[].y` (global YoY),
+  so no series is duplicated. (3) **ISM vs ISM New Orders** — both on one shared axis (`overlaySame`),
+  New Orders adjustable, defaulting to lead 1 month (30d). Reads `TGL_DATA.cycle` (ISM PMI + New
+  Orders, monthly, from TradingView — FRED no longer carries ISM).
 
 Live at: https://islandboy1968.github.io/global-m2/
 
@@ -134,6 +144,11 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
   Returns `{lfpr, births, debt, interest}`, each `[{d, v}]`. Series: `CIVPART` (LFPR %, monthly),
   `SPDYNCBRTINUSA` (birth rate /1,000, annual), `GFDEGDQ188S` (debt % GDP, quarterly),
   `A091RC1Q027SBEA` (Federal interest payments, $bn, quarterly).
+- `build_cycle.py` — The Business Cycle ISM series via `build_cycle()`, reusing `tv_pull.pull_series`.
+  Returns `{ism, neworders}`, each `[{d, v}]`, monthly. Symbols: `ECONOMICS:USBCOI` (ISM Manufacturing
+  PMI), `ECONOMICS:USMNO` (ISM Manufacturing New Orders). FRED no longer carries ISM (copyright), so
+  these come from TradingView. The dashboard pairs ISM with the global liquidity YoY already in
+  `TGL_DATA.series[].y`, so no liquidity series is duplicated.
 - `tv_pull.py` — TradingView websocket history puller (no API key).
 - `econ.py` — the 47-economy table (M2 ticker, FX symbol, currency).
 - `requirements.txt` — `websocket-client` (only third-party dep; us_liquidity uses stdlib + curl).
@@ -156,6 +171,10 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
     births:   [ { d, v } ],   // SPDYNCBRTINUSA, per 1,000 annual
     debt:     [ { d, v } ],   // GFDEGDQ188S, % of GDP quarterly
     interest: [ { d, v } ]    // A091RC1Q027SBEA, $bn quarterly
+  },
+  cycle: {                                        // The Business Cycle — ISM survey series (TradingView)
+    ism:       [ { d, v } ],  // ECONOMICS:USBCOI, ISM Manufacturing PMI, monthly
+    neworders: [ { d, v } ]   // ECONOMICS:USMNO, ISM Manufacturing New Orders, monthly
   }
 }
 ```

@@ -16,6 +16,7 @@ from tv_pull import pull_series
 from econ import ECON
 from us_liquidity import build_us
 from big_picture import build_big
+from build_cycle import build_cycle
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -186,9 +187,19 @@ def build():
         big = None
         print("  BIG build FAILED:", str(e)[:100])
 
+    # The Business Cycle — ISM survey series (TradingView). Same fail-safe pattern:
+    # a failure here never breaks the rest of the build.
+    try:
+        cycle = build_cycle()
+        print("  CYCLE: " + ", ".join(f"{k} {len(v)}" for k, v in cycle.items()))
+    except Exception as e:
+        cycle = None
+        print("  CYCLE build FAILED:", str(e)[:100])
+
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
-            "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big}
+            "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
+            "cycle": cycle}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
