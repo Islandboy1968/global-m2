@@ -17,6 +17,7 @@ from econ import ECON
 from us_liquidity import build_us
 from big_picture import build_big
 from build_cycle import build_cycle
+from build_fci import build_fci_set
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -192,6 +193,17 @@ def build():
     try:
         cycle = build_cycle()
         print("  CYCLE: " + ", ".join(f"{k} {len(v)}" for k, v in cycle.items()))
+        # GMI Financial Conditions Index (reconstruction) — leads ISM ~9 months.
+        # Built from the ISM we just pulled; failure here must not break the cycle block.
+        try:
+            fset = build_fci_set(cycle["ism"])
+            cycle["fci"] = fset["fci"]
+            cycle["fci_exoil"] = fset["fci_exoil"]
+            print(f"  FCI: blend {len(cycle['fci'])} (last {cycle['fci'][-1]['v']}), "
+                  f"ex-oil last {cycle['fci_exoil'][-1]['v']}")
+        except Exception as e:
+            cycle["fci"] = None; cycle["fci_exoil"] = None
+            print("  FCI build FAILED:", str(e)[:100])
     except Exception as e:
         cycle = None
         print("  CYCLE build FAILED:", str(e)[:100])
