@@ -355,7 +355,7 @@
 
     <div class="chead"><span class="cnum">05</span><h2>The dominoes: ISM, liquidity and financial conditions</h2><span class="ccap" id="cycDom">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity YoY% &mdash; 6-mo lead (RHS)</span><span class="lg"><i class="sw" style="background:#2f6fae"></i>GMI FCI &mdash; 9-mo lead</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity YoY% &mdash; 6-mo lead (RHS)</span><span class="lg"><i class="sw" style="background:#2f6fae"></i>GMI FCI &mdash; 12-mo lead</span></div>
       <div class="chartbox"><canvas id="cycDomC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src">The lead chain: financial conditions lead liquidity-adjusted growth, which leads ISM &middot; GMI &middot; Global Macro Investor</div>
@@ -585,7 +585,7 @@ function overlaySame(canvas, leftPts, rightPts, fmt){
 function leadHuman(days){
   const a=Math.abs(days); if(!days) return "coincident";
   const dir=days>0?"leads":"lags";
-  if(a>=365) return dir+" "+(a/365).toFixed(a%365?1:0)+" yrs";
+  if(a>365) return dir+" "+(a/365).toFixed(a%365?1:0)+" yrs";
   return dir+" "+Math.round(a/30.44)+" mo";
 }
 // forward-lead control: the RIGHT series is shifted into the future by N days
@@ -775,11 +775,11 @@ const CYCLE = (function(){
     {label:"FCI ex-oil",data:[],borderColor:FCOL2,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"}
   ]},options:opts(BLACK,fmtIsm)});
   charts.push(fciC);
-  // 05 dominoes: ISM (L) + GMI liquidity YoY (R, +6mo) + GMI FCI (L, +9mo) — fixed leads
+  // 05 dominoes: ISM (L) + GMI liquidity YoY (R, +6mo) + GMI FCI (L, +12mo) — fixed leads
   const domC=new Chart(cycDomC,{type:"line",data:{datasets:[
     {label:"ISM",data:ism,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
     {label:"Liquidity YoY",data:liqYoY.map(a=>({x:Date.parse(a.d)+182*DAY,y:a.v})),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"},
-    {label:"GMI FCI",data:(C.fci||[]).map(a=>({x:Date.parse(a.d)+274*DAY,y:a.v})),borderColor:FCOL,borderWidth:1.4,pointRadius:0,tension:.05,yAxisID:"y"}
+    {label:"GMI FCI",data:(C.fci||[]).map(a=>({x:Date.parse(a.d)+365*DAY,y:a.v})),borderColor:FCOL,borderWidth:1.4,pointRadius:0,tension:.05,yAxisID:"y"}
   ]},options:optsLin(fmtIsm,false,fmtPctS)});
   charts.push(domC);
   charts.forEach(c=>c.$auto=false);
@@ -791,7 +791,7 @@ const CYCLE = (function(){
     const panel=fciC.canvas.closest(".panel"), box=panel.querySelector(".lagctl"), leadEl=document.getElementById("cycFci");
     const k=document.createElement("span"); k.className="lagk"; k.textContent="Lead"; box.appendChild(k);
     const input=document.createElement("input"); input.type="number"; input.step="30";
-    input.title="Days the FCI leads ISM into the future (274 ≈ 9 months)"; box.appendChild(input);
+    input.title="Days the FCI leads ISM into the future (365 ≈ 12 months)"; box.appendChild(input);
     const u=document.createElement("span"); u.className="lagunit"; u.textContent="days"; box.appendChild(u);
     function relag(days){
       days=Math.round(+days)||0;
@@ -807,12 +807,12 @@ const CYCLE = (function(){
     input.addEventListener("keydown",e=>{ if(e.key==="Enter") relag(input.value); });
     buildRanges(fciC, panel.querySelector(".ranges"));
     addLock(fciC);
-    relag(274);
+    relag(365);
   })();
   // 05 dominoes — fixed leads, ranges + lock only
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
   addLock(domC);
-  { const el=document.getElementById("cycDom"); if(el) el.textContent="ISM with GMI liquidity (+6mo) and FCI (+9mo) leads"; }
+  { const el=document.getElementById("cycDom"); if(el) el.textContent="ISM with GMI liquidity (+6mo) and FCI (+12mo) leads"; }
   // default view windows (range buttons still override)
   const cycStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
