@@ -94,6 +94,17 @@
 <div class="topbar"></div>
 <div class="wrap">
 
+  <!-- China M2 override staleness banner. Hidden by default; activated by the
+       script at the bottom of the page if TGL_DATA.china_override.stale === true. -->
+  <div class="note" id="cov_notice" hidden style="display:flex;align-items:center;gap:14px;justify-content:space-between;flex-wrap:wrap;margin:18px 0 0">
+    <div style="flex:1;min-width:0">
+      <strong>China M2 override needs a refresh.</strong>
+      Last manual update: <span id="cov_latest">&mdash;</span>.
+      The next PBoC release was expected around <span id="cov_next">&mdash;</span>.
+      Paste the latest yuan figure into Claude in the Dashboard project and it will be committed.
+    </div>
+  </div>
+
   <div class="brand"><span class="gmi">GMI</span><span class="gmin">Global Macro Investor</span></div>
 
   <div class="titlewrap">
@@ -1027,6 +1038,19 @@ document.getElementById("tabnav").addEventListener("click", e=>{
 secDescr.textContent=descrGlobal;
 
 window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE;
+
+// ===================== China M2 override staleness banner =====================
+// The build computes whether today is past the expected next PBoC release date
+// and writes that into TGL_DATA.china_override.stale. When true, light up the
+// banner at the top of the page so Raoul sees it without having to remember.
+(function(){
+  const co = window.TGL_DATA && window.TGL_DATA.china_override;
+  if(!co || !co.stale) return;
+  const el = document.getElementById("cov_notice"); if(!el) return;
+  const lat = document.getElementById("cov_latest"); if(lat) lat.textContent = co.latest || "never";
+  const nxt = document.getElementById("cov_next");   if(nxt) nxt.textContent = co.next_release_iso || "—";
+  el.hidden = false;
+})();
 </script>
 </body>
 </html>

@@ -221,10 +221,31 @@ def build():
         cycle = None
         print("  CYCLE build FAILED:", str(e)[:100])
 
+    # China M2 override staleness — surfaces in the dashboard banner so Raoul
+    # never has to remember the monthly update. PBoC publishes month N's M2
+    # around the 13th of month N+1, so if our latest manual override is month
+    # N, the next print to add will be for N+1, released around the 13th of
+    # N+2. The override is "stale" once today is past that expected date.
+    override_months = sorted(CHINA_M2_OVERRIDE.keys())
+    if override_months:
+        _last = override_months[-1]
+        _y, _m = map(int, _last.split("-"))
+        _ny, _nm = (_y, _m + 2) if (_m + 2) <= 12 else (_y + 1, _m + 2 - 12)
+        _next_release = dt.date(_ny, _nm, 13)
+        china_override = {
+            "latest": _last,
+            "next_release_iso": _next_release.isoformat(),
+            "stale": today >= _next_release,
+            "days_until": (_next_release - today).days,
+        }
+    else:
+        china_override = {"latest": None, "next_release_iso": None,
+                          "stale": True, "days_until": 0}
+
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
-            "cycle": cycle}
+            "cycle": cycle, "china_override": china_override}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
