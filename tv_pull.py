@@ -44,7 +44,10 @@ def pull_series(symbol, resolution="1W", bars=320, retries=5):
             last_err = "no data parsed"
         except Exception as e:
             last_err = repr(e)
-            time.sleep(1.0)
+            # Exponential backoff with jitter — TradingView rate-limits the
+            # public websocket and a flat 1s sleep tends to keep colliding.
+            # Wait 1, 2, 4, 8, 16 (cap 30) seconds plus 0-1s jitter.
+            time.sleep(min(30, (2 ** attempt) + random.uniform(0, 1)))
     raise RuntimeError(f"{symbol}: failed after {retries} tries: {last_err}")
 
 if __name__ == "__main__":

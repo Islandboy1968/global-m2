@@ -39,7 +39,7 @@ def pull_into(cache_path, symbols, resolution, bars):
     if todo:
         print(f"  pulling {len(todo)} @ {resolution}")
         def g(s): return s, pull_series(s, resolution, bars)
-        with ThreadPoolExecutor(max_workers=6) as ex:
+        with ThreadPoolExecutor(max_workers=3) as ex:
             for i, f in enumerate(as_completed([ex.submit(g, s) for s in todo]), 1):
                 try:
                     s, d = f.result(); cache[s] = d
@@ -123,17 +123,27 @@ def build():
     # per-economy daily USD leg
     legs = {}
     for code, (m2t, fxs, ccy) in ECON.items():
+        # Resilience: if a symbol's pull failed and it isn't in the cache, skip
+        # that economy rather than crashing the whole build. The index is the
+        # sum of 47 legs, so dropping the odd exotic for one day is harmless.
+        if m2t not in m2c:
+            print("  SKIP", code, "missing M2", m2t); continue
         m2_arr = monthly_ffill_by_day(m2c[m2t], grid, CHINA_M2_OVERRIDE if code == "CN" else None)
         if fxs is None:
             fx_arr = [1.0]*len(grid)
-        else:
+        elif fxs in fxc:
             fx_arr = daily_ffill(fxc[fxs], grid)
+        else:
+            print("  SKIP", code, "missing FX", fxs); continue
         legs[code] = [ (m*f if (m is not None and f is not None) else None) for m, f in zip(m2_arr, fx_arr) ]
 
     total = []
+    us_leg = legs.get("US"); cn_leg = legs.get("CN")
     for i in range(len(grid)):
-        vals = [legs[c][i] for c in ECON]
-        total.append(sum(v for v in vals if v is not None) if legs["US"][i] and legs["CN"][i] else None)
+        vals = [legs[c][i] for c in ECON if c in legs]
+        us_ok = us_leg[i] if us_leg else None
+        cn_ok = cn_leg[i] if cn_leg else None
+        total.append(sum(v for v in vals if v is not None) if (us_ok and cn_ok) else None)
 
     # YoY on a 365-day offset (calendar grid)
     yoy = [None]*len(grid)
@@ -164,6 +174,9 @@ def build():
     # risk assets (raw daily close), for the liquidity-leads overlays
     assets = {}
     for code, (sym, bars) in ASSETS.items():
+        if sym not in fxc:
+            assets[code] = []
+            print("  SKIP asset", code, sym); continue
         pts = sorted((dt.datetime.utcfromtimestamp(int(t)).date(), v) for t, v in fxc[sym])
         assets[code] = [{"d": d.strftime("%Y-%m-%d"), "p": round(v, 2)}
                         for d, v in pts if d >= START and v]
