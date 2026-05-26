@@ -129,7 +129,7 @@
   <!-- ============ GLOBAL TAB ============ -->
   <section id="tab-global" class="pane">
     <div id="global-missing" class="note" hidden>
-      Global series not loaded (<code>data.js</code> missing beside this page). Deploy with <code>data.js</code> present, or run the daily pipeline, to see the global charts.
+      Global series unavailable &mdash; the daily pipeline hit a missing US or CN print, or hasn't run yet. Check the GitHub Actions log. Other tabs are unaffected.
     </div>
 
     <div class="chead"><span class="cnum">01</span><h2>Level &amp; momentum</h2><span class="ccap" id="cap-mom">&mdash;</span></div>
@@ -697,7 +697,11 @@ function controlsFwdLeft(chart, lag){
 
 // ===================== GLOBAL TAB =====================
 const GLOBAL = (function(){
-  if(!DATA || !DATA.series){ document.getElementById("global-missing").hidden=false; return null; }
+  // Empty series / null summary means the pipeline's global build hit a missing
+  // US or CN print and bailed out; sub-builds (US, Big, Cycle, FCI) still ship.
+  if(!DATA || !DATA.series || !DATA.series.length || !DATA.summary){
+    document.getElementById("global-missing").hidden=false; return null;
+  }
   const S=DATA.series, su=DATA.summary;
   descrGlobal="Broad money across "+su.n_economies+" economies, in US dollars · daily · updated "+monthYear(DATA.updated);
   document.getElementById("footdate").textContent=monthYear(DATA.updated);

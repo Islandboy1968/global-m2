@@ -96,15 +96,18 @@ def daily_ffill(points, grid):
         out[i] = cur
     return _backfill(out)
 
-def monthly_ffill_by_day(points, grid, override=None):
-    """Monthly series -> daily array (forward-fill by month)."""
+def monthly_ffill_by_day(points, grid, override=None, backfill_leading=True):
+    """Monthly series -> daily array (forward-fill by month).
+    backfill_leading=False preserves leading None values instead of filling
+    them with the first non-None print. Used by the CN-override-only fallback
+    so days before the override's earliest month stay missing rather than be
+    synthesised from a constant current-day value."""
     mp = {}
     for t, v in points:
         mp[dt.datetime.utcfromtimestamp(int(t)).date().strftime("%Y-%m")] = v
     if override: mp.update(override)
-    months = sorted(mp)
     # forward-fill across the month axis
-    out = [None]*len(grid); cur = None; mi = 0
+    out = [None]*len(grid)
     ff = {}
     allm = sorted({d.strftime("%Y-%m") for d in grid} | set(mp))
     last = None
@@ -113,65 +116,93 @@ def monthly_ffill_by_day(points, grid, override=None):
         ff[m] = last
     for i, day in enumerate(grid):
         out[i] = ff.get(day.strftime("%Y-%m"))
-    return _backfill(out)
+    return _backfill(out) if backfill_leading else out
 
 def build():
     m2c, fxc = get_data()
     today = dt.datetime.utcnow().date()
     grid = [START + dt.timedelta(days=k) for k in range((today-START).days + 1)]
 
-    # per-economy daily USD leg
-    legs = {}
-    for code, (m2t, fxs, ccy) in ECON.items():
-        # Resilience: if a symbol's pull failed and it isn't in the cache, skip
-        # that economy rather than crashing the whole build. The index is the
-        # sum of 47 legs, so dropping the odd exotic for one day is harmless.
-        if m2t not in m2c:
-            print("  SKIP", code, "missing M2", m2t); continue
-        m2_arr = monthly_ffill_by_day(m2c[m2t], grid, CHINA_M2_OVERRIDE if code == "CN" else None)
-        if fxs is None:
-            fx_arr = [1.0]*len(grid)
-        elif fxs in fxc:
-            fx_arr = daily_ffill(fxc[fxs], grid)
+    # Global liquidity index — wrapped fail-safe like the other sub-builds.
+    # A US/CN pull failure no longer crashes the whole pipeline; us/big/cycle/fci
+    # still ship below and the dashboard's global tab shows a "missing" notice
+    # until the next successful run.
+    summary, series = None, []
+    try:
+        legs = {}
+        for code, (m2t, fxs, ccy) in ECON.items():
+            # Resilience: if a symbol's pull failed and it isn't in the cache,
+            # skip that economy rather than dropping the whole build. The index
+            # is the sum of 47 legs, so dropping the odd exotic for one day is
+            # harmless. The exception is China: if its TV print is missing
+            # we still try to honour the manual PBoC override.
+            if m2t not in m2c:
+                if code == "CN" and CHINA_M2_OVERRIDE:
+                    # CNM2 pull missing — synthesise the CN M2 leg from the
+                    # manual override months only. backfill_leading=False so
+                    # days before the override's earliest month stay None and
+                    # don't produce a spurious global value from a constant
+                    # current-day yuan number applied to 2010-era dates.
+                    m2_arr = monthly_ffill_by_day([], grid, CHINA_M2_OVERRIDE,
+                                                  backfill_leading=False)
+                    print(f"  CN: using {len(CHINA_M2_OVERRIDE)} override months only "
+                          f"(CNM2 pull missing)")
+                else:
+                    print("  SKIP", code, "missing M2", m2t); continue
+            else:
+                m2_arr = monthly_ffill_by_day(m2c[m2t], grid,
+                                              CHINA_M2_OVERRIDE if code == "CN" else None)
+            if fxs is None:
+                fx_arr = [1.0]*len(grid)
+            elif fxs in fxc:
+                fx_arr = daily_ffill(fxc[fxs], grid)
+            else:
+                print("  SKIP", code, "missing FX", fxs); continue
+            legs[code] = [ (m*f if (m is not None and f is not None) else None) for m, f in zip(m2_arr, fx_arr) ]
+
+        total = []
+        us_leg = legs.get("US"); cn_leg = legs.get("CN")
+        for i in range(len(grid)):
+            vals = [legs[c][i] for c in ECON if c in legs]
+            us_ok = us_leg[i] if us_leg else None
+            cn_ok = cn_leg[i] if cn_leg else None
+            total.append(sum(v for v in vals if v is not None) if (us_ok and cn_ok) else None)
+
+        # YoY on a 365-day offset (calendar grid)
+        yoy = [None]*len(grid)
+        for i in range(len(grid)):
+            j = i - 365
+            if j >= 0 and total[i] and total[j]:
+                yoy[i] = total[i]/total[j] - 1
+        # 91-day trailing average ("3-month")
+        def trail(arr, n):
+            out = [None]*len(arr)
+            for i in range(len(arr)):
+                w = [v for v in arr[max(0, i-n+1):i+1] if v is not None]
+                out[i] = sum(w)/len(w) if w else None
+            return out
+        yoy_s = trail(yoy, 91)
+
+        # emit (skip the warm-up before first valid total)
+        series = []
+        for i, day in enumerate(grid):
+            if total[i] is None: continue
+            series.append({"d": day.strftime("%Y-%m-%d"),
+                           "v": round(total[i]/1e12, 2),
+                           "y": (round(yoy[i]*100, 2) if yoy[i] is not None else None),
+                           "ys": (round(yoy_s[i]*100, 2) if yoy_s[i] is not None else None)})
+        if series:
+            last = series[-1]
+            summary = {"latest": last["d"], "total_tn": last["v"], "yoy": last["y"],
+                       "yoy_s": last["ys"], "n_economies": len(ECON)}
         else:
-            print("  SKIP", code, "missing FX", fxs); continue
-        legs[code] = [ (m*f if (m is not None and f is not None) else None) for m, f in zip(m2_arr, fx_arr) ]
+            print("  GLOBAL: empty series (US or CN missing) — global tab will show notice")
+    except Exception as e:
+        summary, series = None, []
+        print("  GLOBAL build FAILED:", str(e)[:100])
 
-    total = []
-    us_leg = legs.get("US"); cn_leg = legs.get("CN")
-    for i in range(len(grid)):
-        vals = [legs[c][i] for c in ECON if c in legs]
-        us_ok = us_leg[i] if us_leg else None
-        cn_ok = cn_leg[i] if cn_leg else None
-        total.append(sum(v for v in vals if v is not None) if (us_ok and cn_ok) else None)
-
-    # YoY on a 365-day offset (calendar grid)
-    yoy = [None]*len(grid)
-    for i in range(len(grid)):
-        j = i - 365
-        if j >= 0 and total[i] and total[j]:
-            yoy[i] = total[i]/total[j] - 1
-    # 91-day trailing average ("3-month")
-    def trail(arr, n):
-        out = [None]*len(arr)
-        for i in range(len(arr)):
-            w = [v for v in arr[max(0, i-n+1):i+1] if v is not None]
-            out[i] = sum(w)/len(w) if w else None
-        return out
-    yoy_s = trail(yoy, 91)
-
-    # emit (skip the warm-up before first valid total)
-    series = []
-    for i, day in enumerate(grid):
-        if total[i] is None: continue
-        series.append({"d": day.strftime("%Y-%m-%d"),
-                       "v": round(total[i]/1e12, 2),
-                       "y": (round(yoy[i]*100, 2) if yoy[i] is not None else None),
-                       "ys": (round(yoy_s[i]*100, 2) if yoy_s[i] is not None else None)})
-    last = series[-1]
-    summary = {"latest": last["d"], "total_tn": last["v"], "yoy": last["y"],
-               "yoy_s": last["ys"], "n_economies": len(ECON)}
-    # risk assets (raw daily close), for the liquidity-leads overlays
+    # Risk assets (raw daily close), for the liquidity-leads overlays.
+    # Built independent of the global index so they keep working even when global fails.
     assets = {}
     for code, (sym, bars) in ASSETS.items():
         if sym not in fxc:
@@ -251,8 +282,11 @@ def build():
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
     with open(os.path.join(HERE, "data", "data.js"), "w") as f:
         f.write("window.TGL_DATA = " + json.dumps(data, default=str) + ";")
-    print(f"WROTE {len(series)} daily points | {summary['latest']} "
-          f"${summary['total_tn']}T  YoY {summary['yoy']}% (3m {summary['yoy_s']}%)")
+    if series:
+        print(f"WROTE {len(series)} daily points | {summary['latest']} "
+              f"${summary['total_tn']}T  YoY {summary['yoy']}% (3m {summary['yoy_s']}%)")
+    else:
+        print("WROTE data/data.{json,js} | global build empty, sub-builds preserved")
 
 if __name__ == "__main__":
     build()
