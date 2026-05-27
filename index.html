@@ -1048,9 +1048,9 @@ window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE;
 // and writes that into TGL_DATA.china_override.stale. When true, light up the
 // banner at the top of the page so Raoul sees it without having to remember.
 (function(){
-  const co = window.TGL_DATA && window.TGL_DATA.china_override;
-  if(!co || !co.stale) return;
   const el = document.getElementById("cov_notice"); if(!el) return;
+  const co = window.TGL_DATA && window.TGL_DATA.china_override;
+  if(!co || !co.stale){ el.style.display = "none"; return; }
   const lat = document.getElementById("cov_latest"); if(lat) lat.textContent = co.latest || "never";
   const nxt = document.getElementById("cov_next");   if(nxt) nxt.textContent = co.next_release_iso || "—";
   el.hidden = false;
