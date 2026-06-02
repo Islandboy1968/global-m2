@@ -121,6 +121,7 @@
       <button data-tab="us">US Liquidity</button>
       <button data-tab="big">The Big Picture</button>
       <button data-tab="cycle">The Business Cycle</button>
+      <button data-tab="glx">Global Leading Edge</button>
     </div>
     <button class="toolbtn" id="copylayout" type="button" title="Copy your current locked layout — paste it back to publish it as the shared default everyone sees">Copy layout</button>
     <button class="toolbtn" id="revertlayout" type="button" title="Clear your local changes and snap every chart back to the published default layout">Revert to defaults</button>
@@ -415,6 +416,52 @@
     -->
   </section>
 
+  <section id="tab-glx" class="pane" hidden>
+    <div id="glx-missing" class="note" hidden>
+      Global Leading Edge series unavailable &mdash; the daily pipeline hasn't run yet or the export feeds were missing. Check the GitHub Actions log. Other tabs are unaffected.
+    </div>
+
+    <div class="chead"><span class="cnum">01</span><h2>ISM vs Taiwan exports (semis proxy)</h2><span class="ccap" id="glxSemi">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Taiwan Exports YoY% &middot; semis proxy (RHS)</span></div>
+      <div class="chartbox"><canvas id="glxSemiC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Taiwan exports &asymp; global semiconductor sales (per GMI); in the AI era the compute cycle front-runs the ISM &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs South Korea exports</h2><span class="ccap" id="glxKor">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>South Korea Exports YoY% (RHS)</span></div>
+      <div class="chartbox"><canvas id="glxKorC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">South Korea &mdash; a small, open, export-led economy at the front of the global supply chain &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">03</span><h2>ISM vs Japan machine tool orders</h2><span class="ccap" id="glxJpn">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Japan Machine Tool Orders YoY% (RHS)</span></div>
+      <div class="chartbox"><canvas id="glxJpnC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">An old-school coincident barometer of real global manufacturing demand &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs Sweden manufacturing PMI</h2><span class="ccap" id="glxSwe">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Sweden Manufacturing PMI</span></div>
+      <div class="chartbox"><canvas id="glxSweC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Sweden tends to lead &mdash; a small, export-sensitive economy at the front of the cycle &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">05</span><h2>ISM vs World manufacturing PMI</h2><span class="ccap" id="glxWld">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>World Manufacturing PMI</span></div>
+      <div class="chartbox"><canvas id="glxWldC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">J.P.Morgan / S&amp;P Global world manufacturing PMI &middot; the global cross-check on the US ISM &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+    </div>
+  </section>
+
   <div class="foot"><span>GMI &middot; The Everything Code</span><span id="footdate">&mdash;</span></div>
 
 </div>
@@ -434,6 +481,7 @@ const DAY=864e5;
 // ----- per-chart lock state (each chart's view persists across reloads via localStorage) -----
 let READY=false;
 const ALL_CHARTS=[];
+let descrGlx="Global leading-edge growth — export-led economies and the compute/semiconductor cycle that front-run the ISM · TradingView ECONOMICS · monthly";
 let LOCKS={};
 try{
   const DEF = window.TEC_DEFAULT_LOCKS || {};   // published baseline shipped in the repo (data/layout.js)
@@ -945,6 +993,48 @@ const CYCLE = (function(){
   return {charts};
 })();
 
+// ===================== Global Leading Edge tab =====================
+const GLX = (function(){
+  const E = DATA && DATA.exp;
+  const C = DATA && DATA.cycle;
+  if(!E || !C || !C.ism || !C.ism.length){ const n=document.getElementById("glx-missing"); if(n) n.hidden=false; return null; }
+  const P = arr => (arr||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
+  const ism = P(C.ism);
+  const fmtIsm = v=>Math.round(v);
+  const fmtPctS = v=>(v>0?"+":"")+Math.round(v)+"%";
+  const charts=[];
+  // hide a chart's panel + its preceding header when its series is missing
+  function hidePanel(cv){ const panel=cv.closest(".panel"); if(!panel) return;
+    const head=panel.previousElementSibling; panel.style.display="none";
+    if(head && head.classList.contains("chead")) head.style.display="none"; }
+  // [canvas, series, kind('lin' dual-axis YoY | 'same' shared-axis PMI), pairLbl, capId, defaultLead, startIso]
+  const specs=[
+    [glxSemiC, E.twexp_yy,   "lin",  "Taiwan exports (semis proxy) leads ISM", "glxSemi", 120, "2005-01-01"],
+    [glxKorC,  E.krexp_yy,   "lin",  "South Korea exports leads ISM",          "glxKor",  120, "2005-01-01"],
+    [glxJpnC,  E.jpmto_yy,   "lin",  "Japan machine tool orders vs ISM",       "glxJpn",  0,   "2005-01-01"],
+    [glxSweC,  E.sweden_pmi, "same", "Sweden manufacturing PMI vs ISM",        "glxSwe",  0,   "2005-01-01"],
+    [glxWldC,  E.world_pmi,  "same", "World manufacturing PMI vs ISM",         "glxWld",  0,   "2005-01-01"]
+  ];
+  const built=[];
+  specs.forEach(([cv, ser, kind, pairLbl, capId, def, startIso])=>{
+    if(!cv) return;
+    if(!ser || !ser.length){ hidePanel(cv); return; }
+    const chart = kind==="same" ? overlaySame(cv, ism, [], fmtIsm)
+                                : overlayLin(cv, ism, [], fmtIsm, false, fmtPctS);
+    chart.$auto=false; charts.push(chart);
+    built.push({chart, cv, asset:ser, pairLbl, leadEl:document.getElementById(capId), def, startIso});
+  });
+  built.forEach(b=>{
+    attach(b.cv, b.chart);
+    controlsFwd(b.chart, {asset:b.asset, pairLbl:b.pairLbl, leadEl:b.leadEl, def:b.def});
+  });
+  const glxStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
+    chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
+    [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));};
+  built.forEach(b=>glxStart(b.chart, b.startIso));
+  return {charts};
+})();
+
 // ===================== per-chart lock / persist (each chart independent, all tabs) =====================
 function snapshot(c){
   const o=c.options.scales, ext=xExtent(c);
@@ -1021,11 +1111,11 @@ READY=true;
 })();
 
 // ===================== tab switching =====================
-const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big"), cycle:document.getElementById("tab-cycle")};
+const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big"), cycle:document.getElementById("tab-cycle"), glx:document.getElementById("tab-glx")};
 const secTitle=document.getElementById("secTitle"), secDescr=document.getElementById("secDescr");
-const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}};
-const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle};
-const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE};
+const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}, glx:{t:"Global Leading Edge"}};
+const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle, glx:()=>descrGlx};
+const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE, glx:GLX};
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
   secTitle.textContent = TABMETA[t].t;
@@ -1041,7 +1131,7 @@ document.getElementById("tabnav").addEventListener("click", e=>{
 });
 secDescr.textContent=descrGlobal;
 
-window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE;
+window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE; window.GLX=GLX;
 
 // ===================== China M2 override staleness banner =====================
 // The build computes whether today is past the expected next PBoC release date

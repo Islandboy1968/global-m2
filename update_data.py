@@ -18,6 +18,7 @@ from us_liquidity import build_us
 from big_picture import build_big
 from build_cycle import build_cycle
 from build_fci import build_fci_set
+from build_exports import build_exports
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -252,6 +253,15 @@ def build():
         cycle = None
         print("  CYCLE build FAILED:", str(e)[:100])
 
+    # Global Leading Edge — export & semis-proxy barometers (TradingView). Same
+    # fail-safe pattern: a failure here never breaks the rest of the build.
+    try:
+        exp = build_exports()
+        print("  EXP: " + ", ".join(f"{k} {len(v) if v else 0}" for k, v in exp.items()))
+    except Exception as e:
+        exp = None
+        print("  EXP build FAILED:", str(e)[:100])
+
     # China M2 override staleness — surfaces in the dashboard banner so Raoul
     # never has to remember the monthly update. PBoC publishes month N's M2
     # around the 13th of month N+1, so if our latest manual override is month
@@ -276,7 +286,7 @@ def build():
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
-            "cycle": cycle, "china_override": china_override}
+            "cycle": cycle, "exp": exp, "china_override": china_override}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
