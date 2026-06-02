@@ -62,11 +62,24 @@ EXPECTED = {
         "labor.jolts": "JOLTS hires",
         "labor.claims": "Initial jobless claims",
     },
-    "Assets": {
-        "assets2.pboc": "China PBoC balance sheet",
-        "assets2.copper_yoy": "Copper YoY",
-        "assets2.em_yoy": "EM equities YoY",
-        "assets2.hy_oas": "US HY credit spread",
+    "Rates & Dollar": {
+        "rates.y10_yoy_z": "10y yield YoY (z-score)",
+        "rates.oil_yoy": "Oil YoY",
+        "rates.dxy": "US dollar (DXY)",
+    },
+    "Housing": {
+        "housing.mortgage": "30y mortgage rate",
+        "housing.xhb": "Homebuilders ETF",
+        "housing.permits_yoy": "Building permits YoY",
+        "housing.newsales_yoy": "New home sales YoY",
+    },
+    "Credit": {
+        "credit.ci_standards": "C&I lending standards",
+        "credit.ci_demand": "C&I loan demand",
+    },
+    "China": {
+        "china.pboc": "PBoC balance sheet",
+        "china.cn10y": "China 10y yield",
     },
 }
 

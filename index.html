@@ -550,8 +550,8 @@
 
   <section id="tab-china" class="pane" hidden>
     <div id="china-missing" class="note" hidden>China series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
-    <div class="chead"><span class="cnum">01</span><h2>PBoC balance sheet vs China 10-year</h2><span class="ccap" id="cnPboc">&mdash;</span></div>
-    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>PBoC balance-sheet assets</span><span class="lg pink"><i class="sw pnk"></i>China 10-year yield % (RHS)</span></div><div class="chartbox"><canvas id="cnPbocC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Rates fell first; the next leg is PBoC balance-sheet expansion &middot; TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">01</span><h2>China 10-year vs PBoC balance sheet</h2><span class="ccap" id="cnPboc">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>China 10-year yield %</span><span class="lg pink"><i class="sw pnk"></i>PBoC balance-sheet assets (RHS)</span></div><div class="chartbox"><canvas id="cnPbocC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Rates fell first; the next leg is PBoC balance-sheet expansion &middot; TradingView &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">02</span><h2>PBoC balance sheet vs Bitcoin</h2><span class="ccap" id="cnBtc">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>PBoC balance-sheet assets</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div><div class="chartbox"><canvas id="cnBtcC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">PBoC liquidity has led Bitcoin's major moves since 2013 &middot; TradingView &middot; Global Macro Investor</div></div>
   </section>
@@ -1259,8 +1259,8 @@ const CHINA = (function(){
   if(!H){ const n=document.getElementById("china-missing"); if(n) n.hidden=false; return null; }
   const btcV=((DATA.btc)||[]).map(r=>({d:r.d, v:r.p}));
   return buildSimpleTab("china-missing", [
-    {cv:cnPbocC, left:H.pboc, right:H.cn10y, lf:FNUM, rf:F1,   pairLbl:"PBoC balance sheet vs China 10y", capId:"cnPboc", def:0, start:"2010-01-01"},
-    {cv:cnBtcC,  left:H.pboc, right:btcV,    lf:FNUM, rf:FNUM, pairLbl:"PBoC balance sheet vs Bitcoin",   capId:"cnBtc",  def:0, start:"2014-01-01"}
+    {cv:cnPbocC, left:H.cn10y, right:H.pboc, lf:F1,   rf:FNUM, pairLbl:"China 10y vs PBoC balance sheet", capId:"cnPboc", def:0, start:"2010-01-01"},
+    {cv:cnBtcC,  left:H.pboc,  right:btcV,   lf:FNUM, rf:FNUM, pairLbl:"PBoC balance sheet vs Bitcoin",   capId:"cnBtc",  def:0, start:"2014-01-01"}
   ]);
 })();
 
