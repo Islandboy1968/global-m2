@@ -49,8 +49,8 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
   fixed +9mo), the lead chain in one view. Reads `TGL_DATA.cycle` (ISM PMI + New Orders + fci +
   fci_exoil, monthly, from TradingView — FRED no longer carries ISM).
   The FCI is a **reconstruction** (not the proprietary GMI series): inverse of a standardised
-  composite of YoY change in a blended Treasury rates leg (2y+5y+10y, equal weight), the dollar,
-  and oil at half weight, scaled to ISM;
+  composite of YoY change in a blended Treasury rates leg (2y/5y/10y, dollar-issuance weighted
+  0.40/0.40/0.20, each tenor z-scored first), the dollar, and oil at half weight, scaled to ISM;
   it leads ISM ~9 months (corr ~0.37 full sample, ~0.65 since 2014). Copper was tested and dropped
   (coincident, peaks at zero lead). See `build_fci.py`.
 

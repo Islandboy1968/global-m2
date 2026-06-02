@@ -117,9 +117,10 @@ the hover tooltip. See "What's built this session" below.
 Goal: reconstruct GMI's Financial Conditions Index, which leads ISM ~9–12 months. GMI's own Jan-2026
 Monthly: "a regression with an average nine-month lead… optimisers suggest a roughly twelve-month
 lead." We use **12mo** as the dashboard default.
-- Inputs (TradingView, monthly): blended Treasury rates leg = equal-weight mean of the 2y/5y/10y
-  yields `TVC:US02Y`+`TVC:US05Y`+`TVC:US10Y` (YoY *difference*, pts), dollar `TVC:DXY`
-  (YoY %), oil `TVC:USOIL` (YoY %). Each leg z-scored (rates blended *before* z-scoring).
+- Inputs (TradingView, monthly): blended Treasury rates leg from the 2y/5y/10y
+  yields `TVC:US02Y`+`TVC:US05Y`+`TVC:US10Y` (YoY *difference*, pts) — each tenor z-scored, then
+  combined dollar-issuance weighted **0.40/0.40/0.20** (2y/5y/10y) and re-z-scored; dollar `TVC:DXY`
+  (YoY %), oil `TVC:USOIL` (YoY %). Each leg z-scored to unit variance.
 - Composite (looseness) = **−( z(Δrates) + z(Δdollar) + w·z(Δoil) ) / (2+w)**, i.e. rising rates/dollar/oil
   all read as TIGHTER → index falls → ISM falls ~12mo later. `w` = oil weight: **0.5 = headline blend**,
   **0 = ex-oil**. 3-month smoothed, then rescaled to ISM's mean/std so it overlays ISM in PMI units.
