@@ -22,7 +22,7 @@ MIN_PTS = 24
 # key: candidate_symbols  (all levels; net %)
 CREDIT_SERIES = {
     "ci_standards": ["FRED:DRTSCILM", "FRED:DRTSCIS"],
-    "ci_demand":    ["FRED:DRSDCIS", "FRED:SUBLPDCISCT"],
+    "ci_demand":    ["FRED:DRSDCILM", "FRED:DRSDCIS", "FRED:SUBLPDCISCT"],
 }
 
 

@@ -481,9 +481,9 @@
       <div class="src">Commodity &rarr; goods &rarr; services: goods inflation leads the super-lagging services (61% of CPI) &middot; FRED (BLS) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">03</span><h2>Headline vs ex-shelter CPI</h2><span class="ccap" id="inflShel">&mdash;</span></div>
+    <div class="chead"><span class="cnum">03</span><h2>Ex-shelter vs headline CPI</h2><span class="ccap" id="inflShel">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>Headline CPI YoY%</span><span class="lg pink"><i class="sw pnk"></i>CPI ex-shelter YoY%</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>CPI ex-shelter YoY%</span><span class="lg pink"><i class="sw pnk"></i>Headline CPI YoY%</span></div>
       <div class="chartbox"><canvas id="inflShelC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Shelter is the super-lagging caboose (lags ISM ~16 months); stripping it gives the cleaner real-time read &middot; FRED (BLS) &middot; Global Macro Investor</div>
@@ -1151,7 +1151,7 @@ const INFL = (function(){
   const specs=[
     [inflHeadC, F.headline_yoy, F.core_yoy,      "same", fmtPct0, fmtPct0, "Core vs headline CPI",           "inflHead", 0,   "2000-01-01"],
     [inflDomC,  F.goods_yoy,    F.services_yoy,  "same", fmtPct0, fmtPct0, "Core goods leads core services", "inflDom",  0,   "2000-01-01"],
-    [inflShelC, F.headline_yoy, F.exshelter_yoy, "same", fmtPct0, fmtPct0, "Headline vs ex-shelter CPI",     "inflShel", 0,   "2000-01-01"],
+    [inflShelC, F.exshelter_yoy, F.headline_yoy, "same", fmtPct0, fmtPct0, "Ex-shelter vs headline CPI",     "inflShel", 0,   "2000-01-01"],
     [inflExpC,  F.headline_yoy, F.be10,          "same", fmtPct0, fmtPct1, "CPI vs 10y breakeven",           "inflExp",  0,   "2010-01-01"],
     [inflAccC,  F.accel,        (C&&C.fci),      "lin",  fmtPct1, fmtIsm,  "GMI FCI leads CPI acceleration", "inflAcc",  365, "2004-01-01"]
   ];
