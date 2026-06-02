@@ -25,6 +25,7 @@ from build_rates import build_rates
 from build_housing import build_housing
 from build_credit import build_credit
 from build_china import build_china
+from build_pmi import build_pmi
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -289,6 +290,7 @@ def build():
     housing = _safe("HOUSING", build_housing)
     credit  = _safe("CREDIT",  build_credit)
     china   = _safe("CHINA",   build_china)
+    pmi     = _safe("PMI",     build_pmi)
 
     # China M2 override staleness — surfaces in the dashboard banner so Raoul
     # never has to remember the monthly update. PBoC publishes month N's M2
@@ -315,7 +317,7 @@ def build():
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
             "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
-            "housing": housing, "credit": credit, "china": china,
+            "housing": housing, "credit": credit, "china": china, "pmi": pmi,
             "china_override": china_override}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)

@@ -15,7 +15,7 @@ Series (key -> candidate symbols, resolution, transform):
   twexp_yy   Taiwan Exports YoY %, monthly        (semis proxy anchor)
   krexp_yy   South Korea Exports, monthly -> YoY %
   jpmto_yy   Japan Machine Tool Orders, monthly  -> YoY %
-  oecd_cli   OECD Composite Leading Indicator, monthly (free global growth lead, FRED)
+  (the global cross-check, world manufacturing PMI, now lives in build_pmi.py)
 
 The TradingView ECONOMICS symbol codes for some series are not uniformly
 documented, so each series carries a list of CANDIDATE symbols; the builder
@@ -38,17 +38,9 @@ EXP_SERIES = {
     "jpmto_yy": (["ECONOMICS:JPMTO"],   "1M", True),   # level -> YoY %
 }
 
-# OECD Composite Leading Indicator — a free global growth lead, via TradingView's
-# FRED passthrough (FRED's own CSV endpoint 403s bots). Sweden/World S&P-Global
-# PMIs are paywalled, so the OECD CLI is the global cross-check. Try broad
-# aggregates first; _pull_first applies a recency guard and falls through to the
-# US CLI (confirmed available on TradingView) as a backstop.
-OECD_CLI_CANDIDATES = [
-    "FRED:G7LOLITONOSTSAM",     # G7, normalised
-    "FRED:OECDLOLITOAASTSAM",   # OECD - Total, amplitude adjusted
-    "FRED:G7LOLITOAASTSAM",     # G7, amplitude adjusted
-    "FRED:USALOLITONOSTSAM",    # US, normalised — confirmed-available backstop
-]
+# NB: the global cross-check (world manufacturing PMI) lives in build_pmi.py — the
+# OECD CLI that used to sit here was discontinued at source (all free vintages end
+# 2022-2024), so it was dropped in favour of the Bloomberg-seeded J.P.Morgan PMI.
 
 
 def _iso(t):
@@ -120,22 +112,6 @@ def build_exports(bars=BARS):
                   f"{arr[-1]['d']} (last {arr[-1]['v']})")
         else:
             print(f"  exp/{key:10s}: EMPTY after transform ({sym})")
-
-    # OECD CLI — via TradingView's FRED passthrough (candidate fallback + recency).
-    # The OECD discontinued the old CLI vintage in 2024, so much of the free data
-    # ends early-2024. Rather than show a 2-year-stale line on a "leads ISM" chart,
-    # hide it (NULL) unless the chosen series is still current (last point <13mo old).
-    sym, pts = _pull_first(OECD_CLI_CANDIDATES, "1M")
-    arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)] if pts else None
-    if arr and (time.time() - max(t for t, _ in pts)) > 400 * 86400:
-        print(f"  exp/{'oecd_cli':10s}: STALE via {sym} (ends {arr[-1]['d']}) — hiding")
-        arr = None
-    out["oecd_cli"] = arr
-    if arr:
-        print(f"  exp/{'oecd_cli':10s}: {len(arr):4d} pts via {sym} | "
-              f"{arr[0]['d']} -> {arr[-1]['d']} (last {arr[-1]['v']})")
-    elif not pts:
-        print(f"  exp/{'oecd_cli':10s}: NULL (no candidate returned data)")
     return out
 
 
