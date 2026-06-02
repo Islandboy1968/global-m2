@@ -10,10 +10,11 @@ as the inverse of a standardised composite of three tightening inputs:
   - US dollar               (TVC:DXY)     year-on-year % change
   - WTI crude oil           (TVC:USOIL)   year-on-year % change, half weight
 
-The rates leg is an equal-weight blend of the 2-year (TVC:US02Y), 5-year
-(TVC:US05Y) and 10-year (TVC:US10Y) yields — the 2y carries the Fed-policy snap,
-the 10y the term-premium/growth signal, the 5y the belly. The three YoY point
-changes are averaged into one rates series, then z-scored.
+The rates leg is a dollar-issuance-weighted blend of the 2-year (TVC:US02Y),
+5-year (TVC:US05Y) and 10-year (TVC:US10Y) yields. Each tenor's YoY point change
+is z-scored first, then combined 0.40 / 0.40 / 0.20 (2y / 5y / 10y) — roughly the
+share of Treasury note *dollars* issued at each tenor — and the blend is
+re-z-scored so the rates leg sits at unit variance alongside the dollar and oil legs.
 
 Each input is z-scored, signed so that rising rates / rising dollar / rising oil
 all read as TIGHTER conditions, summed with oil at HALF weight (the "50% oil
@@ -37,6 +38,7 @@ FCI_SYMBOLS = {
     "oil": "TVC:USOIL",   # WTI crude
 }
 OIL_WEIGHT = 0.5          # the 50% oil blend
+RATE_WEIGHTS = (0.40, 0.40, 0.20)   # 2y, 5y, 10y — dollar-issuance weighted
 BARS = 400                # ~33 years monthly
 
 
@@ -114,15 +116,19 @@ def build_fci_set(ism_series, bars=BARS):
         p = _shift(k, 12)
         return (s[k] / s[p] - 1) * 100 if (k in s and p in s and s[p]) else None
 
-    ym, dr, dd, do = [], [], [], []
+    ym, d2, d5, d10, dd, do = [], [], [], [], [], []
     for k in keys:
-        # rates leg = equal-weight blend of 2y, 5y, 10y YoY point changes
         r2, r5, r10 = yoy_diff(raw["y2"], k), yoy_diff(raw["y5"], k), yoy_diff(raw["y10"], k)
         b, c = yoy_pct(raw["dxy"], k), yoy_pct(raw["oil"], k)
         if None in (r2, r5, r10, b, c):
             continue
-        ym.append(k); dr.append((r2 + r5 + r10) / 3.0); dd.append(b); do.append(c)
+        ym.append(k); d2.append(r2); d5.append(r5); d10.append(r10); dd.append(b); do.append(c)
 
+    # rates leg: z-score each tenor first, combine with dollar-issuance weights,
+    # then re-z-score so the blend sits at unit variance alongside dollar/oil.
+    z2, z5, z10 = _zscore(d2), _zscore(d5), _zscore(d10)
+    w2, w5, w10 = RATE_WEIGHTS
+    dr = [w2 * z2[i] + w5 * z5[i] + w10 * z10[i] for i in range(len(ym))]
     zr, zd, zo = _zscore(dr), _zscore(dd), _zscore(do)
     return {
         "fci":       _compose(ym, zr, zd, zo, ism, OIL_WEIGHT),  # 50% oil blend (headline)
