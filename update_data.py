@@ -20,6 +20,11 @@ from build_cycle import build_cycle
 from build_fci import build_fci_set
 from build_exports import build_exports
 from build_inflation import build_inflation
+from build_labor import build_labor
+from build_rates import build_rates
+from build_housing import build_housing
+from build_credit import build_credit
+from build_china import build_china
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
@@ -271,6 +276,20 @@ def build():
         infl = None
         print("  INFL build FAILED:", str(e)[:100])
 
+    # Labour / Rates / Housing / Credit / China — each fail-safe and independent.
+    def _safe(label, fn):
+        try:
+            b = fn()
+            print(f"  {label}: " + ", ".join(f"{k} {len(v) if v else 0}" for k, v in b.items()))
+            return b
+        except Exception as e:
+            print(f"  {label} build FAILED:", str(e)[:100]); return None
+    labor   = _safe("LABOR",   build_labor)
+    rates   = _safe("RATES",   build_rates)
+    housing = _safe("HOUSING", build_housing)
+    credit  = _safe("CREDIT",  build_credit)
+    china   = _safe("CHINA",   build_china)
+
     # China M2 override staleness — surfaces in the dashboard banner so Raoul
     # never has to remember the monthly update. PBoC publishes month N's M2
     # around the 13th of month N+1, so if our latest manual override is month
@@ -295,7 +314,9 @@ def build():
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
-            "cycle": cycle, "exp": exp, "infl": infl, "china_override": china_override}
+            "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
+            "housing": housing, "credit": credit, "china": china,
+            "china_override": china_override}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
