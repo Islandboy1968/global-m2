@@ -30,6 +30,10 @@ The page has five logical sections, each independent so one failing does not bre
 
 The TradingView pull caches (`series_cache.json`, `fx_daily_cache.json`) are gitignored on purpose. The workflow persists them across runs via the GitHub Actions cache, so each daily refresh only fetches genuinely new bars rather than re-pulling all symbols.
 
+## Editing this project with Claude Code
+
+See [`COMMITTING_WITH_CLAUDE.md`](COMMITTING_WITH_CLAUDE.md) for how changes get committed and pushed to GitHub when working through Claude Code on the web — including the one-time GitHub-app setup that fixes "403 / Permission denied" push errors.
+
 ## How it stays live
 
 The daily workflow runs hands-off. Resilience guards in `update_data.py` mean that if TradingView rate-limits the websocket and a couple of exotic symbols fail to pull, those economies are skipped for that day and the global index is built from the remaining ones rather than crashing the whole run. Sub-builds for US Net Liquidity, Big Picture, Business Cycle, and FCI are each wrapped in fail-safes so a problem in any one section nulls that block but leaves the rest of the dashboard intact. The TradingView pulls run with three concurrent connections and exponential backoff with jitter on retry, which keeps the daily refresh comfortably below the rate-limit threshold.
