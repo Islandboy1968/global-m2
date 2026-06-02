@@ -25,6 +25,7 @@ Each pull is independent and fail-safe: a missing series nulls only itself. The
 """
 import datetime as dt
 from tv_pull import pull_series
+from fred import fred_series
 
 BARS = 470   # monthly, ~39y
 MIN_PTS = 24
@@ -45,7 +46,9 @@ INFL_SERIES = {
 
 def _pull_first(candidates, bars):
     """Try each TradingView symbol; return (sym, points) for the first with
-    >= MIN_PTS points, else (None, [])."""
+    >= MIN_PTS points. If TradingView's FRED mirror lacks a code (e.g. the CPI
+    component series), fall back to FRED's public CSV directly for any "FRED:<id>"
+    candidate. Returns (None, []) if nothing works."""
     for sym in candidates:
         try:
             pts = pull_series(sym, "1M", bars)
@@ -54,6 +57,17 @@ def _pull_first(candidates, bars):
             print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
         except Exception as e:
             print(f"    {sym}: {str(e)[:60]}")
+    # fallback: direct FRED CSV (works from the runner; covers TradingView gaps)
+    for sym in candidates:
+        if sym.startswith("FRED:"):
+            sid = sym.split(":", 1)[1]
+            try:
+                pts = fred_series(sid)
+                if pts and len(pts) >= MIN_PTS:
+                    print(f"    {sym}: via direct FRED CSV ({len(pts)} pts)")
+                    return f"FRED-CSV:{sid}", pts
+            except Exception as e:
+                print(f"    FRED-CSV:{sid}: {str(e)[:60]}")
     return None, []
 
 
