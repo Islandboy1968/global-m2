@@ -6,9 +6,14 @@ Written into data.js as TGL_DATA["cycle"]["fci"]. A leading conditions index tha
 runs ahead of the ISM by ~9 months. Reconstructed (not the proprietary GMI series)
 as the inverse of a standardised composite of three tightening inputs:
 
-  - 5-year Treasury yield   (TVC:US05Y)   year-on-year change, in points
+  - Treasury rates          (2y+5y+10y)   year-on-year change, in points, blended
   - US dollar               (TVC:DXY)     year-on-year % change
   - WTI crude oil           (TVC:USOIL)   year-on-year % change, half weight
+
+The rates leg is an equal-weight blend of the 2-year (TVC:US02Y), 5-year
+(TVC:US05Y) and 10-year (TVC:US10Y) yields — the 2y carries the Fed-policy snap,
+the 10y the term-premium/growth signal, the 5y the belly. The three YoY point
+changes are averaged into one rates series, then z-scored.
 
 Each input is z-scored, signed so that rising rates / rising dollar / rising oil
 all read as TIGHTER conditions, summed with oil at HALF weight (the "50% oil
@@ -25,7 +30,9 @@ import math
 from tv_pull import pull_series
 
 FCI_SYMBOLS = {
+    "y2":  "TVC:US02Y",   # 2-year Treasury yield, %
     "y5":  "TVC:US05Y",   # 5-year Treasury yield, %
+    "y10": "TVC:US10Y",   # 10-year Treasury yield, %
     "dxy": "TVC:DXY",     # US dollar index
     "oil": "TVC:USOIL",   # WTI crude
 }
@@ -68,10 +75,11 @@ def _smooth(vals, w=3):
     return out
 
 
-def _compose(ym, z5, zd, zo, ism, oil_weight):
-    """Build one FCI series (ISM units) at the given oil weight."""
+def _compose(ym, zr, zd, zo, ism, oil_weight):
+    """Build one FCI series (ISM units) at the given oil weight.
+    zr = blended rates z-score, zd = dollar z-score, zo = oil z-score."""
     denom = 2.0 + oil_weight
-    comp = [-(z5[i] + zd[i] + oil_weight * zo[i]) / denom for i in range(len(ym))]
+    comp = [-(zr[i] + zd[i] + oil_weight * zo[i]) / denom for i in range(len(ym))]
     comp = _smooth(comp, 3)
     isvals = [ism[k] for k in ym if k in ism]
     cvals = [c for c in comp if c is not None]
@@ -95,7 +103,8 @@ def build_fci_set(ism_series, bars=BARS):
     ism_series: list[{d:'YYYY-MM-DD', v:float}] (USBCOI)."""
     raw = {k: _to_ym(pull_series(sym, "1M", bars)) for k, sym in FCI_SYMBOLS.items()}
     ism = {r["d"][:7]: r["v"] for r in ism_series}
-    keys = sorted(set(raw["y5"]) & set(raw["dxy"]) & set(raw["oil"]))
+    keys = sorted(set(raw["y2"]) & set(raw["y5"]) & set(raw["y10"])
+                  & set(raw["dxy"]) & set(raw["oil"]))
 
     def yoy_diff(s, k):
         p = _shift(k, 12)
@@ -105,17 +114,19 @@ def build_fci_set(ism_series, bars=BARS):
         p = _shift(k, 12)
         return (s[k] / s[p] - 1) * 100 if (k in s and p in s and s[p]) else None
 
-    ym, d5, dd, do = [], [], [], []
+    ym, dr, dd, do = [], [], [], []
     for k in keys:
-        a, b, c = yoy_diff(raw["y5"], k), yoy_pct(raw["dxy"], k), yoy_pct(raw["oil"], k)
-        if None in (a, b, c):
+        # rates leg = equal-weight blend of 2y, 5y, 10y YoY point changes
+        r2, r5, r10 = yoy_diff(raw["y2"], k), yoy_diff(raw["y5"], k), yoy_diff(raw["y10"], k)
+        b, c = yoy_pct(raw["dxy"], k), yoy_pct(raw["oil"], k)
+        if None in (r2, r5, r10, b, c):
             continue
-        ym.append(k); d5.append(a); dd.append(b); do.append(c)
+        ym.append(k); dr.append((r2 + r5 + r10) / 3.0); dd.append(b); do.append(c)
 
-    z5, zd, zo = _zscore(d5), _zscore(dd), _zscore(do)
+    zr, zd, zo = _zscore(dr), _zscore(dd), _zscore(do)
     return {
-        "fci":       _compose(ym, z5, zd, zo, ism, OIL_WEIGHT),  # 50% oil blend (headline)
-        "fci_exoil": _compose(ym, z5, zd, zo, ism, 0.0),         # rates + dollar only
+        "fci":       _compose(ym, zr, zd, zo, ism, OIL_WEIGHT),  # 50% oil blend (headline)
+        "fci_exoil": _compose(ym, zr, zd, zo, ism, 0.0),         # rates + dollar only
     }
 
 

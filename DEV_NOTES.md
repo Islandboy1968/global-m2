@@ -49,7 +49,8 @@ title/descriptor are page-level and updated by `showTab()` on tab change. A foot
   fixed +9mo), the lead chain in one view. Reads `TGL_DATA.cycle` (ISM PMI + New Orders + fci +
   fci_exoil, monthly, from TradingView — FRED no longer carries ISM).
   The FCI is a **reconstruction** (not the proprietary GMI series): inverse of a standardised
-  composite of YoY change in the 5-year yield, the dollar, and oil at half weight, scaled to ISM;
+  composite of YoY change in a blended Treasury rates leg (2y+5y+10y, equal weight), the dollar,
+  and oil at half weight, scaled to ISM;
   it leads ISM ~9 months (corr ~0.37 full sample, ~0.65 since 2014). Copper was tested and dropped
   (coincident, peaks at zero lead). See `build_fci.py`.
 
@@ -172,7 +173,8 @@ checkout -> setup Python 3.11 -> `pip install -r requirements.txt` -> `python up
   all over the same `pull_series` websocket (no API key). The dashboard pairs ISM with the global
   liquidity YoY already in `TGL_DATA.series[].y`, so no liquidity series is duplicated.
 - `build_fci.py` — GMI Financial Conditions Index reconstruction via `build_fci_set()` (one TV pull,
-  returns both `fci` (50% oil blend) and `fci_exoil`). Inputs `TVC:US05Y`, `TVC:DXY`, `TVC:USOIL`,
+  returns both `fci` (50% oil blend) and `fci_exoil`). Inputs `TVC:US02Y`+`TVC:US05Y`+`TVC:US10Y`
+  (blended rates leg), `TVC:DXY`, `TVC:USOIL`,
   YoY change, z-scored, inverted tightening composite, smoothed, scaled to ISM mean/std. Called from
   `update_data.py` with the cycle ISM; stored as `cycle.fci` / `cycle.fci_exoil`.
 - `tv_pull.py` — TradingView websocket history puller (no API key).
