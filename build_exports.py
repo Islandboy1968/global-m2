@@ -27,6 +27,7 @@ one year prior. Each pull is independent and fail-safe.
 import datetime as dt
 import time
 from tv_pull import pull_series
+from fred import fred_first
 
 BARS = 400   # monthly: ~33y; the frontend windows it
 MIN_PTS = 24  # a candidate must return at least this many points to be accepted
@@ -36,14 +37,21 @@ EXP_SERIES = {
     "twexp_yy": (["ECONOMICS:TWEXPYY"], "1M", False),  # already YoY %  (semis proxy)
     "krexp_yy": (["ECONOMICS:KREXP"],   "1M", True),   # level -> YoY %
     "jpmto_yy": (["ECONOMICS:JPMTO"],   "1M", True),   # level -> YoY %
-    # OECD Composite Leading Indicator — a free global growth lead (FRED via TradingView).
-    # Sweden/World S&P-Global PMIs are paywalled and unavailable on the free feeds, so the
-    # OECD CLI stands in as the global cross-check. Try OECD-Total, then the broader
-    # OECD+Major-6 aggregate, then amplitude-adjusted / G7 fallbacks; _pull_first prefers a
-    # series that is still being updated (the OECD renamed/retired some codes in 2023-24).
-    "oecd_cli": (["FRED:OECDLOLITONOSTSAM", "FRED:ONMLOLITONOSTSAM",
-                  "FRED:OECDLOLITOAASTSAM", "FRED:G7LOLITONOSTSAM"], "1M", False),
 }
+
+# OECD Composite Leading Indicator — a free global growth lead, fetched DIRECTLY
+# from FRED (TradingView's FRED mirror doesn't carry the OECD CLI aggregates).
+# Sweden/World S&P-Global PMIs are paywalled, so the OECD CLI is the global cross-
+# check. Prefer a broad aggregate that's still updated; fred_first applies a
+# recency guard and falls through to the US CLI (confirmed current) as a backstop.
+OECD_CLI_CANDIDATES = [
+    "OECDLOLITONOSTSAM",   # OECD - Total, normalised
+    "ONMLOLITONOSTSAM",    # OECD + Major 6 NME, normalised (broadest)
+    "G7LOLITONOSTSAM",     # G7, normalised
+    "ONMLOLITOAASTSAM",    # OECD + Major 6, amplitude adjusted
+    "G7LOLITOAASTSAM",     # G7, amplitude adjusted
+    "USALOLITONOSTSAM",    # US, normalised — confirmed current backstop
+]
 
 
 def _iso(t):
@@ -115,6 +123,20 @@ def build_exports(bars=BARS):
                   f"{arr[-1]['d']} (last {arr[-1]['v']})")
         else:
             print(f"  exp/{key:10s}: EMPTY after transform ({sym})")
+
+    # OECD CLI — direct FRED CSV (bypasses TradingView's partial FRED mirror)
+    try:
+        sid, pts = fred_first(OECD_CLI_CANDIDATES)
+        arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)] if pts else None
+        out["oecd_cli"] = arr
+        if arr:
+            print(f"  exp/{'oecd_cli':10s}: {len(arr):4d} pts via FRED:{sid} | "
+                  f"{arr[0]['d']} -> {arr[-1]['d']} (last {arr[-1]['v']})")
+        else:
+            print(f"  exp/{'oecd_cli':10s}: NULL (no FRED candidate returned data)")
+    except Exception as e:
+        out["oecd_cli"] = None
+        print("  exp/oecd_cli FAILED:", str(e)[:80])
     return out
 
 
