@@ -6,9 +6,9 @@ Written into data.js as TGL_DATA["infl"]. The MIT inflation playbook in chart fo
 the "Inflation Dominoes" (commodity -> goods -> services sequencing), the second
 derivative of CPI (the Macro-Seasons inflation axis), the ex-shelter "real-time"
 read (shelter is the super-lagging caboose), and market inflation expectations.
-All series are free FRED data pulled directly from FRED's public CSV endpoint
-(fred.fred_series) — no API key, and no dependence on TradingView's partial
-FRED mirror.
+All series are free FRED data pulled through TradingView's FRED passthrough
+(pull_series with a "FRED:" symbol) — the same proven path the other tabs use.
+(FRED's own CSV endpoint 403s automated requests, so we go via TradingView.)
 
 Raw FRED series (monthly, seasonally adjusted index unless noted):
   CPIAUCSL          headline CPI            -> YoY %  (headline_yoy) + 12m accel (accel)
@@ -24,7 +24,9 @@ Each pull is independent and fail-safe: a missing series nulls only itself. The
 12-month change in the year-on-year rate.
 """
 import datetime as dt
-from fred import fred_series
+from tv_pull import pull_series
+
+BARS = 470   # monthly, ~39y
 
 # key: (FRED series id, needs_yoy)
 INFL_SERIES = {
@@ -75,12 +77,12 @@ def _accel(yoy_arr):
     return out
 
 
-def build_inflation():
+def build_inflation(bars=BARS):
     """Return the TGL_DATA['infl'] block: {key: [{d, v}, ...] or None}."""
     out = {}
     for key, (sym, needs_yoy) in INFL_SERIES.items():
         try:
-            pts = fred_series(sym)
+            pts = pull_series("FRED:" + sym, "1M", bars)
             if needs_yoy:
                 pts = _to_yoy(pts)
             arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
