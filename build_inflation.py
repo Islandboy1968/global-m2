@@ -27,17 +27,34 @@ import datetime as dt
 from tv_pull import pull_series
 
 BARS = 470   # monthly, ~39y
+MIN_PTS = 24
 
-# key: (FRED series id, needs_yoy)
+# key: (candidate TradingView symbols, needs_yoy). The CPI component codes aren't
+# all in TradingView's FRED mirror, so each carries SA then NSA fallbacks (YoY
+# strips the seasonality anyway). First candidate with usable history wins.
 INFL_SERIES = {
-    "headline_yoy":  ("CPIAUCSL",       True),
-    "core_yoy":      ("CPILFESL",       True),
-    "goods_yoy":     ("CUSR0000SACL1E", True),
-    "services_yoy":  ("CUSR0000SASLE",  True),
-    "exshelter_yoy": ("CUSR0000SA0L2",  True),
-    "be10":          ("T10YIE",         False),
-    "umich":         ("MICH",           False),
+    "headline_yoy":  (["FRED:CPIAUCSL"],                          True),
+    "core_yoy":      (["FRED:CPILFESL"],                          True),
+    "goods_yoy":     (["FRED:CUSR0000SACL1E", "FRED:CUUR0000SACL1E"], True),
+    "services_yoy":  (["FRED:CUSR0000SASLE",  "FRED:CUUR0000SASLE"],  True),
+    "exshelter_yoy": (["FRED:CUSR0000SA0L2",  "FRED:CUUR0000SA0L2"],  True),
+    "be10":          (["FRED:T10YIE"],                            False),
+    "umich":         (["FRED:MICH"],                              False),
 }
+
+
+def _pull_first(candidates, bars):
+    """Try each TradingView symbol; return (sym, points) for the first with
+    >= MIN_PTS points, else (None, [])."""
+    for sym in candidates:
+        try:
+            pts = pull_series(sym, "1M", bars)
+            if pts and len(pts) >= MIN_PTS:
+                return sym, pts
+            print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
+        except Exception as e:
+            print(f"    {sym}: {str(e)[:60]}")
+    return None, []
 
 
 def _iso(t):
@@ -80,18 +97,18 @@ def _accel(yoy_arr):
 def build_inflation(bars=BARS):
     """Return the TGL_DATA['infl'] block: {key: [{d, v}, ...] or None}."""
     out = {}
-    for key, (sym, needs_yoy) in INFL_SERIES.items():
+    for key, (candidates, needs_yoy) in INFL_SERIES.items():
         try:
-            pts = pull_series("FRED:" + sym, "1M", bars)
+            usym, pts = _pull_first(candidates, bars)
             if needs_yoy:
                 pts = _to_yoy(pts)
-            arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
+            arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)] if pts else None
             out[key] = arr or None
             if arr:
-                print(f"  infl/{key:13s}: {len(arr):4d} pts | {arr[0]['d']} -> "
+                print(f"  infl/{key:13s}: {len(arr):4d} pts via {usym} | {arr[0]['d']} -> "
                       f"{arr[-1]['d']} (last {arr[-1]['v']})")
             else:
-                print(f"  infl/{key:13s}: EMPTY")
+                print(f"  infl/{key:13s}: NULL")
         except Exception as e:
             out[key] = None
             print(f"  infl/{key:13s} FAILED:", str(e)[:80])

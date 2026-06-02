@@ -123,6 +123,11 @@
       <button data-tab="cycle">The Business Cycle</button>
       <button data-tab="glx">Global Leading Edge</button>
       <button data-tab="infl">Inflation</button>
+      <button data-tab="labor">Labour</button>
+      <button data-tab="rates">Rates &amp; Dollar</button>
+      <button data-tab="housing">Housing</button>
+      <button data-tab="credit">Credit</button>
+      <button data-tab="china">China</button>
     </div>
     <button class="toolbtn" id="copylayout" type="button" title="Copy your current locked layout — paste it back to publish it as the shared default everyone sees">Copy layout</button>
     <button class="toolbtn" id="revertlayout" type="button" title="Clear your local changes and snap every chart back to the published default layout">Revert to defaults</button>
@@ -501,6 +506,56 @@
     </div>
   </section>
 
+  <section id="tab-labor" class="pane" hidden>
+    <div id="labor-missing" class="note" hidden>Labour series unavailable &mdash; pipeline hasn't run or the FRED feeds were missing. Other tabs are unaffected.</div>
+    <div class="chead"><span class="cnum">01</span><h2>ISM vs unemployment rate</h2><span class="ccap" id="lblUnr">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>US Unemployment Rate % (RHS, inverted)</span></div><div class="chartbox"><canvas id="lblUnrC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Unemployment lags the ISM by ~6 months &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs overtime hours</h2><span class="ccap" id="lblOt">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Avg weekly overtime hours, mfg YoY% (RHS)</span></div><div class="chartbox"><canvas id="lblOtC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Overtime hours lead the employment cycle &mdash; firms adjust hours before headcount &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>ISM vs temp-help services</h2><span class="ccap" id="lblTmp">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Temporary-help services YoY% (RHS)</span></div><div class="chartbox"><canvas id="lblTmpC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Temp help leads payrolls &mdash; the flexible margin firms add first &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">04</span><h2>Unemployment vs JOLTS hires</h2><span class="ccap" id="lblJolts">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>US Unemployment Rate %</span><span class="lg pink"><i class="sw pnk"></i>JOLTS hires (RHS)</span></div><div class="chartbox"><canvas id="lblJoltsC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">JOLTS hires lead the unemployment rate &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">05</span><h2>ISM vs initial jobless claims</h2><span class="ccap" id="lblClaims">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Initial jobless claims (RHS, inverted)</span></div><div class="chartbox"><canvas id="lblClaimsC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Claims (inverted) track the cycle &middot; FRED (DoL) &middot; Global Macro Investor</div></div>
+  </section>
+
+  <section id="tab-rates" class="pane" hidden>
+    <div id="rates-missing" class="note" hidden>Rates &amp; dollar series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
+    <div class="chead"><span class="cnum">01</span><h2>ISM vs 10-year yield (rate of change)</h2><span class="ccap" id="rtY10">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>US 10y yield YoY change, z-score (RHS, inverted)</span></div><div class="chartbox"><canvas id="rtY10C"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">The rate-of-change in 10y yields leads the ISM by ~15 months &middot; TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs oil</h2><span class="ccap" id="rtOil">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>WTI crude oil YoY% (RHS)</span></div><div class="chartbox"><canvas id="rtOilC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Oil YoY &mdash; the late-cycle inflation/recession trigger to watch &middot; TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>US net liquidity vs the dollar</h2><span class="ccap" id="rtDxy">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>US net liquidity ($T)</span><span class="lg pink"><i class="sw pnk"></i>US Dollar Index, DXY (RHS, inverted)</span></div><div class="chartbox"><canvas id="rtDxyC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Rising dollar liquidity caps the dollar &middot; FRED, TradingView &middot; Global Macro Investor</div></div>
+  </section>
+
+  <section id="tab-housing" class="pane" hidden>
+    <div id="housing-missing" class="note" hidden>Housing series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
+    <div class="chead"><span class="cnum">01</span><h2>Homebuilders vs mortgage rate</h2><span class="ccap" id="hsXhb">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>Homebuilders ETF (XHB)</span><span class="lg pink"><i class="sw pnk"></i>30y mortgage rate % (RHS, inverted)</span></div><div class="chartbox"><canvas id="hsXhbC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Housing reacts directly to rates &mdash; mortgage rate-of-change leads builders by ~3 months &middot; FRED, TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs building permits</h2><span class="ccap" id="hsPerm">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Building permits YoY% (RHS)</span></div><div class="chartbox"><canvas id="hsPermC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Housing is one of the most reliable cycle leads &middot; FRED (Census) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>ISM vs new home sales</h2><span class="ccap" id="hsSales">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>New single-family home sales YoY% (RHS)</span></div><div class="chartbox"><canvas id="hsSalesC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">New home sales &mdash; a rate-sensitive forward read on demand &middot; FRED (Census) &middot; Global Macro Investor</div></div>
+  </section>
+
+  <section id="tab-credit" class="pane" hidden>
+    <div id="credit-missing" class="note" hidden>Credit series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
+    <div class="chead"><span class="cnum">01</span><h2>ISM vs bank lending standards</h2><span class="ccap" id="crStd">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>C&amp;I lending standards, net % tightening (RHS, inverted)</span></div><div class="chartbox"><canvas id="crStdC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Senior Loan Officer Survey &mdash; easing standards (inverted) lead growth by ~9 months &middot; FRED (Fed SLOOS) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>ISM vs C&amp;I loan demand</h2><span class="ccap" id="crDem">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>C&amp;I loan demand, net % stronger (RHS)</span></div><div class="chartbox"><canvas id="crDemC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Loan demand turning up confirms the credit channel is open &middot; FRED (Fed SLOOS) &middot; Global Macro Investor</div></div>
+  </section>
+
+  <section id="tab-china" class="pane" hidden>
+    <div id="china-missing" class="note" hidden>China series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
+    <div class="chead"><span class="cnum">01</span><h2>PBoC balance sheet vs China 10-year</h2><span class="ccap" id="cnPboc">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>PBoC balance-sheet assets</span><span class="lg pink"><i class="sw pnk"></i>China 10-year yield % (RHS)</span></div><div class="chartbox"><canvas id="cnPbocC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Rates fell first; the next leg is PBoC balance-sheet expansion &middot; TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>PBoC balance sheet vs Bitcoin</h2><span class="ccap" id="cnBtc">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>PBoC balance-sheet assets</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div><div class="chartbox"><canvas id="cnBtcC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">PBoC liquidity has led Bitcoin's major moves since 2013 &middot; TradingView &middot; Global Macro Investor</div></div>
+  </section>
+
   <div class="foot"><span>GMI &middot; The Everything Code</span><span id="footdate">&mdash;</span></div>
 
 </div>
@@ -522,6 +577,11 @@ let READY=false;
 const ALL_CHARTS=[];
 let descrGlx="Global leading-edge growth — export-led economies and the compute/semiconductor cycle that front-run the ISM · TradingView ECONOMICS · monthly";
 let descrInfl="The MIT inflation playbook — the dominoes (goods → services), the second derivative of CPI, the ex-shelter read and market expectations · FRED · monthly";
+let descrLabor="The labour cycle — overtime hours and temp help (which lead) versus unemployment and claims (which lag the ISM) · FRED · monthly";
+let descrRates="Rates & the dollar — the 10y rate-of-change that leads the ISM, oil, and dollar liquidity · TradingView, FRED · monthly";
+let descrHousing="Housing — the most rate-sensitive lead: homebuilders vs mortgage rates, permits and new home sales · FRED, TradingView · monthly";
+let descrCredit="Credit — bank lending standards and loan demand (SLOOS), the fuel for the business cycle · FRED · quarterly";
+let descrChina="China — PBoC balance sheet versus China rates and Bitcoin, the global liquidity swing factor · TradingView · monthly";
 let LOCKS={};
 try{
   const DEF = window.TEC_DEFAULT_LOCKS || {};   // published baseline shipped in the repo (data/layout.js)
@@ -1115,6 +1175,95 @@ const INFL = (function(){
   return {charts};
 })();
 
+// ===================== generic simple-tab builder (dual-axis, lead control) =====================
+// specs: [{cv, left:[{d,v}], right:[{d,v}], lf, rf, reverse, pairLbl, capId, def, start}]
+// left renders immediately on the y axis; right is the lead asset shifted by controlsFwd on y1.
+function buildSimpleTab(missingId, specs){
+  const P = arr => (arr||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
+  function hidePanel(cv){ const panel=cv&&cv.closest(".panel"); if(!panel) return;
+    const head=panel.previousElementSibling; panel.style.display="none";
+    if(head && head.classList.contains("chead")) head.style.display="none"; }
+  const charts=[]; const built=[]; let any=false;
+  specs.forEach(s=>{
+    if(!s.cv) return;
+    if(!s.left || !s.left.length){ hidePanel(s.cv); return; }
+    any=true;
+    const chart=overlayLin(s.cv, P(s.left), [], s.lf, !!s.reverse, s.rf);
+    chart.$auto=false; charts.push(chart); built.push({s, chart});
+  });
+  built.forEach(({s,chart})=>{ attach(s.cv, chart);
+    controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def}); });
+  built.forEach(({s,chart})=>{ const [lo,hi]=xExtent(chart);
+    chart.options.scales.x.min=Math.max(lo, Date.parse(s.start)); chart.options.scales.x.max=hi; fitY(chart);
+    [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on")); });
+  if(!any){ const n=document.getElementById(missingId); if(n) n.hidden=false; }
+  return {charts};
+}
+const F0=v=>(v>0?"+":"")+Math.round(v)+"%", F1=v=>(v>0?"+":"")+v.toFixed(1)+"%";
+const FI=v=>Math.round(v), FZ=v=>v.toFixed(1), FNUM=v=>Math.round(v);
+const FM=v=>(v/1000).toFixed(1)+"M", FK=v=>Math.round(v/1000)+"k";
+
+// ===================== Labor tab =====================
+const LABOR = (function(){
+  const C=DATA&&DATA.cycle, L=DATA&&DATA.labor;
+  if(!L){ const n=document.getElementById("labor-missing"); if(n) n.hidden=false; return null; }
+  const ism=C&&C.ism;
+  return buildSimpleTab("labor-missing", [
+    {cv:lblUnrC,    left:ism,      right:L.unrate,   lf:FI, rf:F1, reverse:true, pairLbl:"ISM vs unemployment (inverted)", capId:"lblUnr",    def:0, start:"2000-01-01"},
+    {cv:lblOtC,     left:ism,      right:L.ot_yoy,   lf:FI, rf:F0,               pairLbl:"ISM vs overtime hours YoY",      capId:"lblOt",     def:0, start:"2000-01-01"},
+    {cv:lblTmpC,    left:ism,      right:L.temp_yoy, lf:FI, rf:F0,               pairLbl:"ISM vs temp-help YoY",           capId:"lblTmp",    def:0, start:"2000-01-01"},
+    {cv:lblJoltsC,  left:L.unrate, right:L.jolts,    lf:F1, rf:FM,               pairLbl:"Unemployment vs JOLTS hires",    capId:"lblJolts",  def:0, start:"2002-01-01"},
+    {cv:lblClaimsC, left:ism,      right:L.claims,   lf:FI, rf:FK, reverse:true, pairLbl:"ISM vs initial claims (inverted)", capId:"lblClaims", def:0, start:"2000-01-01"}
+  ]);
+})();
+
+// ===================== Rates & Dollar tab =====================
+const RATES = (function(){
+  const C=DATA&&DATA.cycle, R=DATA&&DATA.rates;
+  if(!R){ const n=document.getElementById("rates-missing"); if(n) n.hidden=false; return null; }
+  const ism=C&&C.ism;
+  const usLiq=((DATA.us&&DATA.us.series)||[]).map(r=>({d:r.d, v:r.vn}));
+  return buildSimpleTab("rates-missing", [
+    {cv:rtY10C, left:ism,   right:R.y10_yoy_z, lf:FI,   rf:FZ, reverse:true, pairLbl:"10y yield YoY (z) leads ISM (inv.)", capId:"rtY10", def:456, start:"1990-01-01"},
+    {cv:rtOilC, left:ism,   right:R.oil_yoy,   lf:FI,   rf:F0,               pairLbl:"ISM vs oil YoY",                    capId:"rtOil", def:0,   start:"2000-01-01"},
+    {cv:rtDxyC, left:usLiq, right:R.dxy,       lf:FNUM, rf:FNUM, reverse:true, pairLbl:"US net liquidity vs DXY (inverted)", capId:"rtDxy", def:0,  start:"2010-01-01"}
+  ]);
+})();
+
+// ===================== Housing tab =====================
+const HOUSING = (function(){
+  const C=DATA&&DATA.cycle, H=DATA&&DATA.housing;
+  if(!H){ const n=document.getElementById("housing-missing"); if(n) n.hidden=false; return null; }
+  const ism=C&&C.ism;
+  return buildSimpleTab("housing-missing", [
+    {cv:hsXhbC,   left:H.xhb, right:H.mortgage,     lf:FNUM, rf:F1, reverse:true, pairLbl:"Homebuilders vs mortgage rate (inverted)", capId:"hsXhb",   def:0, start:"2006-01-01"},
+    {cv:hsPermC,  left:ism,   right:H.permits_yoy,  lf:FI,   rf:F0,               pairLbl:"ISM vs building permits YoY",            capId:"hsPerm",  def:0, start:"2000-01-01"},
+    {cv:hsSalesC, left:ism,   right:H.newsales_yoy, lf:FI,   rf:F0,               pairLbl:"ISM vs new home sales YoY",              capId:"hsSales", def:0, start:"2000-01-01"}
+  ]);
+})();
+
+// ===================== Credit tab =====================
+const CREDIT = (function(){
+  const C=DATA&&DATA.cycle, K=DATA&&DATA.credit;
+  if(!K){ const n=document.getElementById("credit-missing"); if(n) n.hidden=false; return null; }
+  const ism=C&&C.ism;
+  return buildSimpleTab("credit-missing", [
+    {cv:crStdC, left:ism, right:K.ci_standards, lf:FI, rf:FNUM, reverse:true, pairLbl:"C&I lending standards (inv.) lead ISM", capId:"crStd", def:270, start:"1995-01-01"},
+    {cv:crDemC, left:ism, right:K.ci_demand,    lf:FI, rf:FNUM,               pairLbl:"ISM vs C&I loan demand",              capId:"crDem", def:0,   start:"1995-01-01"}
+  ]);
+})();
+
+// ===================== China tab =====================
+const CHINA = (function(){
+  const H=DATA&&DATA.china;
+  if(!H){ const n=document.getElementById("china-missing"); if(n) n.hidden=false; return null; }
+  const btcV=((DATA.btc)||[]).map(r=>({d:r.d, v:r.p}));
+  return buildSimpleTab("china-missing", [
+    {cv:cnPbocC, left:H.pboc, right:H.cn10y, lf:FNUM, rf:F1,   pairLbl:"PBoC balance sheet vs China 10y", capId:"cnPboc", def:0, start:"2010-01-01"},
+    {cv:cnBtcC,  left:H.pboc, right:btcV,    lf:FNUM, rf:FNUM, pairLbl:"PBoC balance sheet vs Bitcoin",   capId:"cnBtc",  def:0, start:"2014-01-01"}
+  ]);
+})();
+
 // ===================== per-chart lock / persist (each chart independent, all tabs) =====================
 function snapshot(c){
   const o=c.options.scales, ext=xExtent(c);
@@ -1191,11 +1340,11 @@ READY=true;
 })();
 
 // ===================== tab switching =====================
-const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big"), cycle:document.getElementById("tab-cycle"), glx:document.getElementById("tab-glx"), infl:document.getElementById("tab-infl")};
+const panes={global:document.getElementById("tab-global"), us:document.getElementById("tab-us"), big:document.getElementById("tab-big"), cycle:document.getElementById("tab-cycle"), glx:document.getElementById("tab-glx"), infl:document.getElementById("tab-infl"), labor:document.getElementById("tab-labor"), rates:document.getElementById("tab-rates"), housing:document.getElementById("tab-housing"), credit:document.getElementById("tab-credit"), china:document.getElementById("tab-china")};
 const secTitle=document.getElementById("secTitle"), secDescr=document.getElementById("secDescr");
-const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}, glx:{t:"Global Leading Edge"}, infl:{t:"Inflation"}};
-const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle, glx:()=>descrGlx, infl:()=>descrInfl};
-const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE, glx:GLX, infl:INFL};
+const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}, glx:{t:"Global Leading Edge"}, infl:{t:"Inflation"}, labor:{t:"Labour"}, rates:{t:"Rates & Dollar"}, housing:{t:"Housing"}, credit:{t:"Credit"}, china:{t:"China"}};
+const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle, glx:()=>descrGlx, infl:()=>descrInfl, labor:()=>descrLabor, rates:()=>descrRates, housing:()=>descrHousing, credit:()=>descrCredit, china:()=>descrChina};
+const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE, glx:GLX, infl:INFL, labor:LABOR, rates:RATES, housing:HOUSING, credit:CREDIT, china:CHINA};
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
   secTitle.textContent = TABMETA[t].t;
@@ -1212,6 +1361,7 @@ document.getElementById("tabnav").addEventListener("click", e=>{
 secDescr.textContent=descrGlobal;
 
 window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE; window.GLX=GLX; window.INFL=INFL;
+window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CREDIT; window.CHINA=CHINA;
 
 // ===================== China M2 override staleness banner =====================
 // The build computes whether today is past the expected next PBoC release date

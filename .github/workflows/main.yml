@@ -27,6 +27,10 @@ jobs:
       - name: Run pipeline
         run: python update_data.py
 
+      - name: Data health report
+        if: always()
+        run: python verify_data.py || true
+
       - name: Commit refreshed data
         run: |
           git config user.name "github-actions[bot]"
