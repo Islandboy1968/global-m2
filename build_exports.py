@@ -15,8 +15,7 @@ Series (key -> candidate symbols, resolution, transform):
   twexp_yy   Taiwan Exports YoY %, monthly        (semis proxy anchor)
   krexp_yy   South Korea Exports, monthly -> YoY %
   jpmto_yy   Japan Machine Tool Orders, monthly  -> YoY %
-  sweden_pmi Sweden Manufacturing PMI, monthly    (diffusion index)
-  world_pmi  World Manufacturing PMI, monthly     (diffusion index)
+  oecd_cli   OECD Composite Leading Indicator, monthly (free global growth lead, FRED)
 
 The TradingView ECONOMICS symbol codes for some series are not uniformly
 documented, so each series carries a list of CANDIDATE symbols; the builder
@@ -26,6 +25,7 @@ which one won). The *_yy ECONOMICS series are published already as year-on-year
 one year prior. Each pull is independent and fail-safe.
 """
 import datetime as dt
+import time
 from tv_pull import pull_series
 
 BARS = 400   # monthly: ~33y; the frontend windows it
@@ -33,13 +33,16 @@ MIN_PTS = 24  # a candidate must return at least this many points to be accepted
 
 # key: (candidate_symbols, resolution, needs_yoy)
 EXP_SERIES = {
-    "twexp_yy":   (["ECONOMICS:TWEXPYY"],                        "1M", False),  # already YoY %
-    "krexp_yy":   (["ECONOMICS:KREXP"],                          "1M", True),   # level -> YoY %
-    "jpmto_yy":   (["ECONOMICS:JPMTO"],                          "1M", True),   # level -> YoY %
-    "sweden_pmi": (["ECONOMICS:SEMPMI", "ECONOMICS:SWMPMI",
-                    "ECONOMICS:SEMANPMI", "ECONOMICS:SEPMI"],    "1M", False),  # diffusion index
-    "world_pmi":  (["ECONOMICS:WWMPMI", "ECONOMICS:WMPMI",
-                    "ECONOMICS:001MPMI", "ECONOMICS:WLDMPMI"],   "1M", False),  # diffusion index
+    "twexp_yy": (["ECONOMICS:TWEXPYY"], "1M", False),  # already YoY %  (semis proxy)
+    "krexp_yy": (["ECONOMICS:KREXP"],   "1M", True),   # level -> YoY %
+    "jpmto_yy": (["ECONOMICS:JPMTO"],   "1M", True),   # level -> YoY %
+    # OECD Composite Leading Indicator — a free global growth lead (FRED via TradingView).
+    # Sweden/World S&P-Global PMIs are paywalled and unavailable on the free feeds, so the
+    # OECD CLI stands in as the global cross-check. Try OECD-Total, then the broader
+    # OECD+Major-6 aggregate, then amplitude-adjusted / G7 fallbacks; _pull_first prefers a
+    # series that is still being updated (the OECD renamed/retired some codes in 2023-24).
+    "oecd_cli": (["FRED:OECDLOLITONOSTSAM", "FRED:ONMLOLITONOSTSAM",
+                  "FRED:OECDLOLITOAASTSAM", "FRED:G7LOLITONOSTSAM"], "1M", False),
 }
 
 
@@ -67,18 +70,31 @@ def _to_yoy(points):
     return out
 
 
+RECENT_SECS = 400 * 86400   # a candidate is "current" if its last point is within ~13 months
+
 def _pull_first(candidates, res):
-    """Try each candidate symbol; return (symbol, points) for the first with
-    >= MIN_PTS points, else (None, [])."""
+    """Try each candidate symbol; return (symbol, points). Prefer the first
+    candidate that has >= MIN_PTS points AND is still being updated (last point
+    within RECENT_SECS). If none are current, fall back to the first with enough
+    points. Returns (None, []) if nothing usable."""
+    now = time.time()
+    fallback = (None, [])
     for sym in candidates:
         try:
             pts = pull_series(sym, res, BARS)
             if pts and len(pts) >= MIN_PTS:
-                return sym, pts
-            print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
+                if not fallback[1]:
+                    fallback = (sym, pts)
+                last_t = max(t for t, _ in pts)
+                if now - last_t <= RECENT_SECS:
+                    return sym, pts
+                print(f"    {sym}: {len(pts)} pts but stale "
+                      f"(last {time.strftime('%Y-%m', time.gmtime(last_t))}), trying next")
+            else:
+                print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
         except Exception as e:
             print(f"    {sym}: {str(e)[:60]}")
-    return None, []
+    return fallback
 
 
 def build_exports(bars=BARS):

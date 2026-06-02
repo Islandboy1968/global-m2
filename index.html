@@ -445,20 +445,12 @@
       <div class="src">An old-school coincident barometer of real global manufacturing demand &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">04</span><h2>ISM vs Sweden manufacturing PMI</h2><span class="ccap" id="glxSwe">&mdash;</span></div>
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs OECD CLI (global)</h2><span class="ccap" id="glxOecd">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Sweden Manufacturing PMI</span></div>
-      <div class="chartbox"><canvas id="glxSweC"></canvas></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>OECD Composite Leading Indicator (RHS)</span></div>
+      <div class="chartbox"><canvas id="glxOecdC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
-      <div class="src">Sweden tends to lead &mdash; a small, export-sensitive economy at the front of the cycle &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
-    </div>
-
-    <div class="chead"><span class="cnum">05</span><h2>ISM vs World manufacturing PMI</h2><span class="ccap" id="glxWld">&mdash;</span></div>
-    <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>World Manufacturing PMI</span></div>
-      <div class="chartbox"><canvas id="glxWldC"></canvas></div>
-      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
-      <div class="src">J.P.Morgan / S&amp;P Global world manufacturing PMI &middot; the global cross-check on the US ISM &middot; TradingView ECONOMICS &middot; Global Macro Investor</div>
+      <div class="src">OECD Composite Leading Indicator (~100 = trend) &middot; a free global growth lead, the cross-check on the US ISM &middot; FRED (OECD) via TradingView &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -1002,25 +994,24 @@ const GLX = (function(){
   const ism = P(C.ism);
   const fmtIsm = v=>Math.round(v);
   const fmtPctS = v=>(v>0?"+":"")+Math.round(v)+"%";
+  const fmtIdx = v=>Math.round(v);
   const charts=[];
   // hide a chart's panel + its preceding header when its series is missing
   function hidePanel(cv){ const panel=cv.closest(".panel"); if(!panel) return;
     const head=panel.previousElementSibling; panel.style.display="none";
     if(head && head.classList.contains("chead")) head.style.display="none"; }
-  // [canvas, series, kind('lin' dual-axis YoY | 'same' shared-axis PMI), pairLbl, capId, defaultLead, startIso]
+  // [canvas, series, rightFmt, pairLbl, capId, defaultLead, startIso] — all dual-axis (RHS)
   const specs=[
-    [glxSemiC, E.twexp_yy,   "lin",  "Taiwan exports (semis proxy) leads ISM", "glxSemi", 120, "2005-01-01"],
-    [glxKorC,  E.krexp_yy,   "lin",  "South Korea exports leads ISM",          "glxKor",  120, "2005-01-01"],
-    [glxJpnC,  E.jpmto_yy,   "lin",  "Japan machine tool orders vs ISM",       "glxJpn",  0,   "2005-01-01"],
-    [glxSweC,  E.sweden_pmi, "same", "Sweden manufacturing PMI vs ISM",        "glxSwe",  0,   "2005-01-01"],
-    [glxWldC,  E.world_pmi,  "same", "World manufacturing PMI vs ISM",         "glxWld",  0,   "2005-01-01"]
+    [glxSemiC, E.twexp_yy, fmtPctS, "Taiwan exports (semis proxy) leads ISM", "glxSemi", 120, "2005-01-01"],
+    [glxKorC,  E.krexp_yy, fmtPctS, "South Korea exports leads ISM",          "glxKor",  120, "2005-01-01"],
+    [glxJpnC,  E.jpmto_yy, fmtPctS, "Japan machine tool orders vs ISM",       "glxJpn",  0,   "2005-01-01"],
+    [glxOecdC, E.oecd_cli, fmtIdx,  "OECD CLI leads ISM",                     "glxOecd", 180, "2005-01-01"]
   ];
   const built=[];
-  specs.forEach(([cv, ser, kind, pairLbl, capId, def, startIso])=>{
+  specs.forEach(([cv, ser, rfmt, pairLbl, capId, def, startIso])=>{
     if(!cv) return;
     if(!ser || !ser.length){ hidePanel(cv); return; }
-    const chart = kind==="same" ? overlaySame(cv, ism, [], fmtIsm)
-                                : overlayLin(cv, ism, [], fmtIsm, false, fmtPctS);
+    const chart = overlayLin(cv, ism, [], fmtIsm, false, rfmt);
     chart.$auto=false; charts.push(chart);
     built.push({chart, cv, asset:ser, pairLbl, leadEl:document.getElementById(capId), def, startIso});
   });
