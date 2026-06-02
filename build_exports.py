@@ -11,30 +11,35 @@ billings are not available on the public feeds). Each series is paired on the
 dashboard against the ISM held in TGL_DATA["cycle"]["ism"] (or the World
 Manufacturing PMI), with an adjustable lead.
 
-Series (key: symbol, resolution, transform):
-  twexp_yy   ECONOMICS:TWEXPYY  Taiwan Exports YoY %, monthly        (semis proxy anchor)
-  krexp_yy   ECONOMICS:KREXPYY  South Korea Exports YoY %, monthly
-  jpmto_yy   ECONOMICS:JPMTO    Japan Machine Tool Orders, monthly  -> YoY %
-  sweden_pmi ECONOMICS:SEMPMI   Sweden Manufacturing PMI, monthly    (diffusion index)
-  world_pmi  ECONOMICS:WWMPMI   World Manufacturing PMI, monthly     (diffusion index)
+Series (key -> candidate symbols, resolution, transform):
+  twexp_yy   Taiwan Exports YoY %, monthly        (semis proxy anchor)
+  krexp_yy   South Korea Exports, monthly -> YoY %
+  jpmto_yy   Japan Machine Tool Orders, monthly  -> YoY %
+  sweden_pmi Sweden Manufacturing PMI, monthly    (diffusion index)
+  world_pmi  World Manufacturing PMI, monthly     (diffusion index)
 
-The *_yy ECONOMICS series are published already as year-on-year %, so they are
-emitted as-is. Level series (machine tool orders) are converted to YoY here by
-matching the same calendar month one year prior. Each pull is independent and
-fail-safe: a missing/renamed symbol nulls only its own series, never the block.
+The TradingView ECONOMICS symbol codes for some series are not uniformly
+documented, so each series carries a list of CANDIDATE symbols; the builder
+tries them in order and keeps the first that returns usable history (logging
+which one won). The *_yy ECONOMICS series are published already as year-on-year
+%; level series are converted to YoY here by matching the same calendar month
+one year prior. Each pull is independent and fail-safe.
 """
 import datetime as dt
 from tv_pull import pull_series
 
 BARS = 400   # monthly: ~33y; the frontend windows it
+MIN_PTS = 24  # a candidate must return at least this many points to be accepted
 
-# key: (symbol, resolution, needs_yoy)
+# key: (candidate_symbols, resolution, needs_yoy)
 EXP_SERIES = {
-    "twexp_yy":   ("ECONOMICS:TWEXPYY", "1M", False),  # already YoY %  (semis proxy)
-    "krexp_yy":   ("ECONOMICS:KREXPYY", "1M", False),  # already YoY %
-    "jpmto_yy":   ("ECONOMICS:JPMTO",   "1M", True),   # level -> YoY %
-    "sweden_pmi": ("ECONOMICS:SEMPMI",  "1M", False),  # diffusion index (level)
-    "world_pmi":  ("ECONOMICS:WWMPMI",  "1M", False),  # diffusion index (level)
+    "twexp_yy":   (["ECONOMICS:TWEXPYY"],                        "1M", False),  # already YoY %
+    "krexp_yy":   (["ECONOMICS:KREXP"],                          "1M", True),   # level -> YoY %
+    "jpmto_yy":   (["ECONOMICS:JPMTO"],                          "1M", True),   # level -> YoY %
+    "sweden_pmi": (["ECONOMICS:SEMPMI", "ECONOMICS:SWMPMI",
+                    "ECONOMICS:SEMANPMI", "ECONOMICS:SEPMI"],    "1M", False),  # diffusion index
+    "world_pmi":  (["ECONOMICS:WWMPMI", "ECONOMICS:WMPMI",
+                    "ECONOMICS:001MPMI", "ECONOMICS:WLDMPMI"],   "1M", False),  # diffusion index
 }
 
 
@@ -62,24 +67,38 @@ def _to_yoy(points):
     return out
 
 
+def _pull_first(candidates, res):
+    """Try each candidate symbol; return (symbol, points) for the first with
+    >= MIN_PTS points, else (None, [])."""
+    for sym in candidates:
+        try:
+            pts = pull_series(sym, res, BARS)
+            if pts and len(pts) >= MIN_PTS:
+                return sym, pts
+            print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
+        except Exception as e:
+            print(f"    {sym}: {str(e)[:60]}")
+    return None, []
+
+
 def build_exports(bars=BARS):
     """Return the TGL_DATA['exp'] block: {key: [{d, v}, ...] or None}."""
     out = {}
-    for key, (sym, res, needs_yoy) in EXP_SERIES.items():
-        try:
-            pts = pull_series(sym, res, bars)
-            if needs_yoy:
-                pts = _to_yoy(pts)
-            arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
-            out[key] = arr or None
-            if arr:
-                print(f"  exp/{key:10s}: {len(arr):4d} pts | {arr[0]['d']} -> "
-                      f"{arr[-1]['d']} (last {arr[-1]['v']})")
-            else:
-                print(f"  exp/{key:10s}: EMPTY")
-        except Exception as e:
+    for key, (candidates, res, needs_yoy) in EXP_SERIES.items():
+        sym, pts = _pull_first(candidates, res)
+        if not pts:
             out[key] = None
-            print(f"  exp/{key:10s} FAILED:", str(e)[:80])
+            print(f"  exp/{key:10s}: NULL (no candidate returned data)")
+            continue
+        if needs_yoy:
+            pts = _to_yoy(pts)
+        arr = [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
+        out[key] = arr or None
+        if arr:
+            print(f"  exp/{key:10s}: {len(arr):4d} pts via {sym} | {arr[0]['d']} -> "
+                  f"{arr[-1]['d']} (last {arr[-1]['v']})")
+        else:
+            print(f"  exp/{key:10s}: EMPTY after transform ({sym})")
     return out
 
 
