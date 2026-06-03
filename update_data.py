@@ -324,25 +324,50 @@ def build():
     except Exception:
         pass
 
+    stale = set()   # blocks served from carry-forward (the live fetch failed this run)
+
     if not us and prev.get("us"):
         print("  US: build empty this run — carrying forward previous data")
-        us = prev["us"]
+        us = prev["us"]; stale.add("us")
 
     if isinstance(big, dict) and prev.get("big"):
         for _k, _v in list(big.items()):
             if (not _v) and prev["big"].get(_k):
-                big[_k] = prev["big"][_k]
+                big[_k] = prev["big"][_k]; stale.add("big")
                 print(f"  BIG.{_k}: empty this run — carried forward previous data")
     elif (not big) and prev.get("big"):
         print("  BIG: build empty this run — carrying forward previous data")
-        big = prev["big"]
+        big = prev["big"]; stale.add("big")
+
+    # Per-block freshness for the dashboard staleness badge: the latest
+    # observation date in each block, and whether it was carried forward (stale)
+    # because the live fetch failed. Keyed by data block; the frontend maps
+    # each tab to its block.
+    def _latest_date(blk):
+        ds = []
+        def scan(x):
+            if isinstance(x, list):
+                for r in x:
+                    if isinstance(r, dict) and r.get("d"):
+                        ds.append(r["d"])
+            elif isinstance(x, dict):
+                for v in x.values():
+                    scan(v)
+        scan(blk)
+        return max(ds) if ds else None
+
+    blocks = {"series": series, "us": us, "big": big, "cycle": cycle, "exp": exp,
+              "infl": infl, "labor": labor, "rates": rates, "housing": housing,
+              "credit": credit, "china": china}
+    freshness = {name: {"as_of": _latest_date(blk), "stale": name in stale}
+                 for name, blk in blocks.items() if blk}
 
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
             "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
             "housing": housing, "credit": credit, "china": china,
-            "china_override": china_override}
+            "china_override": china_override, "freshness": freshness}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)

@@ -37,6 +37,10 @@
   .titlewrap{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin:26px 0 18px}
   .kicker{font-family:"DM Mono",monospace;font-weight:500;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--pink);margin-bottom:7px}
   .h1title{font-family:"Teko",sans-serif;font-weight:400;font-size:40px;line-height:.95;color:var(--ink)}
+  .freshbadge{display:inline-flex;align-items:center;gap:6px;font-family:"DM Mono",monospace;font-size:11px;font-weight:500;letter-spacing:.4px;padding:3px 10px;border-radius:999px;margin-top:9px;border:1px solid var(--line);color:var(--mut);background:var(--panel);cursor:default}
+  .freshbadge::before{content:"";width:7px;height:7px;border-radius:50%;background:#34c759;flex:none}
+  .freshbadge.stale{color:#8a5a00;background:#fff6e3;border-color:#efc169}
+  .freshbadge.stale::before{background:#f5a623}
   .descr{font-family:"DM Mono",monospace;font-weight:400;font-size:12px;line-height:1.55;color:var(--mut);text-align:right;max-width:340px}
   .tabrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
   .tabs{display:flex;gap:8px}
@@ -121,6 +125,7 @@
     <div>
       <div class="kicker">The Everything Code</div>
       <div class="h1title" id="secTitle">Global Liquidity</div>
+      <span class="freshbadge" id="freshbadge" hidden></span>
     </div>
     <div class="descr" id="secDescr">&mdash;</div>
   </div>
@@ -1346,10 +1351,29 @@ const secTitle=document.getElementById("secTitle"), secDescr=document.getElement
 const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The Big Picture"}, cycle:{t:"The Business Cycle"}, glx:{t:"Global Leading Edge"}, infl:{t:"Inflation"}, labor:{t:"Labour"}, rates:{t:"Rates & Dollar"}, housing:{t:"Housing"}, credit:{t:"Credit"}, china:{t:"China"}};
 const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle, glx:()=>descrGlx, infl:()=>descrInfl, labor:()=>descrLabor, rates:()=>descrRates, housing:()=>descrHousing, credit:()=>descrCredit, china:()=>descrChina};
 const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE, glx:GLX, infl:INFL, labor:LABOR, rates:RATES, housing:HOUSING, credit:CREDIT, china:CHINA};
+
+// Per-tab data-freshness badge. The pipeline stamps TGL_DATA.freshness[block]
+// with {as_of, stale}; stale===true means the live fetch failed and we're
+// showing carried-forward data. Each tab maps to its underlying data block.
+const TAB2BLOCK={global:"series", us:"us", big:"big", cycle:"cycle", glx:"exp", infl:"infl", labor:"labor", rates:"rates", housing:"housing", credit:"credit", china:"china"};
+const freshEl=document.getElementById("freshbadge");
+function fmtAsOf(d){ try{ return new Date(d+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }catch(e){ return d; } }
+function updateFreshBadge(t){
+  if(!freshEl) return;
+  const f=((window.TGL_DATA&&TGL_DATA.freshness)||{})[TAB2BLOCK[t]];
+  if(!f||!f.as_of){ freshEl.hidden=true; return; }
+  freshEl.hidden=false;
+  freshEl.classList.toggle("stale", !!f.stale);
+  freshEl.textContent = f.stale ? ("Stale · live fetch failed — data as of "+fmtAsOf(f.as_of))
+                                : ("Live · data through "+fmtAsOf(f.as_of));
+  freshEl.title = f.stale ? ("The latest data pull for this tab failed; showing the last good values (as of "+f.as_of+"). It refreshes automatically on the next successful run.")
+                          : ("Data fetched successfully · latest observation "+f.as_of);
+}
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);
   secTitle.textContent = TABMETA[t].t;
   secDescr.textContent = (DESCR[t]||(()=>descrGlobal))();
+  updateFreshBadge(t);
   const g = GROUPS[t];
   if(g){ g.charts.forEach(c=>{ c.resize(); c.update("none"); }); }
 }
@@ -1359,7 +1383,7 @@ document.getElementById("tabnav").addEventListener("click", e=>{
   b.classList.add("on");
   showTab(b.dataset.tab);
 });
-secDescr.textContent=descrGlobal;
+secDescr.textContent=descrGlobal; updateFreshBadge("global");
 
 window.GLOBAL=GLOBAL; window.US=US; window.BIG=BIG; window.CYCLE=CYCLE; window.GLX=GLX; window.INFL=INFL;
 window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CREDIT; window.CHINA=CHINA;

@@ -31,7 +31,7 @@ SERIES = {
 START = "2010-01-01"   # FRED returns from each series' own start; harmless if earlier than data
 
 
-def _fetch(series_id, start=START, timeout=70, retries=5):
+def _fetch(series_id, start=START, timeout=30, retries=4):
     """Return {YYYY-MM-DD: float} for a FRED series.
 
     Delegates to fred.py's fred_series — the public CSV path proven to work from
@@ -39,12 +39,13 @@ def _fetch(series_id, start=START, timeout=70, retries=5):
     parameter: that makes FRED regenerate a custom CSV and hangs indefinitely.
     Asking for the full series returns FRED's cached CSV instead.
 
-    The catch: the long daily series (DGS5 back to 1962 ≈ 16k rows, RRPONTSYD)
-    are slow for FRED to stream, so a tight read timeout trips before the body
-    arrives. Use a generous 70s timeout with 5 tries — without &cosd= there is
-    no indefinite hang, so a longer timeout only ever helps a slow-but-real
-    download finish. One fetcher serves the whole pipeline (big_picture.py
-    imports this too)."""
+    Most series return in a second or two. A couple of large daily series
+    (notably DGS5 back to 1962 and RRPONTSYD) are unreliable from the runner no
+    matter the timeout, so we fail FAST (30s x 4) rather than stalling the whole
+    job: update_data.py then carries the block forward and the dashboard's
+    freshness badge flags it as stale. (The durable fix for those two is a paid
+    data provider, or rerouting just them through the TradingView passthrough.)
+    One fetcher serves the whole pipeline (big_picture.py imports this too)."""
     out = {}
     for epoch, v in fred_series(series_id, retries=retries, timeout=timeout):
         d = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d")
