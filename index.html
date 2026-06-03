@@ -50,8 +50,8 @@
   .locktoggle.on{background:var(--pink);border-color:var(--pink);color:#fff}
   .locktoggle svg{width:14px;height:14px;display:block}
   /* chart export tools (per-card hover) + bulk toast */
-  .extools{position:absolute;top:12px;right:48px;z-index:3;display:flex;gap:6px;opacity:0;transform:translateY(-2px);transition:opacity .15s,transform .15s;pointer-events:none}
-  .panel:hover .extools,.extools:focus-within{opacity:1;transform:none;pointer-events:auto}
+  .extools{position:absolute;top:12px;right:48px;z-index:3;display:flex;gap:6px;opacity:.6;transition:opacity .15s;pointer-events:auto}
+  .panel:hover .extools,.extools:focus-within{opacity:1}
   .extools button{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:7px;color:var(--mut);cursor:pointer;transition:all .12s}
   .extools button:hover{border-color:var(--pink);color:var(--pink)}
   .extools svg{width:14px;height:14px;display:block}
@@ -1421,7 +1421,7 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
     if(!(await libReady('html2canvas'))){ toast('Export library still loading…'); return null; }
     const bg=getComputedStyle(document.body).backgroundColor||'#ffffff';
     return html2canvas(card,{scale:SCALE,backgroundColor:bg,useCORS:true,logging:false,
-      onclone:doc=>doc.querySelectorAll('.extools,.locktoggle,.ctrls').forEach(el=>el.style.display='none')});
+      onclone:doc=>doc.querySelectorAll('.extools,.locktoggle,.ctrls,.cnum').forEach(el=>el.style.display='none')});
   }
 
   const toBlob = cv => new Promise(r=>cv.toBlob(r,'image/png'));
