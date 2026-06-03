@@ -251,3 +251,13 @@ local reruns. The Action runs without them (full pull each time), which is fine.
   Optional follow-up: embed the real licensed Tungsten/AT Aero webfonts for a pixel-exact match.
 - Parked: more overlay assets (gold, S&P); a money-vs-FX decomposition panel; more TEC tabs.
 - Done (was parked): adjustable lead/lag on the overlay charts.
+- Done: chart export. Self-contained IIFE at the end of the inline `<script>` in
+  `index.html` (uses html2canvas + JSZip from cdnjs). It wraps each `chead`+`panel`
+  into an `.excard`, adds hover Download/Copy buttons (whole-card PNG at 2x), and a
+  "Download charts" toolbar button that zips every visible chart across all tabs.
+  Pure DOM-driven, so new charts (and the world-PMI panel once seeded) are picked up
+  automatically; hidden/un-seeded panels (offsetParent===null) are skipped. The
+  controls strip and lock/export buttons are hidden in the capture via `onclone`.
+  Couldn't live-render in the web container (no headless browser + runtime CDN);
+  validated by node --check. Possible follow-up: crisper chart lines via per-chart
+  high-DPI re-render, and a data/manifest sidecar for AI deck tools.

@@ -10,6 +10,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammerjs/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.2.0/chartjs-plugin-zoom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="data.js"></script>
 <script>window.TGL_DATA||document.write('<scr'+'ipt src="data/data.js"><\/scr'+'ipt>');</script>
 <script src="data/layout.js"></script>
@@ -47,6 +49,14 @@
   .locktoggle:hover{border-color:var(--pink);color:var(--pink)}
   .locktoggle.on{background:var(--pink);border-color:var(--pink);color:#fff}
   .locktoggle svg{width:14px;height:14px;display:block}
+  /* chart export tools (per-card hover) + bulk toast */
+  .extools{position:absolute;top:12px;right:48px;z-index:3;display:flex;gap:6px;opacity:0;transform:translateY(-2px);transition:opacity .15s,transform .15s;pointer-events:none}
+  .panel:hover .extools,.extools:focus-within{opacity:1;transform:none;pointer-events:auto}
+  .extools button{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;padding:0;background:rgba(255,255,255,.85);border:1px solid var(--line);border-radius:7px;color:var(--mut);cursor:pointer;transition:all .12s}
+  .extools button:hover{border-color:var(--pink);color:var(--pink)}
+  .extools svg{width:14px;height:14px;display:block}
+  .extoast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(8px);background:var(--ink);color:#fff;font-family:"DM Mono",monospace;font-size:12px;padding:9px 16px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999}
+  .extoast.show{opacity:1;transform:translateX(-50%)}
   .tabs button{font-family:"Teko",sans-serif;font-size:17px;font-weight:400;letter-spacing:.4px;line-height:1;
     color:var(--mut);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 15px;cursor:pointer;transition:all .15s}
   .tabs button:hover{border-color:var(--pink);color:var(--pink)}
@@ -1375,6 +1385,114 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
   const lat = document.getElementById("cov_latest"); if(lat) lat.textContent = co.latest || "never";
   const nxt = document.getElementById("cov_next");   if(nxt) nxt.textContent = co.next_release_iso || "—";
   el.hidden = false;
+})();
+
+// ===================== chart export (PNG download / copy / bulk zip) =====================
+// Each chart card (number + title + legend + plot + source line) can be saved as
+// a publish-ready PNG at 2x, copied to the clipboard, or batch-exported as a zip
+// for deck building. Pure client-side: html2canvas rasterises the live DOM and
+// JSZip bundles the bulk export. Decoupled from the chart code — it walks the
+// rendered DOM, so new charts (and the world-PMI panel once seeded) are picked
+// up automatically, and hidden/un-seeded panels are skipped.
+(function(){
+  const SCALE = 2;
+  const DL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>';
+  const CP_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>';
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+  const raf   = () => new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  const today = () => new Date().toISOString().slice(0,10);
+
+  const toast = (()=>{ let el; return msg=>{
+    if(!el){ el=document.createElement('div'); el.className='extoast'; document.body.appendChild(el); }
+    el.textContent=msg; el.classList.add('show');
+    clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2200);
+  }; })();
+
+  // wrap each (chead + panel) pair into one .excard capture unit
+  document.querySelectorAll('.panel').forEach(panel=>{
+    if(panel.closest('.excard')) return;
+    const head=panel.previousElementSibling, hasHead=head&&head.classList.contains('chead');
+    const card=document.createElement('div'); card.className='excard';
+    panel.parentNode.insertBefore(card, hasHead?head:panel);
+    if(hasHead) card.appendChild(head);
+    card.appendChild(panel);
+  });
+
+  function slug(card){
+    const head=card.querySelector('.chead');
+    const num=head&&head.querySelector('.cnum')?head.querySelector('.cnum').textContent.trim():'';
+    const ttl=head&&head.querySelector('h2')?head.querySelector('h2').textContent.trim():'chart';
+    const s=ttl.toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'').slice(0,48)||'chart';
+    return (num?num+'-':'')+s;
+  }
+
+  async function libReady(name){ for(let i=0;i<50&&!window[name];i++) await sleep(100); return !!window[name]; }
+
+  async function capture(card){
+    if(!(await libReady('html2canvas'))){ toast('Export library still loading…'); return null; }
+    const bg=getComputedStyle(document.body).backgroundColor||'#ffffff';
+    return html2canvas(card,{scale:SCALE,backgroundColor:bg,useCORS:true,logging:false,
+      onclone:doc=>doc.querySelectorAll('.extools,.locktoggle,.ctrls').forEach(el=>el.style.display='none')});
+  }
+
+  const toBlob = cv => new Promise(r=>cv.toBlob(r,'image/png'));
+  function saveBlob(blob,name){
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  }
+
+  async function downloadCard(card){ const cv=await capture(card); if(cv) saveBlob(await toBlob(cv),slug(card)+'.png'); }
+  async function copyCard(card){
+    if(!(navigator.clipboard&&window.ClipboardItem)){ toast('Clipboard unsupported — downloading'); return downloadCard(card); }
+    const cv=await capture(card); if(!cv) return;
+    try{ await navigator.clipboard.write([new ClipboardItem({'image/png':await toBlob(cv)})]); toast('Chart copied to clipboard'); }
+    catch(e){ toast('Copy blocked — downloading instead'); saveBlob(await toBlob(cv),slug(card)+'.png'); }
+  }
+
+  // per-card hover tools: download + copy
+  document.querySelectorAll('.excard').forEach(card=>{
+    const panel=card.querySelector('.panel');
+    if(!panel||!card.querySelector('canvas')) return;
+    const tools=document.createElement('div'); tools.className='extools';
+    const mk=(svg,title,fn)=>{ const b=document.createElement('button'); b.type='button'; b.title=title; b.innerHTML=svg;
+      b.addEventListener('click',e=>{e.stopPropagation();fn(card);}); return b; };
+    tools.appendChild(mk(DL_SVG,'Download this chart as PNG',downloadCard));
+    tools.appendChild(mk(CP_SVG,'Copy this chart to clipboard',copyCard));
+    panel.appendChild(tools);
+  });
+
+  // bulk export: every visible chart across every tab, zipped
+  const setNav=key=>{ const nav=document.getElementById('tabnav'); if(nav)
+    [...nav.children].forEach(b=>b.classList.toggle('on',b.dataset.tab===key)); };
+  async function exportAll(btn){
+    if(typeof showTab!=='function'||typeof panes!=='object'){ toast('Not ready yet'); return; }
+    if(!(await libReady('JSZip'))){ toast('Zip library still loading…'); return; }
+    const zip=new JSZip(), label=btn.textContent, start=Object.keys(panes).find(k=>!panes[k].hidden)||'global';
+    btn.disabled=true; let n=0;
+    try{
+      for(const key of Object.keys(panes)){
+        showTab(key); setNav(key); await raf(); await sleep(120);
+        for(const card of panes[key].querySelectorAll('.excard')){
+          const panel=card.querySelector('.panel');
+          if(!panel||!card.querySelector('canvas')||panel.offsetParent===null) continue;
+          const cv=await capture(card); if(!cv) continue;
+          zip.file(key+'-'+slug(card)+'.png',await toBlob(cv)); btn.textContent='Exporting '+(++n)+'…';
+        }
+      }
+      btn.textContent='Zipping…';
+      saveBlob(await zip.generateAsync({type:'blob'}),'everything-code-charts-'+today()+'.zip');
+      toast('Exported '+n+' charts');
+    }catch(e){ toast('Bulk export failed'); console.error(e); }
+    finally{ showTab(start); setNav(start); btn.disabled=false; btn.textContent=label; }
+  }
+
+  const tabrow=document.querySelector('.tabrow');
+  if(tabrow){
+    const b=document.createElement('button'); b.className='toolbtn'; b.type='button'; b.id='exportall';
+    b.textContent='Download charts';
+    b.title='Download every chart across all tabs as high-res PNGs (zip) — for decks & publishing';
+    b.addEventListener('click',()=>exportAll(b)); tabrow.appendChild(b);
+  }
 })();
 </script>
 </body>
