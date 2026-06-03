@@ -1444,9 +1444,12 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
 
   async function capture(card){
     if(!(await libReady('html2canvas'))){ toast('Export library still loading…'); return null; }
-    const bg=getComputedStyle(document.body).backgroundColor||'#ffffff';
-    return html2canvas(card,{scale:SCALE,backgroundColor:bg,useCORS:true,logging:false,
-      onclone:doc=>doc.querySelectorAll('.extools,.locktoggle,.ctrls,.cnum').forEach(el=>el.style.display='none')});
+    // Export just the chart panel (legend + plot + footnote) — drop the card
+    // header (number/title/caption) and the white surround. We rasterise the
+    // .panel itself; backgroundColor:null keeps its rounded corners transparent.
+    const target=card.querySelector('.panel')||card;
+    return html2canvas(target,{scale:SCALE,backgroundColor:null,useCORS:true,logging:false,
+      onclone:doc=>doc.querySelectorAll('.extools,.locktoggle,.ctrls').forEach(el=>el.style.display='none')});
   }
 
   const toBlob = cv => new Promise(r=>cv.toBlob(r,'image/png'));
