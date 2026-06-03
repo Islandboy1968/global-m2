@@ -311,6 +311,32 @@ def build():
         china_override = {"latest": None, "next_release_iso": None,
                           "stale": True, "days_until": 0}
 
+    # --- Carry-forward backstop -------------------------------------------
+    # The FRED-fed sections (us, big) come from an endpoint that occasionally
+    # times out on the runner. A transient miss must never blank a section that
+    # previously had data, so reuse the last committed values: whole-block when
+    # the rebuild came back empty, and per-series for `big` so a single stalled
+    # series (e.g. DGS5) doesn't drop the rest. It refreshes on the next good run.
+    prev = {}
+    try:
+        with open(os.path.join(HERE, "data", "data.json")) as _pf:
+            prev = json.load(_pf)
+    except Exception:
+        pass
+
+    if not us and prev.get("us"):
+        print("  US: build empty this run — carrying forward previous data")
+        us = prev["us"]
+
+    if isinstance(big, dict) and prev.get("big"):
+        for _k, _v in list(big.items()):
+            if (not _v) and prev["big"].get(_k):
+                big[_k] = prev["big"][_k]
+                print(f"  BIG.{_k}: empty this run — carried forward previous data")
+    elif (not big) and prev.get("big"):
+        print("  BIG: build empty this run — carrying forward previous data")
+        big = prev["big"]
+
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,

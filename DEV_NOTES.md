@@ -240,6 +240,20 @@ Broad/Narrow. (new = Broad, old = Narrow.)
 - Pushing requires a fine-grained PAT with Contents + Workflows + Actions write.
   NEVER commit a token to this repo (it is public). Paste it into the chat when a push is needed.
 
+## FRED resilience (us / big blocks)
+The `us` and `big` sections come from FRED's keyless CSV endpoint via
+`us_liquidity._fetch`, which occasionally read-times-out on the Action runner.
+Symptom: a section shows the "generated server-side… once the Action has run"
+banner with an empty chart even though the pipeline "succeeded" (the failure is
+swallowed by a try/except and the block is written as `null`). Hardening in place:
+- `_fetch` retries 5x with exponential backoff and a 45s timeout.
+- `build_big` is per-series tolerant — one stalled series (it was `DGS5`) no
+  longer blanks the whole tab; the others still render.
+- `update_data.py` carries forward the last committed `us`/`big` (whole-block,
+  and per-series for `big`) when a rebuild comes back empty, so a transient miss
+  never regresses a populated section. To diagnose, read the Action run log for
+  `US build FAILED` / `BIG build FAILED` / `BIG <key> failed` lines.
+
 ## Caches (gitignored, not in repo)
 `series_cache.json` (M2, monthly) and `fx_daily_cache.json` (FX + assets, daily) speed up
 local reruns. The Action runs without them (full pull each time), which is fine.
