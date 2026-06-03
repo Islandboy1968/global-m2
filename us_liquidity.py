@@ -16,9 +16,8 @@ Output values are in $ trillions to match the global series.
 BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
-import csv, io, time, urllib.request, subprocess, datetime as dt
-
-FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={id}&cosd={start}"
+import datetime as dt
+from fred import fred_series
 
 # series_id -> unit multiplier to reach $millions
 SERIES = {
@@ -32,60 +31,22 @@ SERIES = {
 START = "2010-01-01"   # FRED returns from each series' own start; harmless if earlier than data
 
 
-def _http_get(url, timeout=30):
-    """Fetch a URL as text. Try urllib first, fall back to curl (both present on
-    GitHub runners). Two independent transports so a quirk in one never blocks us."""
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "global-m2-pipeline"})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode("utf-8")
-    except Exception as urllib_err:
-        try:
-            out = subprocess.run(
-                ["curl", "-fsSL", "--max-time", str(timeout), url],
-                capture_output=True, text=True, timeout=timeout + 5,
-            )
-            if out.returncode == 0 and out.stdout:
-                return out.stdout
-            raise RuntimeError(f"curl rc={out.returncode}")
-        except Exception as curl_err:
-            raise RuntimeError(f"urllib={urllib_err!r}; curl={curl_err!r}")
+def _fetch(series_id, start=START, timeout=25, retries=4):
+    """Return {YYYY-MM-DD: float} for a FRED series.
 
-
-def _parse_csv(text):
+    Delegates to fred.py's fred_series — the public CSV path proven to work from
+    the GitHub Actions runner. We deliberately do NOT send FRED's &cosd= range
+    parameter: asking for a custom start date makes FRED regenerate an uncached
+    CSV, which hangs and read-times-out for high-frequency series (WALCL, DGS5,
+    RRPONTSYD, SBCACBW…). Fetching the full, cached series and filtering the
+    dates here is fast and reliable, and keeps one FRED fetcher for the whole
+    pipeline (big_picture.py imports this too)."""
     out = {}
-    for row in csv.reader(io.StringIO(text)):
-        if len(row) < 2 or row[0] == "observation_date":
-            continue
-        d, v = row[0].strip(), row[1].strip()
-        if v in (".", "", "NA"):
-            continue
-        try:
-            out[d] = float(v)
-        except ValueError:
-            continue
+    for epoch, v in fred_series(series_id, retries=retries, timeout=timeout):
+        d = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d")
+        if d >= start:
+            out[d] = v
     return out
-
-
-def _fetch(series_id, start=START, timeout=45, retries=5):
-    """Return {date_str: float} from FRED's keyless CSV endpoint.
-
-    FRED's CSV endpoint occasionally hangs on a runner; a single read timeout
-    used to bubble up and blank a whole section. Retry with exponential backoff
-    so a transient stall gets a real second chance before we give up."""
-    url = FRED_CSV.format(id=series_id, start=start)
-    last = None
-    for attempt in range(retries):
-        if attempt:
-            time.sleep(min(2 ** attempt, 8))   # 2s, 4s, 8s, 8s between tries
-        try:
-            out = _parse_csv(_http_get(url, timeout=timeout))
-            if out:
-                return out
-            last = "empty"
-        except Exception as e:
-            last = repr(e)
-    raise RuntimeError(f"FRED {series_id}: failed after {retries} tries: {last}")
 
 
 def _closest_before(m, ds, lookback=45):
