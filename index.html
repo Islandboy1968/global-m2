@@ -1194,13 +1194,14 @@ function buildSimpleTab(missingId, specs){
   built.forEach(({s,chart})=>{ attach(s.cv, chart);
     controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def}); });
   built.forEach(({s,chart})=>{ const [lo,hi]=xExtent(chart);
-    chart.options.scales.x.min=Math.max(lo, Date.parse(s.start)); chart.options.scales.x.max=hi; fitY(chart);
+    chart.options.scales.x.min=Math.max(lo, Date.parse(s.start)); chart.options.scales.x.max=hi; chart.update("none"); fitY(chart);
     [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on")); });
   if(!any){ const n=document.getElementById(missingId); if(n) n.hidden=false; }
   return {charts};
 }
 const F0=v=>(v>0?"+":"")+Math.round(v)+"%", F1=v=>(v>0?"+":"")+v.toFixed(1)+"%";
 const FI=v=>Math.round(v), FZ=v=>v.toFixed(1), FNUM=v=>Math.round(v);
+const FCMP=v=>{const a=Math.abs(v);return a>=1e12?(v/1e12).toFixed(1)+"T":a>=1e9?(v/1e9).toFixed(1)+"B":a>=1e6?(v/1e6).toFixed(1)+"M":a>=1e3?(v/1e3).toFixed(0)+"k":(""+Math.round(v));};
 const FM=v=>(v/1000).toFixed(1)+"M", FK=v=>Math.round(v/1000)+"k";
 
 // ===================== Labor tab =====================
@@ -1259,8 +1260,8 @@ const CHINA = (function(){
   if(!H){ const n=document.getElementById("china-missing"); if(n) n.hidden=false; return null; }
   const btcV=((DATA.btc)||[]).map(r=>({d:r.d, v:r.p}));
   return buildSimpleTab("china-missing", [
-    {cv:cnPbocC, left:H.cn10y, right:H.pboc, lf:F1,   rf:FNUM, pairLbl:"China 10y vs PBoC balance sheet", capId:"cnPboc", def:0, start:"2010-01-01"},
-    {cv:cnBtcC,  left:H.pboc,  right:btcV,   lf:FNUM, rf:FNUM, pairLbl:"PBoC balance sheet vs Bitcoin",   capId:"cnBtc",  def:0, start:"2014-01-01"}
+    {cv:cnPbocC, left:H.cn10y, right:H.pboc, lf:F1,   rf:FCMP, pairLbl:"China 10y vs PBoC balance sheet", capId:"cnPboc", def:0, start:"2010-01-01"},
+    {cv:cnBtcC,  left:H.pboc,  right:btcV,   lf:FCMP, rf:FNUM, pairLbl:"PBoC balance sheet vs Bitcoin",   capId:"cnBtc",  def:0, start:"2014-01-01"}
   ]);
 })();
 
