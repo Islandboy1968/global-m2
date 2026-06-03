@@ -1381,8 +1381,8 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
 // a publish-ready PNG at 2x, copied to the clipboard, or batch-exported as a zip
 // for deck building. Pure client-side: html2canvas rasterises the live DOM and
 // JSZip bundles the bulk export. Decoupled from the chart code — it walks the
-// rendered DOM, so new charts (and the world-PMI panel once seeded) are picked
-// up automatically, and hidden/un-seeded panels are skipped.
+// rendered DOM, so charts added later are picked
+// up automatically, and hidden panels are skipped.
 (function(){
   const SCALE = 2;
   const DL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>';
@@ -1430,12 +1430,17 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
   }
 
-  async function downloadCard(card){ const cv=await capture(card); if(cv) saveBlob(await toBlob(cv),slug(card)+'.png'); }
+  async function downloadCard(card){
+    const cv=await capture(card); if(!cv) return;
+    const blob=await toBlob(cv); if(!blob){ toast('Chart too large to export'); return; }
+    saveBlob(blob,slug(card)+'.png');
+  }
   async function copyCard(card){
     if(!(navigator.clipboard&&window.ClipboardItem)){ toast('Clipboard unsupported — downloading'); return downloadCard(card); }
     const cv=await capture(card); if(!cv) return;
-    try{ await navigator.clipboard.write([new ClipboardItem({'image/png':await toBlob(cv)})]); toast('Chart copied to clipboard'); }
-    catch(e){ toast('Copy blocked — downloading instead'); saveBlob(await toBlob(cv),slug(card)+'.png'); }
+    const blob=await toBlob(cv); if(!blob){ toast('Chart too large to export'); return; }
+    try{ await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]); toast('Chart copied to clipboard'); }
+    catch(e){ toast('Copy blocked — downloading instead'); saveBlob(blob,slug(card)+'.png'); }
   }
 
   // per-card hover tools: download + copy
@@ -1460,7 +1465,7 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
     btn.disabled=true; let n=0;
     try{
       for(const key of Object.keys(panes)){
-        showTab(key); setNav(key); await raf(); await sleep(120);
+        showTab(key); setNav(key); await raf(); await sleep(300);
         for(const card of panes[key].querySelectorAll('.excard')){
           const panel=card.querySelector('.panel');
           if(!panel||!card.querySelector('canvas')||panel.offsetParent===null) continue;
@@ -1468,6 +1473,7 @@ window.LABOR=LABOR; window.RATES=RATES; window.HOUSING=HOUSING; window.CREDIT=CR
           zip.file(key+'-'+slug(card)+'.png',await toBlob(cv)); btn.textContent='Exporting '+(++n)+'…';
         }
       }
+      if(!n){ toast('No charts to export'); return; }
       btn.textContent='Zipping…';
       saveBlob(await zip.generateAsync({type:'blob'}),'everything-code-charts-'+today()+'.zip');
       toast('Exported '+n+' charts');
