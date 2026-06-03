@@ -31,16 +31,20 @@ SERIES = {
 START = "2010-01-01"   # FRED returns from each series' own start; harmless if earlier than data
 
 
-def _fetch(series_id, start=START, timeout=25, retries=4):
+def _fetch(series_id, start=START, timeout=70, retries=5):
     """Return {YYYY-MM-DD: float} for a FRED series.
 
     Delegates to fred.py's fred_series — the public CSV path proven to work from
     the GitHub Actions runner. We deliberately do NOT send FRED's &cosd= range
-    parameter: asking for a custom start date makes FRED regenerate an uncached
-    CSV, which hangs and read-times-out for high-frequency series (WALCL, DGS5,
-    RRPONTSYD, SBCACBW…). Fetching the full, cached series and filtering the
-    dates here is fast and reliable, and keeps one FRED fetcher for the whole
-    pipeline (big_picture.py imports this too)."""
+    parameter: that makes FRED regenerate a custom CSV and hangs indefinitely.
+    Asking for the full series returns FRED's cached CSV instead.
+
+    The catch: the long daily series (DGS5 back to 1962 ≈ 16k rows, RRPONTSYD)
+    are slow for FRED to stream, so a tight read timeout trips before the body
+    arrives. Use a generous 70s timeout with 5 tries — without &cosd= there is
+    no indefinite hang, so a longer timeout only ever helps a slow-but-real
+    download finish. One fetcher serves the whole pipeline (big_picture.py
+    imports this too)."""
     out = {}
     for epoch, v in fred_series(series_id, retries=retries, timeout=timeout):
         d = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d")
