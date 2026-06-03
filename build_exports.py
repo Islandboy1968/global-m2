@@ -15,7 +15,6 @@ Series (key -> candidate symbols, resolution, transform):
   twexp_yy   Taiwan Exports YoY %, monthly        (semis proxy anchor)
   krexp_yy   South Korea Exports, monthly -> YoY %
   jpmto_yy   Japan Machine Tool Orders, monthly  -> YoY %
-  (the global cross-check, world manufacturing PMI, now lives in build_pmi.py)
 
 The TradingView ECONOMICS symbol codes for some series are not uniformly
 documented, so each series carries a list of CANDIDATE symbols; the builder
@@ -38,9 +37,10 @@ EXP_SERIES = {
     "jpmto_yy": (["ECONOMICS:JPMTO"],   "1M", True),   # level -> YoY %
 }
 
-# NB: the global cross-check (world manufacturing PMI) lives in build_pmi.py — the
-# OECD CLI that used to sit here was discontinued at source (all free vintages end
-# 2022-2024), so it was dropped in favour of the Bloomberg-seeded J.P.Morgan PMI.
+# NB: there used to be an OECD CLI "global cross-check" leg here, but it was
+# discontinued at source (all free vintages end 2022-2024) and dropped. The three
+# export proxies above (Taiwan/Korea/Japan, history to ~1993) now carry the
+# Global Leading Edge tab's "global cycle leads ISM" role on their own.
 
 
 def _iso(t):

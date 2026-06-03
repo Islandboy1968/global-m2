@@ -43,7 +43,6 @@ EXPECTED = {
         "exp.twexp_yy": "Taiwan exports YoY (semis proxy)",
         "exp.krexp_yy": "South Korea exports YoY",
         "exp.jpmto_yy": "Japan machine tool orders YoY",
-        "pmi.world_pmi": "World mfg PMI (Bloomberg seed)",
     },
     "Inflation": {
         "infl.headline_yoy": "Headline CPI YoY",

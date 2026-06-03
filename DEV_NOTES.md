@@ -269,8 +269,8 @@ local reruns. The Action runs without them (full pull each time), which is fine.
   `index.html` (uses html2canvas + JSZip from cdnjs). It wraps each `chead`+`panel`
   into an `.excard`, adds hover Download/Copy buttons (whole-card PNG at 2x), and a
   "Download charts" toolbar button that zips every visible chart across all tabs.
-  Pure DOM-driven, so new charts (and the world-PMI panel once seeded) are picked up
-  automatically; hidden/un-seeded panels (offsetParent===null) are skipped. The
+  Pure DOM-driven, so any new charts added later are picked up
+  automatically; hidden panels (offsetParent===null) are skipped. The
   controls strip and lock/export buttons are hidden in the capture via `onclone`.
   Couldn't live-render in the web container (no headless browser + runtime CDN);
   validated by node --check. Possible follow-up: crisper chart lines via per-chart
