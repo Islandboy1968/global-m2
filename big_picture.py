@@ -30,11 +30,20 @@ START = "1948-01-01"   # full history; the frontend windows it
 
 
 def build_big(start=START):
-    """Return the TGL_DATA['big'] block: {key: [{d, v}, ...]} sorted by date."""
+    """Return the TGL_DATA['big'] block: {key: [{d, v}, ...]} sorted by date.
+
+    Per-series tolerant: a transient FRED timeout on one series (e.g. DGS5) must
+    not blank the whole tab — the failed series comes back empty and the others
+    still render. update_data.py then carries forward any empty series from the
+    last good build."""
     out = {}
     for key, sid in BIG_SERIES.items():
-        m = _fetch(sid, start=start)
-        out[key] = [{"d": d, "v": round(v, 4)} for d, v in sorted(m.items())]
+        try:
+            m = _fetch(sid, start=start)
+            out[key] = [{"d": d, "v": round(v, 4)} for d, v in sorted(m.items())]
+        except Exception as e:
+            print(f"  BIG {key} ({sid}) failed: {str(e)[:90]}")
+            out[key] = []
     return out
 
 

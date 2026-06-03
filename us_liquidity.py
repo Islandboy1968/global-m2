@@ -16,7 +16,7 @@ Output values are in $ trillions to match the global series.
 BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
-import csv, io, urllib.request, subprocess, datetime as dt
+import csv, io, time, urllib.request, subprocess, datetime as dt
 
 FRED_CSV = "https://fred.stlouisfed.org/graph/fredgraph.csv?id={id}&cosd={start}"
 
@@ -67,11 +67,17 @@ def _parse_csv(text):
     return out
 
 
-def _fetch(series_id, start=START, timeout=30, retries=3):
-    """Return {date_str: float} from FRED's keyless CSV endpoint."""
+def _fetch(series_id, start=START, timeout=45, retries=5):
+    """Return {date_str: float} from FRED's keyless CSV endpoint.
+
+    FRED's CSV endpoint occasionally hangs on a runner; a single read timeout
+    used to bubble up and blank a whole section. Retry with exponential backoff
+    so a transient stall gets a real second chance before we give up."""
     url = FRED_CSV.format(id=series_id, start=start)
     last = None
     for attempt in range(retries):
+        if attempt:
+            time.sleep(min(2 ** attempt, 8))   # 2s, 4s, 8s, 8s between tries
         try:
             out = _parse_csv(_http_get(url, timeout=timeout))
             if out:
