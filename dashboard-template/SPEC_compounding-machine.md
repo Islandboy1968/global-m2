@@ -13,13 +13,13 @@
 | Author | Raoul |
 | Version / date | 1.0 — 4 Jun 2026 |
 | Refresh cadence | Weekly, after Friday US close (data is weekly closes) |
-| Reuses an existing dashboard's look? | No — its own dark/lilac shell. Self-contained template. |
+| Reuses an existing dashboard's look? | Yes — Real Vision dark dashboard aesthetic (Claude Design restyle). |
 
 ---
 
 ## 2. Description
 
-An interactive teaching tool that plots an asset (BTC or NDX) against a **frozen
+An interactive teaching tool that plots an asset (BTC or QQQ) against a **frozen
 log-linear trend** with ±1σ / ±2σ bands, and simulates a simple rules-based
 strategy: add a fixed dollar amount every time price is "oversold" below trend,
 optionally trim a little when "overbought" above it.
@@ -39,17 +39,18 @@ anti-fragility — a green dot appears, you add — without timing tops and bott
 ## 4. How To Use It (reader-facing)
 
 Read the σ readout at the top: below −1σ (green) is the buy zone, above +1σ (pink)
-is the sell zone. Move the sliders to size your own plan — initial stake, how much
+is the sell zone (RV red). Move the sliders to size your own plan — initial stake, how much
 to add per dip, whether to take lifestyle chips. The green dots are historical buy
-signals, gold dots are sells. The forward channel is a band of *possible* prices,
+signals, red dots are sells. The forward channel is a band of *possible* prices,
 not a forecast. Treat it as a weekly framework, not an intraday tool.
 
 ---
 
 ## 5. Design & Attached Mockups
 
-**Look & feel:** dark (`#08080F`), lilac accent (`#B794F4`), JetBrains Mono for
-numbers, Outfit for text. Per-asset accent colour (BTC gold, NDX blue).
+**Look & feel:** Real Vision dark (`#0a0d14`), lime accent (`#c3f53c`), cyan price
+line (`#22d3ee`), Hanken Grotesk with tabular figures. Restyle delivered by Claude
+Design (see that bundle's README for exact tokens).
 
 **Attachments:** `compounding-machine.html` is the working reference (this folder).
 
@@ -78,7 +79,7 @@ numbers, Outfit for text. Per-asset accent colour (BTC gold, NDX blue).
 
 > The frozen regression is computed **in the dashboard** from the weekly series, so
 > the only input the pipeline must supply is the series itself. Source is swappable
-> per asset (see §9 and the handover doc) — default TradingView; NDX may use an
+> per asset (see §9 and the handover doc) — default TradingView/QQQ proxy; an asset may use an
 > internal feed or stay on the injected static series.
 
 ---
@@ -126,8 +127,8 @@ defaults: stake 100k, buy/sell 1.0σ, add 25k, sell 20%):
 1. **BTC** frozen fit → **45% implied CAGR**, **1σ = 60%**. Latest point ≈ **−1.2σ**
    (in the buy zone) at last price ~$68,396, trend ~$118,513.
 2. **BTC** produces **4 buys and 2 sells**; the **first buy is 2018-11-23 @ ~$4,347**.
-3. **NDX** frozen fit → **18% implied CAGR**, **1σ = 13%**; **8 buys, 2 sells**;
-   latest ≈ **−0.3σ** (neutral, no zone badge).
+3. **QQQ** frozen fit → **18% implied CAGR**, **1σ = 13%**; **8 buys, 3 sells**;
+   latest ≈ **+1.3σ** (sell zone), last close ~$740.
 4. Set sell % to 0 → Portfolio Comparison hides the green "with sells" line and the
    Signal History sells column reads "DISABLED".
 5. Forward points carry trend + bands but **no price** (the channel is not a forecast).
@@ -145,7 +146,7 @@ defaults: stake 100k, buy/sell 1.0σ, add 25k, sell 20%):
 | Field | Type | Example | Meaning / format |
 | --- | --- | --- | --- |
 | `updated` | string | "2026-04-10" | as-of stamp (last weekly close) |
-| `assets` | object keyed by asset key | `{ BTC: {...}, NDX: {...} }` | one entry per registry asset |
+| `assets` | object keyed by asset key | `{ BTC: {...}, QQQ: {...} }` | one entry per registry asset |
 | `assets.<KEY>.series` | array of points | see below | the weekly close series |
 
 ### Series points (`assets.<KEY>.series`)
@@ -162,9 +163,9 @@ defaults: stake 100k, buy/sell 1.0σ, add 25k, sell 20%):
 | `ticker` | string | "BTC" | toggle label |
 | `unit` | string | "BTC" / "units" | used in "% of <unit>" copy |
 | `color` | string (hex) | "#F6C343" | accent |
-| `source` | "injected" \| "coingecko" \| "internal" | "injected" | which adapter feeds it (the swap point) |
+| `source` | "injected" \| "platform" \| "liveStock" \| "live" | "injected" | which adapter feeds it (swap to "platform" for production) |
 | `symbol` | string | "INDEX:BTCUSD" | provider symbol for live adapters |
-| `projectToYear` | number | 2035 | how far the forward channel extends |
+| `projectToYear` | number | 2030 | how far the forward channel extends |
 
 **Field conventions** (shared across dashboards): short chart keys (`d`/`c`);
 dates `"YYYY-MM-DD"`; any absent field typed `… | null`; one injected global named
