@@ -637,13 +637,12 @@ function opts2(){
   const o=opts(BLACK, fmtBN);
   o.scales.y.position="left";
   o.scales.y1={type:"logarithmic",position:"right",grid:{drawOnChartArea:false},border:{display:false},
-    ticks:{color:PINK,font:{size:11,family:MONO},maxTicksLimit:7,callback:function(v,i,ticks){
-      const e=Math.log10(v), m=Math.round(v/Math.pow(10,Math.floor(e)));
-      // label round decades, 2/3/5 mantissas, and always the two endpoints, so a
-      // narrow range (e.g. NDX hovering ~30k) never leaves the right scale blank
-      const show = Math.abs(e-Math.round(e))<.01 || [2,3,5].includes(m) || i===0 || i===(ticks&&ticks.length-1);
-      if(!show) return "";
-      return v>=1000?(v/1000).toFixed(v<10000?1:0)+"k":Math.round(v);
+    // Label every tick Chart.js generates (round decade + 1-9 mantissa values);
+    // Chart.js auto-skips overlaps. Keeps the right price scale granular at any
+    // zoom and never blank (the old 2/5-mantissa filter blanked e.g. NDX ~30k).
+    ticks:{color:PINK,font:{size:11,family:MONO},autoSkipPadding:6,callback:v=>{
+      if(v<1000) return ""+Math.round(v);
+      const k=v/1000; return (k<10?k.toFixed(1):Math.round(k))+"k";
     }}};
   return o;
 }
