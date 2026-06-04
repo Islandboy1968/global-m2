@@ -13,9 +13,11 @@ Series (key -> candidate symbols, transform):
   oil_yoy    TVC:USOIL / TVC:UKOIL    crude     -> YoY %
   dxy        TVC:DXY                  dollar index (level)
 """
+import datetime as dt
 from series_util import iso, to_yoy, to_yoy_diff, zscore_pts, pull_first
 
-BARS = 470   # monthly history
+BARS = 470      # monthly history
+DAILY_BARS = 13000   # ~50y of trading days; covers the full CFD history
 MIN_PTS = 24
 
 # key: (candidate_symbols, transform)  where transform in
@@ -27,12 +29,30 @@ RATES_SERIES = {
 }
 
 
+def _to_month_end(points, current_ym):
+    """Daily (epoch, value) -> one (epoch, value) per COMPLETE month (latest day
+    in the month), dropping the in-progress current month. TradingView's monthly
+    CFD bars for US10Y/USOIL intermittently lag a month behind the daily feed, so
+    we pull daily and resample here to keep the latest complete month present."""
+    by_m = {}
+    for t, v in sorted(points):
+        by_m[iso(t)[:7]] = (t, v)   # later days overwrite -> last day of month wins
+    return [tv for ym, tv in sorted(by_m.items()) if ym < current_ym]
+
+
 def build_rates(bars=BARS):
     """Return the TGL_DATA['rates'] block: {key: [{d, v}, ...] or None}."""
     out = {}
+    current_ym = dt.datetime.utcnow().strftime("%Y-%m")
     for key, (candidates, transform) in RATES_SERIES.items():
         try:
-            sym, pts = pull_first(candidates, bars=bars, min_pts=MIN_PTS)
+            if transform == "level":
+                sym, pts = pull_first(candidates, bars=bars, min_pts=MIN_PTS)
+            else:
+                # daily pull resampled to month-end so the latest complete month
+                # is always present (the monthly CFD bar lags intermittently).
+                sym, daily = pull_first(candidates, bars=DAILY_BARS, min_pts=MIN_PTS, res="1D")
+                pts = _to_month_end(daily, current_ym) if daily else daily
             if transform == "yoy_diff_z":
                 pts = zscore_pts(to_yoy_diff(pts))
             elif transform == "yoy":

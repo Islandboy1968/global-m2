@@ -224,8 +224,10 @@ def build():
     # a notice; the global dashboard is unaffected.
     try:
         us = build_us()
+        _nt, _ot = us['summary']['new_tn'], us['summary']['old_tn']
         print(f"  US: {len(us['series'])} wk | {us['summary']['latest']} "
-              f"new ${us['summary']['new_tn']:.2f}T old ${us['summary']['old_tn']:.2f}T")
+              f"new ${_nt:.2f}T "
+              + (f"old ${_ot:.2f}T" if _ot is not None else "old n/a (narrow carried forward)"))
     except Exception as e:
         us = None
         print("  US build FAILED:", str(e)[:100])
@@ -352,7 +354,10 @@ def build():
                 r["vo"], r["yo"], r["yos"] = pr.get("vo"), pr.get("yo"), pr.get("yos")
                 carried += 1
         if carried:
-            stale.add("us")
+            # NB: do NOT mark the whole us block stale here — the headline Broad
+            # measure is live and source-verified; only the secondary Narrow leg
+            # is carried forward. Marking the tab stale would misreport a healthy
+            # Broad series. (A true whole-block carry-forward above still sets it.)
             _lvo = next((x for x in reversed(us["series"]) if x.get("vo") is not None), None)
             if _lvo:
                 us["summary"].update(old_tn=_lvo["vo"], yoy_old=_lvo["yo"],

@@ -75,13 +75,15 @@ def zscore_pts(points):
     return [(t, (v - mean) / std) for t, v in pts]
 
 
-def pull_first(candidates, bars=470, min_pts=24):
-    """Try each candidate TradingView symbol via pull_series(sym, "1M", bars);
+def pull_first(candidates, bars=470, min_pts=24, res="1M"):
+    """Try each candidate TradingView symbol via pull_series(sym, res, bars);
     return (symbol, points) for the first with >= min_pts points, else (None, []).
-    Prints a one-line log per skipped candidate."""
+    Prints a one-line log per skipped candidate. `res` defaults to monthly; pass
+    "1D" for daily market series that should be resampled to month-end by the
+    caller (avoids TradingView's intermittently-lagging monthly CFD bars)."""
     for sym in candidates:
         try:
-            pts = pull_series(sym, "1M", bars)
+            pts = pull_series(sym, res, bars)
             if pts and len(pts) >= min_pts:
                 return sym, pts
             print(f"    {sym}: only {len(pts) if pts else 0} pts, trying next")
