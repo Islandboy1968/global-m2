@@ -25,7 +25,7 @@ BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
 import datetime as dt
-import json, time, urllib.request
+import json, os, time, urllib.request
 from fred import fred_series
 from tv_pull import pull_series
 
@@ -227,6 +227,40 @@ def _ffill_onto(grid, m):
     return out
 
 
+_DATA_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "data.json")
+
+
+def _fallback_secs(walcl, tga, rrp):
+    """Securities series ($B) for the Narrow leg when SBCACBW's live fetch fails
+    (it is unavailable on TradingView and times out intermittently on FRED's CSV).
+    Returns the series persisted on the last good run, else reconstructs the full
+    series from the previously shipped Narrow values and the current
+    WALCL/TGA/RRP (securities = Narrow·1e6 − base). Either way the daily base keeps
+    the Narrow leg advancing every day through a SBCACBW outage. ({date: $B}, src)."""
+    try:
+        with open(_DATA_JSON) as fh:
+            prev = json.load(fh)
+    except Exception:
+        return {}, "none"
+    us = prev.get("us") or {}
+    persisted = {r["d"]: r["v"] for r in (us.get("secs_raw") or [])
+                 if r.get("d") and r.get("v") is not None}
+    if persisted:
+        return persisted, "persisted"
+    out = {}
+    for r in (us.get("series") or []):
+        vo, d = r.get("vo"), r.get("d")
+        if vo is None or not d:
+            continue
+        w, t, rr = _closest_before(walcl, d), _closest_before(tga, d), _closest_before(rrp, d)
+        if None in (w, t, rr):
+            continue
+        sb = (vo * 1e6 - (w - t - rr * SERIES["RRPONTSYD"])) / SERIES["SBCACBW027NBOG"]
+        if sb > 0:
+            out[d] = sb
+    return out, ("reconstructed" if out else "none")
+
+
 def build_us():
     """Return the TGL_DATA['us'] block, or raise if a CORE input is unavailable.
 
@@ -252,6 +286,17 @@ def build_us():
 
     walcl, rrp = raw["WALCL"], raw["RRPONTSYD"]
     credit, secs = raw["TOTBKCR"], raw["SBCACBW027NBOG"]
+
+    # SBCACBW (Narrow-only) is chronically flaky. When its live fetch fails, keep the
+    # Narrow leg advancing daily off the persisted / reconstructed securities series
+    # rather than letting it stall (the daily base — Fed BS − TGA − RRP — still moves).
+    if not secs:
+        secs, _src = _fallback_secs(walcl, tga, rrp)
+        if secs:
+            print(f"  US: SBCACBW unavailable — Narrow uses {_src} securities "
+                  f"({len(secs)} pts, latest {max(secs)})")
+        else:
+            print("  US: SBCACBW unavailable and no fallback — Narrow leg will be null")
 
     need = {"WALCL": walcl, "RRPONTSYD": rrp, "TOTBKCR": credit, "TGA": tga}
     missing = [k for k, v in need.items() if not v]
@@ -332,7 +377,14 @@ def build_us():
         "yoy_old_s": (last_vo["yos"] if last_vo else None),
         "narrow_as_of": (last_vo["d"] if last_vo else None),
     }
-    return {"lag_days": 90, "summary": summary, "series": series}
+    # Persist the securities series (change-points only — forward-fill reconstructs
+    # the rest) so a future SBCACBW outage can reuse it via _fallback_secs.
+    secs_raw, _prev = [], None
+    for d, v in sorted(secs.items()):
+        rv = round(v, 4)
+        if rv != _prev:
+            secs_raw.append({"d": d, "v": rv}); _prev = rv
+    return {"lag_days": 90, "summary": summary, "series": series, "secs_raw": secs_raw}
 
 
 if __name__ == "__main__":

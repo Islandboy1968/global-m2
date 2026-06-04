@@ -294,7 +294,12 @@ published observation, and compares it to what we shipped.
   and RRP from FRED — while WALCL / bank credit / securities are forward-filled. So the
   line advances every day and runs through the latest published day. If the DTS is
   unreachable/implausible, TGA falls back to weekly WTREGEN and the series still builds.
-  YoY is 365-day with a 91-day smoothing.
+  YoY is 365-day with a 91-day smoothing. The Narrow leg's securities input
+  (SBCACBW027NBOG) is chronically flaky; when its live fetch fails, `_fallback_secs`
+  keeps Narrow advancing daily off the securities series persisted in `us.secs_raw`
+  (change-points only), or — if none is persisted yet — reconstructs it from the
+  previously shipped Narrow values and the current WALCL/TGA/RRP. So both Broad and
+  Narrow run through the latest day even across a SBCACBW outage.
 - **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
   magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
   passthrough returns ACTUAL DOLLARS. `_fetch` snaps every value back to canonical
