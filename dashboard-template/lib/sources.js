@@ -47,14 +47,22 @@
   function embeddedSeries(asset) {
     return (((global.DASHBOARD_DATA || {}).assets || {})[asset.key] || {}).series || [];
   }
+  // fetch JSON with a hard timeout so a hung connection can NEVER leave the
+  // dashboard stuck on "Loading…". On timeout/error the caller falls back to
+  // the embedded demo series.
+  function jget(url, ms) {
+    var timer = new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, ms || 5000); });
+    var req = fetch(url).then(function (r) { if (!r.ok) throw 0; return r.json(); });
+    return Promise.race([req, timer]);
+  }
+
   // Fetch JSON through a public CORS proxy so a browser can reach feeds (like
   // Yahoo) that refuse keyless cross-origin requests directly. Tries two free
   // proxies, then gives up (caller falls back to demo). Beta-only crutch.
   function proxiedJson(targetUrl) {
     var a = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl);
     var b = "https://corsproxy.io/?url=" + encodeURIComponent(targetUrl);
-    return fetch(a).then(function (r) { if (!r.ok) throw 0; return r.json(); })
-      .catch(function () { return fetch(b).then(function (r) { if (!r.ok) throw 0; return r.json(); }); });
+    return jget(a).catch(function () { return jget(b); });
   }
 
   // Append/replace today's live price as the current weekly point on top of the
