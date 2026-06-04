@@ -85,12 +85,16 @@ const fmtP=v=>v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+(v/1e3).toFixed(0)+"K
 const fmtDate=ts=>new Date(ts).toLocaleDateString("en-US",{month:"short",year:"2-digit"});
 const fmtDateFull=ts=>new Date(ts).toLocaleDateString("en-US",{day:"numeric",month:"short",year:"numeric"});
 
-// log ticks at powers of 10 across [min,max]
+// log ticks at powers of 10, only those INSIDE the padded domain so the axis
+// hugs the data instead of being stretched up an empty decade by an out-of-range tick.
 function logTicks(min,max){
   if(!(min>0)||!(max>min)) return undefined;
-  const lo=Math.floor(Math.log10(min)), hi=Math.ceil(Math.log10(max));
-  const t=[]; for(let e=lo;e<=hi;e++) t.push(Math.pow(10,e));
-  return t;
+  const loD=min*0.9, hiD=max*1.1, t=[];
+  for(let e=Math.floor(Math.log10(min)); e<=Math.ceil(Math.log10(max)); e++){
+    const v=Math.pow(10,e);
+    if(v>=loD && v<=hiD) t.push(v);
+  }
+  return t.length?t:undefined;
 }
 function yearTicks(min,max){
   const a=new Date(min).getFullYear(), b=new Date(max).getFullYear(), t=[];
