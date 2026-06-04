@@ -237,11 +237,34 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
     },
     {
       key: "NDX", name: "Nasdaq 100", ticker: "NDX", unit: "units", color: "#60A5FA",
-      source: "injected",            // NDX stays on injected/pipeline data (no public live feed)
+      source: "liveIndex",            // NDX stays on injected/pipeline data (no public live feed)
       symbol: "NASDAQ:NDX",
+      yahoo: "%5ENDX",               // best-effort keyless live tip (beta only); native build uses RV's QQQ feed
       projectToYear: 2030
     }
   ];
+
+  // Map any millisecond time to that week's Friday key "YYYY-MM-DD" (the tool's
+  // weekly anchor). Shared by the live adapters so a live tip lands on the same
+  // weekly grid as the embedded history.
+  function fridayKey(ms) {
+    var dt = new Date(ms), day = dt.getUTCDay();
+    var fri = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate() + ((5 - day + 7) % 7));
+    var k = new Date(fri);
+    return k.getUTCFullYear() + "-" + String(k.getUTCMonth() + 1).padStart(2, "0") + "-" + String(k.getUTCDate()).padStart(2, "0");
+  }
+  function embeddedSeries(asset) {
+    return (((global.DASHBOARD_DATA || {}).assets || {})[asset.key] || {}).series || [];
+  }
+  // Append/replace today's live price as the current weekly point on top of the
+  // embedded history. Keeps the frozen regression (built on history) intact.
+  function withLiveTip(base, price, src) {
+    if (!(price > 0)) return { series: base, live: false, src: "demo" };
+    var out = base.slice(), k = fridayKey(Date.now());
+    if (out.length && out[out.length - 1].d === k) out[out.length - 1] = { d: k, c: price };
+    else out.push({ d: k, c: price });
+    return { series: out, live: true, src: src };
+  }
 
   // ---- ADAPTERS ------------------------------------------------------------
   // Every adapter returns a Promise of [{ d:"YYYY-MM-DD", c:number }, ...].
@@ -282,32 +305,36 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
     // { series, live, src } so the UI can label honestly: "LIVE" only when the
     // feed actually answered, otherwise an honest "DEMO · as-of <date>".
     live: function (asset) {
-      var base = ((global.DASHBOARD_DATA || {}).assets[asset.key] || {}).series || [];
-      function fridayKey(ms) {
-        var dt = new Date(ms), day = dt.getUTCDay();
-        var fri = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate() + ((5 - day + 7) % 7));
-        var k = new Date(fri);
-        return k.getUTCFullYear() + "-" + String(k.getUTCMonth() + 1).padStart(2, "0") + "-" + String(k.getUTCDate()).padStart(2, "0");
-      }
+      var base = embeddedSeries(asset);
       // Primary: Coinbase (keyless, CORS, US-friendly). Backup: Kraken.
-      var spot = fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot")
+      return fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot")
         .then(function (r) { if (!r.ok) throw 0; return r.json(); })
         .then(function (j) { return parseFloat(j.data.amount); })
         .catch(function () {
           return fetch("https://api.kraken.com/0/public/Ticker?pair=XBTUSD")
             .then(function (r) { return r.json(); })
             .then(function (j) { return parseFloat(j.result.XXBTZUSD.c[0]); });
-        });
-      return spot.then(function (price) {
-        if (!(price > 0)) throw 0;
-        var out = base.slice();
-        var k = fridayKey(Date.now());
-        if (out.length && out[out.length - 1].d === k) out[out.length - 1] = { d: k, c: price };
-        else out.push({ d: k, c: price });        // extend the line to today's live price
-        return { series: out, live: true, src: "coinbase" };
-      }).catch(function () {
-        return { series: base, live: false, src: "demo" };   // honest fallback, never blank
-      });
+        })
+        .then(function (price) { return withLiveTip(base, price, "coinbase"); })
+        .catch(function () { return { series: base, live: false, src: "demo" }; });
+    },
+
+    // BETA-ONLY, external, BEST-EFFORT — index/stock feeds rarely allow keyless
+    // browser access (CORS), so this may not connect in every browser. Tries
+    // Yahoo's chart endpoint for the asset's `yahoo` symbol to refresh the
+    // current price; on any failure it falls back to honest demo data. The
+    // RELIABLE answer for indices is the platform adapter (RV's QQQ end-of-day).
+    liveIndex: function (asset) {
+      var base = embeddedSeries(asset);
+      var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + (asset.yahoo || "") + "?range=1mo&interval=1d";
+      return fetch(url)
+        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+        .then(function (j) {
+          var res = j.chart.result[0], closes = res.indicators.quote[0].close, price = null;
+          for (var i = closes.length - 1; i >= 0; i--) { if (closes[i] != null) { price = closes[i]; break; } }
+          return withLiveTip(base, price, "yahoo");
+        })
+        .catch(function () { return { series: base, live: false, src: "demo" }; });
     }
 
     // internal: function (asset) { ... }   // <- a team drops their own feed in here.
