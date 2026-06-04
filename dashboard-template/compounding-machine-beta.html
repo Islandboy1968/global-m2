@@ -803,6 +803,38 @@ function CompoundingMachine(){
         </ResponsiveContainer>
       </Card>
 
+      {/* SIGNAL HISTORY */}
+      <Card style={{marginBottom:24}}>
+        <div style={{fontSize:16,fontWeight:700,letterSpacing:"-.01em",marginBottom:18}}>Signal History</div>
+        <div className="ctrl-grid">
+          <div>
+            <Eyebrow color={C.green} style={{marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${C.line}`}}>Buys ({buys.length}) · {fmt$(buyAmount)} each</Eyebrow>
+            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:12.5}}>
+              {buys.map((e,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 2px",borderBottom:`1px solid ${C.line}`}}>
+                  <span style={{color:C.muted}}>{fmtDateFull(e.date)}</span>
+                  <span style={{color:C.text}}>{fmtP(e.price)}</span>
+                  <span style={{color:C.buyDot}}>+{fmt$(e.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Eyebrow color={C.red} style={{marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${C.line}`}}>Sells ({sells.length}){sellPct===0?" · disabled":""}</Eyebrow>
+            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:12.5}}>
+              {sells.length===0&&<div style={{color:C.faint,padding:"8px 2px"}}>No sells — pure compounding mode</div>}
+              {sells.map((e,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 2px",borderBottom:`1px solid ${C.line}`}}>
+                  <span style={{color:C.muted}}>{fmtDateFull(e.date)}</span>
+                  <span style={{color:C.text}}>{fmtP(e.price)}</span>
+                  <span style={{color:C.sellDot}}>−{fmt$(e.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* HOW TO USE */}
       <Card style={{marginBottom:8}}>
         <Eyebrow color={C.lime} style={{marginBottom:14}}>How to use it</Eyebrow>
