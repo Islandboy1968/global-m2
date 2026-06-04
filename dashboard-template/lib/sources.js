@@ -24,14 +24,14 @@
       key: "BTC", name: "Bitcoin", ticker: "BTC", unit: "BTC", color: "#F6C343",
       source: "injected",            // <- swap to "coingecko" for live, or "internal" for your feed
       symbol: "INDEX:BTCUSD",        // provider symbol (used by live adapters)
-      projectToYear: 2035            // how far the forward channel extends
+      projectToYear: 2030            // how far the forward channel extends
     },
     {
       key: "QQQ", name: "Nasdaq 100 (QQQ)", ticker: "QQQ", unit: "shares", color: "#60A5FA",
       source: "injected",            // embedded QQQ history; beta flips to liveStock
       symbol: "NASDAQ:QQQ",
       yahoo: "QQQ",                  // ticker for the live feed
-      projectToYear: 2035            // match BTC's horizon so the two charts scale consistently
+      projectToYear: 2030            // match BTC's horizon so the two charts scale consistently
     }
   ];
 
