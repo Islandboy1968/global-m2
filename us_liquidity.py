@@ -10,6 +10,14 @@ All series come from FRED's KEYLESS csv endpoint (fredgraph.csv) so there is no
 API key in the repo and no browser CORS problem — the GitHub Action fetches the
 numbers and bakes them into data.js. The browser only ever reads static data.
 
+The series is built on a DAILY calendar grid: the Fed balance sheet (WALCL, weekly)
+and bank-credit series (weekly) are forward-filled, while the two volatile swing
+factors are taken at DAILY frequency — TGA from the U.S. Treasury's Daily Treasury
+Statement (api.fiscaldata.treasury.gov, public/no key) and RRP from FRED (daily).
+So the US line moves day-to-day and runs through the latest published day, instead
+of stepping only on WALCL's weekly Wednesday grid. If the Treasury DTS is
+unreachable, TGA falls back to FRED's weekly WTREGEN and the series still builds.
+
 Units: WALCL & TGA are $millions; RRP, TOTBKCR, SBCACBW are $billions (x1000 -> $M).
 Output values are in $ trillions to match the global series.
 
@@ -17,13 +25,14 @@ BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
 import datetime as dt
+import json, os, time, urllib.request
 from fred import fred_series
 from tv_pull import pull_series
 
 # series_id -> unit multiplier to reach $millions
 SERIES = {
     "WALCL":          1.0,     # Fed balance sheet, $M, weekly (Wed)
-    "WTREGEN":        1.0,     # Treasury General Account, $M, weekly (Wed)
+    "WTREGEN":        1.0,     # Treasury General Account, $M, weekly (Wed) — DTS fallback
     "RRPONTSYD":      1000.0,  # Overnight reverse repo, $B -> $M, daily
     "TOTBKCR":        1000.0,  # Bank credit, all commercial banks (loans + securities), $B -> $M, monthly
     "SBCACBW027NBOG": 1000.0,  # Treasury & agency securities held by banks, $B -> $M, weekly (Wed)
@@ -135,13 +144,121 @@ def _trailing_avg(arr, n):
     return out
 
 
-# Inputs required to compute the headline Broad measure. SBCACBW027NBOG feeds
-# ONLY the Narrow measure and is allowed to be missing: it is unavailable on
-# TradingView and times out intermittently on FRED's CSV, and one optional input
-# must never blank the whole tab. When it's missing the Broad series still ships
-# and the Narrow leg is emitted as null (update_data.py carries the last good
-# Narrow values forward per-series).
-CORE = ("WALCL", "WTREGEN", "RRPONTSYD", "TOTBKCR")
+# SBCACBW027NBOG feeds ONLY the Narrow measure and is allowed to be missing: it is
+# unavailable on TradingView and times out intermittently on FRED's CSV, and one
+# optional input must never blank the whole tab. When it's missing the Broad series
+# still ships and the Narrow leg is emitted as null (update_data.py carries the last
+# good Narrow values forward per-series).
+
+# ---- Daily TGA from the U.S. Treasury Daily Treasury Statement (public, no key) --
+_DTS_URL = ("https://api.fiscaldata.treasury.gov/services/api/fiscal_service"
+            "/v1/accounting/dts/operating_cash_balance")
+# DTS account_type for the TGA closing balance. The modern label has been used
+# since Apr-2022; the older "Federal Reserve Account" label covers prior history,
+# so honouring both gives a continuous daily series.
+_TGA_LABEL = "Treasury General Account (TGA) Closing Balance"
+_TGA_LABELS = (_TGA_LABEL, "Federal Reserve Account")
+
+
+def _fetch_tga_daily(start=START, retries=3):
+    """Daily TGA closing balance ($millions) from the Treasury DTS, as
+    {YYYY-MM-DD: $M}. Returns {} on failure so the caller falls back to WTREGEN."""
+    out, page = {}, 1
+    while True:
+        q = (f"?fields=record_date,account_type,close_today_bal"
+             f"&filter=record_date:gte:{start}"
+             f"&sort=-record_date&page[size]=10000&page[number]={page}")
+        body = None
+        for attempt in range(retries):
+            try:
+                req = urllib.request.Request(
+                    _DTS_URL + q, headers={"User-Agent": "tgl-dashboard/1.0"})
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    body = json.loads(r.read().decode())
+                break
+            except Exception as e:
+                if attempt == retries - 1:
+                    print(f"  US: DTS TGA page {page} failed: {str(e)[:70]}")
+                    return out
+                time.sleep(1.5 * (attempt + 1))
+        rows = (body or {}).get("data", [])
+        if not rows:
+            break
+        for row in rows:
+            at = row.get("account_type")
+            if at not in _TGA_LABELS:
+                continue
+            d, v = row.get("record_date"), row.get("close_today_bal")
+            if not d or v in (None, "", "null"):
+                continue
+            try:
+                val = float(v)
+            except (TypeError, ValueError):
+                continue
+            # prefer the modern TGA label where both labels exist for a date
+            if at == _TGA_LABEL or d not in out:
+                out[d] = val
+        meta = (body or {}).get("meta", {})
+        if page >= int(meta.get("total-pages", page) or page):
+            break
+        page += 1
+    return out
+
+
+def _tga_plausible(m):
+    """True if the latest TGA value is a sane balance ($10B–$10T, in $millions)."""
+    if not m:
+        return False
+    latest = m[max(m)]
+    return 1e4 <= latest <= 1e7
+
+
+def _ffill_onto(grid, m):
+    """Forward-fill a {date: value} map onto a sorted list of ISO date strings."""
+    if not m:
+        return [None] * len(grid)
+    items = sorted(m.items())
+    out = [None] * len(grid)
+    j, cur, n = 0, None, len(items)
+    for i, day in enumerate(grid):
+        while j < n and items[j][0] <= day:
+            cur = items[j][1]; j += 1
+        out[i] = cur
+    return out
+
+
+_DATA_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "data.json")
+
+
+def _fallback_secs(walcl, tga, rrp):
+    """Securities series ($B) for the Narrow leg when SBCACBW's live fetch fails
+    (it is unavailable on TradingView and times out intermittently on FRED's CSV).
+    Returns the series persisted on the last good run, else reconstructs the full
+    series from the previously shipped Narrow values and the current
+    WALCL/TGA/RRP (securities = Narrow·1e6 − base). Either way the daily base keeps
+    the Narrow leg advancing every day through a SBCACBW outage. ({date: $B}, src)."""
+    try:
+        with open(_DATA_JSON) as fh:
+            prev = json.load(fh)
+    except Exception:
+        return {}, "none"
+    us = prev.get("us") or {}
+    persisted = {r["d"]: r["v"] for r in (us.get("secs_raw") or [])
+                 if r.get("d") and r.get("v") is not None}
+    if persisted:
+        return persisted, "persisted"
+    out = {}
+    for r in (us.get("series") or []):
+        vo, d = r.get("vo"), r.get("d")
+        if vo is None or not d:
+            continue
+        w, t, rr = _closest_before(walcl, d), _closest_before(tga, d), _closest_before(rrp, d)
+        if None in (w, t, rr):
+            continue
+        sb = (vo * 1e6 - (w - t - rr * SERIES["RRPONTSYD"])) / SERIES["SBCACBW027NBOG"]
+        if sb > 0:
+            out[d] = sb
+    return out, ("reconstructed" if out else "none")
 
 
 def build_us():
@@ -158,23 +275,51 @@ def build_us():
             print(f"  US: {s} unavailable from all sources ({str(e)[:60]})")
             raw[s] = {}
 
-    missing_core = [s for s in CORE if not raw[s]]
-    if missing_core:
-        raise RuntimeError(f"US core series unavailable: {', '.join(missing_core)}")
+    # Daily TGA from the Treasury DTS (so the line moves day-to-day); fall back to
+    # FRED's weekly WTREGEN if the DTS is unreachable or returns an implausible value.
+    tga = _fetch_tga_daily()
+    if _tga_plausible(tga):
+        print(f"  US: TGA daily from Treasury DTS — {len(tga)} days, latest {max(tga)}")
+    else:
+        tga = raw.get("WTREGEN", {})
+        print("  US: DTS TGA unavailable/implausible — using weekly WTREGEN")
 
-    walcl = raw["WALCL"]
-    tga, rrp = raw["WTREGEN"], raw["RRPONTSYD"]
+    walcl, rrp = raw["WALCL"], raw["RRPONTSYD"]
     credit, secs = raw["TOTBKCR"], raw["SBCACBW027NBOG"]
 
-    dates = sorted(walcl)  # WALCL weekly grid is the master calendar
+    # SBCACBW (Narrow-only) is chronically flaky. When its live fetch fails, keep the
+    # Narrow leg advancing daily off the persisted / reconstructed securities series
+    # rather than letting it stall (the daily base — Fed BS − TGA − RRP — still moves).
+    if not secs:
+        secs, _src = _fallback_secs(walcl, tga, rrp)
+        if secs:
+            print(f"  US: SBCACBW unavailable — Narrow uses {_src} securities "
+                  f"({len(secs)} pts, latest {max(secs)})")
+        else:
+            print("  US: SBCACBW unavailable and no fallback — Narrow leg will be null")
+
+    need = {"WALCL": walcl, "RRPONTSYD": rrp, "TOTBKCR": credit, "TGA": tga}
+    missing = [k for k, v in need.items() if not v]
+    if missing:
+        raise RuntimeError(f"US core inputs unavailable: {', '.join(missing)}")
+
+    # Daily calendar grid from WALCL's start to the freshest daily input (capped at
+    # today). Weekly series (WALCL, bank credit, securities) are forward-filled; TGA
+    # and RRP carry their daily movement so the series advances every day.
+    today = dt.date.today().isoformat()
+    end_d = min(max(max(walcl), max(tga), max(rrp)), today)
+    start_d = min(walcl)
+    grid, cur, last = [], dt.date.fromisoformat(start_d), dt.date.fromisoformat(end_d)
+    while cur <= last:
+        grid.append(cur.isoformat()); cur += dt.timedelta(days=1)
+
+    W, T, R = _ffill_onto(grid, walcl), _ffill_onto(grid, tga), _ffill_onto(grid, rrp)
+    C, S = _ffill_onto(grid, credit), _ffill_onto(grid, secs)
+
     rows = []
-    for d in dates:
-        w = walcl[d]
-        t = _closest_before(tga, d)
-        r = _closest_before(rrp, d)
-        c = _closest_before(credit, d)   # bank credit is monthly -> forward-filled on the weekly grid
-        s = _closest_before(secs, d)     # narrow-only input; may be None when SBCACBW is unavailable
-        if None in (t, r, c):            # Broad essentials only
+    for i, d in enumerate(grid):
+        w, t, r, c, s = W[i], T[i], R[i], C[i], S[i]
+        if None in (w, t, r, c):          # Broad essentials must all be present
             continue
         base = w - t - r * SERIES["RRPONTSYD"]
         new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
@@ -194,19 +339,20 @@ def build_us():
         raise RuntimeError(f"US Broad implausible (${_vn_latest:.3g}tn) — likely a "
                            f"source unit mismatch; refusing to ship")
 
-    # 52-week YoY on the weekly grid
+    # YoY vs ~365 days earlier on the daily grid (rows are contiguous days once the
+    # leading warm-up is skipped), with a ~91-day trailing average for the smoothed line.
     vn = [x["vn"] for x in rows]
     vo = [x["vo"] for x in rows]
     yn = [None] * len(rows)
     yo = [None] * len(rows)
     for i in range(len(rows)):
-        j = i - 52
+        j = i - 365
         if j >= 0 and vn[j]:
             yn[i] = (vn[i] / vn[j] - 1) * 100
         if j >= 0 and vo[i] is not None and vo[j]:
             yo[i] = (vo[i] / vo[j] - 1) * 100
-    yns = _trailing_avg(yn, 13)   # ~3-month trailing average of YoY
-    yos = _trailing_avg(yo, 13)
+    yns = _trailing_avg(yn, 91)   # ~3-month trailing average of YoY
+    yos = _trailing_avg(yo, 91)
 
     series = []
     for i, x in enumerate(rows):
@@ -231,7 +377,14 @@ def build_us():
         "yoy_old_s": (last_vo["yos"] if last_vo else None),
         "narrow_as_of": (last_vo["d"] if last_vo else None),
     }
-    return {"lag_days": 90, "summary": summary, "series": series}
+    # Persist the securities series (change-points only — forward-fill reconstructs
+    # the rest) so a future SBCACBW outage can reuse it via _fallback_secs.
+    secs_raw, _prev = [], None
+    for d, v in sorted(secs.items()):
+        rv = round(v, 4)
+        if rv != _prev:
+            secs_raw.append({"d": d, "v": rv}); _prev = rv
+    return {"lag_days": 90, "summary": summary, "series": series, "secs_raw": secs_raw}
 
 
 if __name__ == "__main__":
