@@ -53,28 +53,27 @@ _TV_RES = "1D"     # both fallback series are daily
 _TV_BARS = 6200    # ~17yr of daily bars; frontend windows what it shows
 
 # Unit normalization. FRED's keyless CSV returns these magnitude series in FRED's
-# canonical unit (WALCL/WTREGEN in $millions; RRP/TOTBKCR/SBCACBW in $billions;
-# interest in $billions), but FRED's TradingView passthrough returns them in
-# ACTUAL DOLLARS — a 1e6/1e9 difference that silently corrupts the US arithmetic
-# when the CSV times out and we fall back to TradingView. We snap every fetched
-# value back to FRED's canonical unit, detected by magnitude: canonical values
-# for these series are all < 1e8, dollar values are all > 1e11, so a single
-# threshold separates them cleanly and stays correct as the series grow. Series
-# not listed here (rates/levels like DGS5, CIVPART) read identically from both
+# canonical unit (WALCL/WTREGEN in $millions; RRP/TOTBKCR/SBCACBW/interest in
+# $billions), but FRED's TradingView passthrough returns them in ACTUAL DOLLARS.
+# We convert based on WHICH SOURCE answered, not on magnitude: a magnitude test
+# misclassifies small values — e.g. near-zero reverse-repo from TradingView
+# ($0.08B = 8e7 dollars) falls below any sane threshold, escapes rescaling, and
+# gets read as $80B, blowing the row up ~1000x. Source is unambiguous. Series not
+# listed here (rates/levels like DGS5, CIVPART) read identically from both
 # sources and are passed through untouched.
 _CANON_DIV = {"WALCL": 1e6, "WTREGEN": 1e6, "RRPONTSYD": 1e9, "TOTBKCR": 1e9,
               "SBCACBW027NBOG": 1e9, "A091RC1Q027SBEA": 1e9}
-_DOLLARS_THRESHOLD = 1e8
 
 
-def _to_canonical(series_id, m):
-    """Convert a {date: value} map to the series' canonical FRED unit, dividing
-    any actual-dollars values (from TradingView) back down. No-op for series with
-    no known unit or values already in canonical range."""
+def _to_canonical(series_id, m, source):
+    """Convert a {date: value} map to the series' canonical FRED unit. TradingView's
+    FRED passthrough returns actual dollars (divide by the canonical factor); FRED's
+    CSV is already canonical (no-op). Conversion keys off the source, never the
+    magnitude, so a tiny value (near-zero RRP) can't be misclassified."""
     div = _CANON_DIV.get(series_id)
-    if not div or not m:
+    if not div or not m or not (source or "").startswith("TradingView"):
         return m
-    return {d: (v / div if abs(v) > _DOLLARS_THRESHOLD else v) for d, v in m.items()}
+    return {d: v / div for d, v in m.items()}
 
 
 def _from_csv(series_id, timeout, retries):
@@ -100,11 +99,12 @@ def _fetch(series_id, start=START, timeout=30, retries=4):
     tv = ("TradingView FRED", lambda: _from_tradingview(series_id))
     order = [tv, csv] if series_id in TV_FIRST else [csv, tv]
 
-    raw, last_err = None, None
+    raw, last_err, used = None, None, None
     for name, fn in order:
         try:
             raw = fn()
             if raw:
+                used = name
                 break
             last_err = f"{name}: no data rows"
             raw = None
@@ -120,7 +120,7 @@ def _fetch(series_id, start=START, timeout=30, retries=4):
         d = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d")
         if d >= start:
             out[d] = v
-    return _to_canonical(series_id, out)
+    return _to_canonical(series_id, out, used)
 
 
 def _closest_before(m, ds, lookback=45):
@@ -325,6 +325,13 @@ def build_us():
         new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
         old_liq = ((base + s * SERIES["SBCACBW027NBOG"]) / 1e6
                    if s is not None else None)            # Narrow, $tn (optional)
+        # Per-row plausibility backstop: US liquidity is ~$10-30tn. Drop any day whose
+        # Broad is implausible (a stray garbage input value) so it can never render;
+        # null an implausible Narrow but keep the Broad day.
+        if not (0.0 < new_liq < 100.0):
+            continue
+        if old_liq is not None and not (0.0 < old_liq < 100.0):
+            old_liq = None
         rows.append({"d": d, "vn": new_liq, "vo": old_liq})
 
     if not rows:

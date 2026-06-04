@@ -302,10 +302,14 @@ published observation, and compares it to what we shipped.
   Narrow run through the latest day even across a SBCACBW outage.
 - **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
   magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
-  passthrough returns ACTUAL DOLLARS. `_fetch` snaps every value back to canonical
-  by magnitude (canonical < 1e8, dollars > 1e11) so the arithmetic is unit-safe
-  whichever source answers. `build_us` also has a $5–80tn sanity guard that carries
-  forward rather than ship a corrupt Broad value (the date gate only checks recency).
+  passthrough returns ACTUAL DOLLARS. `_fetch` converts based on WHICH SOURCE
+  answered (TradingView → divide by the canonical factor; CSV → as-is), never by
+  magnitude — a magnitude test misclassifies small values (near-zero reverse-repo
+  from TradingView, ~$0.08B = 8e7 dollars, fell below the old 1e8 threshold and was
+  read as $80B, blowing rows up ~1000x). `build_us` also (a) has a $5–80tn guard on
+  the latest Broad that carries forward rather than ship a corrupt value, and (b)
+  drops any individual day whose Broad is outside $0–100tn (nulls an implausible
+  Narrow) so a stray garbage input can never render.
 - **Auto-heal** (`update_data._reconcile_behind`): TradingView's monthly feeds
   occasionally serve a month-stale snapshot for one series (caught `cycle.ism`
   once). After the build, any gated TradingView block whose source has a newer
