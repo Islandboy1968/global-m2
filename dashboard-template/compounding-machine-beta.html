@@ -803,6 +803,22 @@ function CompoundingMachine(){
         </ResponsiveContainer>
       </Card>
 
+      {/* HOW TO USE */}
+      <Card style={{marginBottom:8}}>
+        <Eyebrow color={C.lime} style={{marginBottom:14}}>How to use it</Eyebrow>
+        <div style={{fontSize:13.5,color:C.muted,lineHeight:1.7,maxWidth:900}}>
+          <p style={{margin:"0 0 12px"}}>
+            The big <span style={{color:C.text,fontFamily:MONO}}>σ</span> reading at the top is the whole signal — how far price sits from its long-run trend. Below <span style={{color:C.green}}>−{buyThreshold}σ</span> is the <span style={{color:C.green}}>buy zone</span> (stretched cheap); above <span style={{color:C.red}}>+{sellThreshold}σ</span> is the <span style={{color:C.red}}>sell zone</span>. Green dots on the chart mark historical adds, red dots mark trims.
+          </p>
+          <p style={{margin:"0 0 12px"}}>
+            The trend is a <span style={{color:C.text}}>frozen log-linear regression</span> on weekly closes (Sept 2017 → Dec 2025: <span style={{color:C.text,fontFamily:MONO}}>{impliedCAGR}%</span> CAGR, 1σ = <span style={{color:C.text,fontFamily:MONO}}>{sd1pct}%</span>). Each buy signal adds a fixed <span style={{color:C.text,fontFamily:MONO}}>{fmt$(buyAmount)}</span> at the lows; the optional “lifestyle chips” trim <span style={{color:C.text,fontFamily:MONO}}>{sellPct}%</span> of holdings when overbought. Cash from trims funds the next buys first — which is why <span style={{color:C.text}}>Out of Pocket</span> can sit well below <span style={{color:C.text}}>Total Invested</span>. The <span style={{color:C.purple}}>No-Sells</span> line is pure compounding: adds at the lows, never trimming.
+          </p>
+          <p style={{margin:0}}>
+            The forward channel shows where the trend and the ±1σ / ±2σ bands sit in coming years — the range that has historically contained most of the action. It is <span style={{color:C.text}}>not a forecast</span> of where price will trade. Treat this as a weekly check-in, not an intraday tool.
+          </p>
+        </div>
+      </Card>
+
       <div style={{fontSize:11.5,color:C.faint,textAlign:"center",marginTop:24,lineHeight:1.6}}>
         {srcLabel} · Demonstration only — not investment advice. Past performance and modelled projections do not guarantee future results.
       </div>
