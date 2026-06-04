@@ -286,6 +286,20 @@ published observation, and compares it to what we shipped.
   SBCACBW027NBOG (Narrow-only, absent on TradingView + flaky on FRED CSV) may be
   missing — the Broad series still ships and update_data carries the Narrow leg
   forward per-series. One missing input can no longer blank the whole US tab.
+- **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
+  magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
+  passthrough returns ACTUAL DOLLARS. `_fetch` snaps every value back to canonical
+  by magnitude (canonical < 1e8, dollars > 1e11) so the arithmetic is unit-safe
+  whichever source answers. `build_us` also has a $5–80tn sanity guard that carries
+  forward rather than ship a corrupt Broad value (the date gate only checks recency).
+- **Auto-heal** (`update_data._reconcile_behind`): TradingView's monthly feeds
+  occasionally serve a month-stale snapshot for one series (caught `cycle.ism`
+  once). After the build, any gated TradingView block whose source has a newer
+  complete month is re-pulled (≤2 rounds), using `verify_against_source` so "behind"
+  matches the gate exactly. Transient misses self-heal (green stays reliable); a
+  genuinely stale source stays BEHIND and the gate fails loudly. us/big are excluded
+  (their carry-forward state would be clobbered by a blind rebuild). Disable with
+  `TGL_NO_HEAL=1`.
 
 ## Caches (gitignored, not in repo)
 `series_cache.json` (M2, monthly) and `fx_daily_cache.json` (FX + assets, daily) speed up

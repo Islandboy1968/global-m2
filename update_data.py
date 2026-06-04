@@ -125,6 +125,67 @@ def monthly_ffill_by_day(points, grid, override=None, backfill_leading=True):
         out[i] = ff.get(day.strftime("%Y-%m"))
     return _backfill(out) if backfill_leading else out
 
+# ------------------------------------------------------------------ self-heal
+def _rebuild_cycle():
+    """Rebuild the Business Cycle block including its FCI reconstruction (the heal
+    re-pulls a whole block, and FCI is derived from the freshly pulled ISM)."""
+    c = build_cycle()
+    try:
+        fset = build_fci_set(c["ism"])
+        c["fci"], c["fci_exoil"] = fset["fci"], fset["fci_exoil"]
+    except Exception as e:
+        c["fci"], c["fci_exoil"] = None, None
+        print("  FCI rebuild FAILED:", str(e)[:80])
+    return c
+
+
+def _reconcile_behind(blocks, current_ym, max_rounds=2):
+    """Self-heal transient upstream lag. TradingView's monthly feeds occasionally
+    serve a month-stale snapshot for a single series (e.g. cycle.ism returning
+    April when May is published). Right after the build we re-probe each gated
+    block at its source — using verify_data's own classifier so "behind" means
+    exactly what the gate means — and re-pull any block whose source has a newer
+    COMPLETE month than we built. A genuinely stale source stays behind and the
+    gate still fails loudly; a transient miss self-heals so a green run reliably
+    means fresh. us/big are handled by their own carry-forward backstop and are
+    intentionally not rebuilt here (a blind rebuild would clobber that state)."""
+    from verify_data import verify_against_source
+    rebuild = {"cycle": _rebuild_cycle, "exp": build_exports, "infl": build_inflation,
+               "labor": build_labor, "rates": build_rates, "housing": build_housing,
+               "credit": build_credit, "china": build_china}
+
+    def behind_set(names):
+        sub = {n: blocks.get(n) for n in names if isinstance(blocks.get(n), dict)}
+        if not sub:
+            return set()
+        res = verify_against_source(sub, current_ym)   # only probes blocks in `sub`
+        return {n for n, leaves in res.items()
+                if any(v["status"] == "BEHIND" for v in leaves.values())}
+
+    behind = behind_set(rebuild.keys())
+    if not behind:
+        return blocks
+    print(f"  RECONCILE: behind source: {', '.join(sorted(behind))} — re-pulling")
+    rounds = 0
+    while behind and rounds < max_rounds:
+        rounds += 1
+        for blk in sorted(behind):
+            print(f"    re-pull {blk} (round {rounds}/{max_rounds})")
+            try:
+                nb = rebuild[blk]()
+                if isinstance(nb, dict) and nb:
+                    blocks[blk] = nb
+            except Exception as e:
+                print(f"    {blk} re-pull failed: {str(e)[:80]}")
+        behind = behind_set(behind)   # re-check only the ones that were behind
+    if behind:
+        print(f"  RECONCILE: {', '.join(sorted(behind))} still behind after "
+              f"{max_rounds} round(s) — gate will flag")
+    else:
+        print("  RECONCILE: all healed")
+    return blocks
+
+
 def build():
     m2c, fxc = get_data()
     today = dt.datetime.utcnow().date()
@@ -363,6 +424,22 @@ def build():
                 us["summary"].update(old_tn=_lvo["vo"], yoy_old=_lvo["yo"],
                                      yoy_old_s=_lvo["yos"], narrow_as_of=_lvo["d"])
             print(f"  US: carried forward {carried} Narrow (vo) points (SBCACBW unavailable)")
+
+    # --- Self-heal transient upstream lag ---------------------------------
+    # Before stamping freshness / gating, re-pull any TradingView monthly block
+    # whose source has a newer complete month than we built. This turns the
+    # occasional one-series month-lag (a flaky TradingView snapshot) from a red
+    # gate into a silent retry, so green stays reliable and red means genuinely
+    # stuck. Disable with TGL_NO_HEAL=1.
+    if os.environ.get("TGL_NO_HEAL") != "1":
+        heal = {"cycle": cycle, "exp": exp, "infl": infl, "labor": labor,
+                "rates": rates, "housing": housing, "credit": credit, "china": china}
+        try:
+            _reconcile_behind(heal, today.strftime("%Y-%m"))
+            cycle, exp, infl, labor = heal["cycle"], heal["exp"], heal["infl"], heal["labor"]
+            rates, housing, credit, china = heal["rates"], heal["housing"], heal["credit"], heal["china"]
+        except Exception as e:
+            print("  RECONCILE skipped (error):", str(e)[:100])
 
     # Per-series freshness. We record the latest observation date of EVERY leaf
     # series (not just the block max — a fresh daily series must never mask a
