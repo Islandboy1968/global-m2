@@ -27,11 +27,18 @@ jobs:
       - name: Run pipeline
         run: python update_data.py
 
-      - name: Data health report
-        if: always()
-        run: python verify_data.py || true
+      - name: Verify against source & stamp freshness
+        # Goes to each series' source, compares to what we built, stamps per-series
+        # freshness into data/* for the dashboard badge, and FAILS the job if any
+        # series is missing or genuinely behind its source. Runs before commit so
+        # the source-verified freshness is what gets published.
+        run: python verify_data.py --gate
 
       - name: Commit refreshed data
+        # if: always() so the honest (source-verified) freshness is committed even
+        # when the gate flags a stale series — the dashboard must always tell the
+        # truth, and the failed gate still turns the run red as a loud alert.
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

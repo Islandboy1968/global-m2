@@ -339,28 +339,61 @@ def build():
         print("  BIG: build empty this run — carrying forward previous data")
         big = prev["big"]; stale.add("big")
 
-    # Per-block freshness for the dashboard staleness badge: the latest
-    # observation date in each block, and whether it was carried forward (stale)
-    # because the live fetch failed. Keyed by data block; the frontend maps
-    # each tab to its block.
-    def _latest_date(blk):
-        ds = []
-        def scan(x):
+    # US Narrow-leg per-series carry-forward. build_us now ships the Broad series
+    # even when SBCACBW027NBOG (Narrow-only input) is unavailable, leaving vo/yo/yos
+    # null for the affected weeks. Carry the last good Narrow values forward by
+    # date so the Narrow charts don't vanish while Broad stays live.
+    if us and prev.get("us") and prev["us"].get("series"):
+        prev_us = {r["d"]: r for r in prev["us"]["series"]}
+        carried = 0
+        for r in us["series"]:
+            if r.get("vo") is None and prev_us.get(r["d"], {}).get("vo") is not None:
+                pr = prev_us[r["d"]]
+                r["vo"], r["yo"], r["yos"] = pr.get("vo"), pr.get("yo"), pr.get("yos")
+                carried += 1
+        if carried:
+            stale.add("us")
+            _lvo = next((x for x in reversed(us["series"]) if x.get("vo") is not None), None)
+            if _lvo:
+                us["summary"].update(old_tn=_lvo["vo"], yoy_old=_lvo["yo"],
+                                     yoy_old_s=_lvo["yos"], narrow_as_of=_lvo["d"])
+            print(f"  US: carried forward {carried} Narrow (vo) points (SBCACBW unavailable)")
+
+    # Per-series freshness. We record the latest observation date of EVERY leaf
+    # series (not just the block max — a fresh daily series must never mask a
+    # stale monthly one) plus whether the block was carried forward because a
+    # live fetch failed. The authoritative live/behind VERDICT is stamped later
+    # by verify_data.py, which goes to each source and compares; here we only
+    # record dates + the carry-forward flag.
+    def _leaf_dates(blk):
+        out = {}
+        def scan(x, key):
             if isinstance(x, list):
-                for r in x:
-                    if isinstance(r, dict) and r.get("d"):
-                        ds.append(r["d"])
+                ds = [r["d"] for r in x if isinstance(r, dict) and r.get("d")]
+                if ds:
+                    out[key or "series"] = max(ds)
             elif isinstance(x, dict):
-                for v in x.values():
-                    scan(v)
-        scan(blk)
-        return max(ds) if ds else None
+                for k, v in x.items():
+                    scan(v, f"{key}.{k}" if key else k)
+        scan(blk, "")
+        return out
 
     blocks = {"series": series, "us": us, "big": big, "cycle": cycle, "exp": exp,
               "infl": infl, "labor": labor, "rates": rates, "housing": housing,
               "credit": credit, "china": china}
-    freshness = {name: {"as_of": _latest_date(blk), "stale": name in stale}
-                 for name, blk in blocks.items() if blk}
+    freshness = {}
+    for name, blk in blocks.items():
+        if not blk:
+            continue
+        leaves = _leaf_dates(blk)
+        if not leaves:
+            continue
+        freshness[name] = {
+            "as_of": max(leaves.values()),      # newest leaf (kept for back-compat)
+            "oldest": min(leaves.values()),     # oldest leaf in the block
+            "stale": name in stale,             # carried forward this run (fetch failed)
+            "series": leaves,                   # {leaf_key: latest observation date}
+        }
 
     data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,

@@ -1352,9 +1352,14 @@ const TABMETA={global:{t:"Global Liquidity"}, us:{t:"US Liquidity"}, big:{t:"The
 const DESCR={global:()=>descrGlobal, us:()=>descrUS, big:()=>descrBig, cycle:()=>descrCycle, glx:()=>descrGlx, infl:()=>descrInfl, labor:()=>descrLabor, rates:()=>descrRates, housing:()=>descrHousing, credit:()=>descrCredit, china:()=>descrChina};
 const GROUPS={global:GLOBAL, us:US, big:BIG, cycle:CYCLE, glx:GLX, infl:INFL, labor:LABOR, rates:RATES, housing:HOUSING, credit:CREDIT, china:CHINA};
 
-// Per-tab data-freshness badge. The pipeline stamps TGL_DATA.freshness[block]
-// with {as_of, stale}; stale===true means the live fetch failed and we're
-// showing carried-forward data. Each tab maps to its underlying data block.
+// Per-tab data-freshness badge. verify_data.py goes to each series' SOURCE,
+// reads its latest published observation, and stamps TGL_DATA.freshness[block]
+// with a per-series verdict {as_of, source_latest, status} plus a block-level
+// status (IN_SYNC / BEHIND / MISSING / UNVERIFIED / DERIVED) and a carry-forward
+// `stale` flag. The badge is GREEN only when the tab's data matches its source;
+// it goes amber and names the lagging series otherwise. No release-calendar
+// assumptions are made anywhere — "behind" means the source genuinely has newer
+// data than we shipped.
 const TAB2BLOCK={global:"series", us:"us", big:"big", cycle:"cycle", glx:"exp", infl:"infl", labor:"labor", rates:"rates", housing:"housing", credit:"credit", china:"china"};
 const freshEl=document.getElementById("freshbadge");
 function fmtAsOf(d){ try{ return new Date(d+"T00:00:00").toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}); }catch(e){ return d; } }
@@ -1363,11 +1368,37 @@ function updateFreshBadge(t){
   const f=((window.TGL_DATA&&TGL_DATA.freshness)||{})[TAB2BLOCK[t]];
   if(!f||!f.as_of){ freshEl.hidden=true; return; }
   freshEl.hidden=false;
-  freshEl.classList.toggle("stale", !!f.stale);
-  freshEl.textContent = f.stale ? ("Stale · live fetch failed — data as of "+fmtAsOf(f.as_of))
-                                : ("Live · data through "+fmtAsOf(f.as_of));
-  freshEl.title = f.stale ? ("The latest data pull for this tab failed; showing the last good values (as of "+f.as_of+"). It refreshes automatically on the next successful run.")
-                          : ("Data fetched successfully · latest observation "+f.as_of);
+  const status=f.status;                 // undefined for unprobed blocks (e.g. global)
+  const series=f.series||{};
+  const behind=[], missing=[];
+  for(const k in series){ const s=series[k];
+    if(s && typeof s==="object"){
+      if(s.status==="BEHIND") behind.push(k+" (have "+String(s.as_of||"").slice(0,7)+", source "+(s.source_latest||"?")+")");
+      else if(s.status==="MISSING") missing.push(k);
+    }
+  }
+  const bad = !!f.stale || status==="BEHIND" || status==="MISSING";
+  freshEl.classList.toggle("stale", bad);
+  let label, title;
+  if(f.stale){
+    label="Stale · last fetch failed — showing data through "+fmtAsOf(f.as_of);
+    title="The live fetch for this tab failed; showing the last good values. Auto-refreshes on the next successful run.";
+  } else if(status==="BEHIND" || status==="MISSING"){
+    const n=behind.length+missing.length;
+    label="Behind source · "+n+" series need a refresh";
+    title=(behind.length?"Behind: "+behind.join("; "):"")+(missing.length?((behind.length?" | ":"")+"Missing: "+missing.join(", ")):"");
+  } else if(status===undefined){
+    label="Live · data through "+fmtAsOf(f.as_of);
+    title="Latest observation "+f.as_of+".";
+  } else if(status==="UNVERIFIED"){
+    label="Live · data through "+fmtAsOf(f.as_of)+" (source check unavailable)";
+    title="Data shipped, but the source could not be reached to verify it this run.";
+  } else {
+    label="Live · verified against source through "+fmtAsOf(f.as_of);
+    title="Every series on this tab matches its source's latest published observation"+(f.checked?" (checked "+f.checked+")":"")+".";
+  }
+  freshEl.textContent=label;
+  freshEl.title=title;
 }
 function showTab(t){
   for(const k in panes) panes[k].hidden=(k!==t);

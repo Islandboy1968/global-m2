@@ -111,9 +111,32 @@ def _trailing_avg(arr, n):
     return out
 
 
+# Inputs required to compute the headline Broad measure. SBCACBW027NBOG feeds
+# ONLY the Narrow measure and is allowed to be missing: it is unavailable on
+# TradingView and times out intermittently on FRED's CSV, and one optional input
+# must never blank the whole tab. When it's missing the Broad series still ships
+# and the Narrow leg is emitted as null (update_data.py carries the last good
+# Narrow values forward per-series).
+CORE = ("WALCL", "WTREGEN", "RRPONTSYD", "TOTBKCR")
+
+
 def build_us():
-    """Return the TGL_DATA['us'] block, or raise on hard failure."""
-    raw = {s: _fetch(s) for s in SERIES}
+    """Return the TGL_DATA['us'] block, or raise if a CORE input is unavailable.
+
+    Per-input tolerant: a single series failing all its sources no longer aborts
+    the build. Only a missing CORE input (needed for the Broad measure) raises,
+    in which case update_data.py carries the whole block forward."""
+    raw = {}
+    for s in SERIES:
+        try:
+            raw[s] = _fetch(s)
+        except Exception as e:
+            print(f"  US: {s} unavailable from all sources ({str(e)[:60]})")
+            raw[s] = {}
+
+    missing_core = [s for s in CORE if not raw[s]]
+    if missing_core:
+        raise RuntimeError(f"US core series unavailable: {', '.join(missing_core)}")
 
     walcl = raw["WALCL"]
     tga, rrp = raw["WTREGEN"], raw["RRPONTSYD"]
@@ -126,12 +149,13 @@ def build_us():
         t = _closest_before(tga, d)
         r = _closest_before(rrp, d)
         c = _closest_before(credit, d)   # bank credit is monthly -> forward-filled on the weekly grid
-        s = _closest_before(secs, d)
-        if None in (t, r, c, s):
+        s = _closest_before(secs, d)     # narrow-only input; may be None when SBCACBW is unavailable
+        if None in (t, r, c):            # Broad essentials only
             continue
         base = w - t - r * SERIES["RRPONTSYD"]
         new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
-        old_liq = (base + s * SERIES["SBCACBW027NBOG"]) / 1e6
+        old_liq = ((base + s * SERIES["SBCACBW027NBOG"]) / 1e6
+                   if s is not None else None)            # Narrow, $tn (optional)
         rows.append({"d": d, "vn": new_liq, "vo": old_liq})
 
     # 52-week YoY on the weekly grid
@@ -143,7 +167,7 @@ def build_us():
         j = i - 52
         if j >= 0 and vn[j]:
             yn[i] = (vn[i] / vn[j] - 1) * 100
-        if j >= 0 and vo[j]:
+        if j >= 0 and vo[i] is not None and vo[j]:
             yo[i] = (vo[i] / vo[j] - 1) * 100
     yns = _trailing_avg(yn, 13)   # ~3-month trailing average of YoY
     yos = _trailing_avg(yo, 13)
@@ -153,7 +177,7 @@ def build_us():
         series.append({
             "d":  x["d"],
             "vn": round(x["vn"], 4),
-            "vo": round(x["vo"], 4),
+            "vo": (round(x["vo"], 4) if x["vo"] is not None else None),
             "yn": (round(yn[i], 2) if yn[i] is not None else None),
             "yns": (round(yns[i], 2) if yns[i] is not None else None),
             "yo": (round(yo[i], 2) if yo[i] is not None else None),
@@ -161,11 +185,15 @@ def build_us():
         })
 
     last = series[-1]
+    # latest row that actually has a Narrow value (for the summary headline)
+    last_vo = next((x for x in reversed(series) if x["vo"] is not None), None)
     summary = {
         "latest": last["d"],
-        "new_tn": last["vn"], "old_tn": last["vo"],
+        "new_tn": last["vn"], "old_tn": (last_vo["vo"] if last_vo else None),
         "yoy_new": last["yn"], "yoy_new_s": last["yns"],
-        "yoy_old": last["yo"], "yoy_old_s": last["yos"],
+        "yoy_old": (last_vo["yo"] if last_vo else None),
+        "yoy_old_s": (last_vo["yos"] if last_vo else None),
+        "narrow_as_of": (last_vo["d"] if last_vo else None),
     }
     return {"lag_days": 90, "summary": summary, "series": series}
 

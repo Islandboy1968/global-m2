@@ -262,6 +262,31 @@ swallowed by a try/except and the block is written as `null`). Hardening in plac
   never regresses a populated section. To diagnose, read the Action run log for
   `US build FAILED` / `BIG build FAILED` / `BIG <key> failed` lines.
 
+## Trust / source-truth freshness (verify_data.py)
+The dashboard must never silently show stale data, and we deliberately keep NO
+hardcoded release calendar (those rot). Instead `verify_data.py` is a SOURCE-TRUTH
+checker: for every series it goes to the actual source (same symbols/resolutions,
+imported straight from the builder modules so it can't drift), reads the latest
+published observation, and compares it to what we shipped.
+- Statuses: IN_SYNC, BEHIND (source has a newer COMPLETE month — real problem),
+  MISSING (empty), UNVERIFIED (couldn't reach source — no opinion), DERIVED
+  (computed series with no 1:1 source — reported, never gated).
+- "Behind" ignores the in-progress current month, so a partial current-month bar
+  (a daily series bucketed monthly) never false-flags a correctly-current series.
+- It stamps a per-series verdict into `TGL_DATA.freshness[block].series[leaf]`
+  ({as_of, source_latest, status}) plus a block-level status. The dashboard badge
+  is GREEN only when the tab matches its source, and goes amber NAMING the lagging
+  series otherwise — a fresh daily series can no longer mask a stale monthly one.
+- CI runs `python verify_data.py --gate` before the commit: it stamps the
+  freshness and FAILS the job on any BEHIND/MISSING (DERIVED/UNVERIFIED never
+  fail). The commit step is `if: always()` so the honest badge is published even
+  when the gate is red.
+- `build_us()` is now per-input tolerant: only the four CORE inputs (WALCL,
+  WTREGEN, RRPONTSYD, TOTBKCR) are required for the headline Broad measure;
+  SBCACBW027NBOG (Narrow-only, absent on TradingView + flaky on FRED CSV) may be
+  missing — the Broad series still ships and update_data carries the Narrow leg
+  forward per-series. One missing input can no longer blank the whole US tab.
+
 ## Caches (gitignored, not in repo)
 `series_cache.json` (M2, monthly) and `fx_daily_cache.json` (FX + assets, daily) speed up
 local reruns. The Action runs without them (full pull each time), which is fine.
