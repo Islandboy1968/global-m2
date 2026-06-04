@@ -37,20 +37,37 @@
   // ---- ADAPTERS ------------------------------------------------------------
   // Every adapter returns a Promise of [{ d:"YYYY-MM-DD", c:number }, ...].
   // That uniform shape is the whole contract. Add providers here.
+  //
+  // FOR A PLATFORM BUILD: use `injected` or `platform` only. Both keep data
+  // INSIDE Real Vision's platform — no external provider is contacted at
+  // runtime. The `coingecko` adapter is an illustrative example of the socket
+  // accepting any provider; delete it for production.
   var ADAPTERS = {
 
-    // DEFAULT, production-aligned path: read the weekly series the pipeline
-    // already wrote into data/data.js. This mirrors how the live Everything
-    // Code dashboard reads window.TGL_DATA from data/data.js.
+    // DEFAULT, production-aligned path: read the weekly series the platform
+    // pipeline already wrote into data/data.js. This mirrors how the live
+    // Everything Code dashboard reads window.TGL_DATA from data/data.js.
+    // Nothing leaves the platform — the series is pre-supplied, not fetched.
     injected: function (asset) {
       var d = (global.DASHBOARD_DATA || {}).assets || {};
       var s = d[asset.key] && d[asset.key].series;
       return Promise.resolve(s || []);
     },
 
-    // EXAMPLE live adapter (BTC only) — demonstrates a genuinely different
-    // provider behind the same socket. Builds Friday-anchored weekly closes
-    // from CoinGecko's daily prices, exactly like the original prototype.
+    // INTENDED PRODUCTION PATH for live data: fetch the weekly series from Real
+    // Vision's own in-platform data service. Stub below — P&E wires the real
+    // endpoint/shared-data client and maps the response to [{d,c}]. The rest of
+    // the dashboard does not change. This is the answer to "it can't reference
+    // data outside our platform": point this at the platform and it never does.
+    platform: function (asset) {
+      // e.g. return RVData.weeklyCloses(asset.symbol).then(rows =>
+      //        rows.map(r => ({ d: r.date, c: r.close })));
+      return Promise.reject(new Error("platform adapter not wired yet"));
+    },
+
+    // EXAMPLE ONLY — external API; remove for platform builds. Demonstrates a
+    // genuinely different provider behind the same socket. Builds Friday-anchored
+    // weekly closes from CoinGecko's daily prices, like the original prototype.
     coingecko: function (asset) {
       var url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=3200&interval=daily";
       var START = new Date(2017, 8, 1).getTime();
