@@ -600,6 +600,7 @@ const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const yr=v=>new Date(v).getUTCFullYear();
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
 function monthYear(s){const m=(s||"").match(/(\d{4})-(\d{2})/); return m?MONTHS[+m[2]-1]+" "+m[1]:"";}
+function dayDate(s){const m=(s||"").match(/(\d{4})-(\d{2})-(\d{2})/); return m?(+m[3])+" "+MONTHS[+m[2]-1].slice(0,3)+" "+m[1]:monthYear(s);}
 const fmtBN=v=>Math.round(v).toLocaleString("en-US");
 const fmtPCT=v=>(v>0?"+":"")+Math.round(v)+"%";
 const sgn=v=>(v>=0?"+":"")+v;
@@ -928,9 +929,9 @@ const US = (function(){
   const U = DATA && DATA.us;
   if(!U || !U.series || !U.series.length){ document.getElementById("us-missing").hidden=false; return null; }
   const S=U.series, su=U.summary;
-  descrUS="Fed balance sheet − TGA − RRP + bank loans (Broad) · weekly FRED · latest "+monthYear(su.latest);
-  document.getElementById("cap-us-lvl").textContent=bn(su.new_tn)+" $BN · "+monthYear(su.latest);
-  document.getElementById("cap-us-lvl-old").textContent=bn(su.old_tn)+" $BN · "+monthYear(su.latest);
+  descrUS="Fed balance sheet − TGA − RRP + bank loans (Broad) · daily (TGA & RRP daily, Fed balance sheet weekly) · latest "+dayDate(su.latest);
+  document.getElementById("cap-us-lvl").textContent=bn(su.new_tn)+" $BN · "+dayDate(su.latest);
+  document.getElementById("cap-us-lvl-old").textContent=bn(su.old_tn)+" $BN · "+dayDate(su.narrow_as_of||su.latest);
   document.getElementById("cap-us-yoy").textContent="12-month % change · "+sgn(su.yoy_new)+"% (3m avg "+su.yoy_new_s+"%)";
   document.getElementById("cap-us-yoy-old").textContent="12-month % change · "+sgn(su.yoy_old)+"% (3m avg "+su.yoy_old_s+"%)";
   const P=key=>S.filter(r=>r[key]!=null).map(r=>({x:Date.parse(r.d), y:r[key]}));

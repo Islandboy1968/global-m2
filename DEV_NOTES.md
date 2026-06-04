@@ -286,6 +286,15 @@ published observation, and compares it to what we shipped.
   SBCACBW027NBOG (Narrow-only, absent on TradingView + flaky on FRED CSV) may be
   missing — the Broad series still ships and update_data carries the Narrow leg
   forward per-series. One missing input can no longer blank the whole US tab.
+- **Daily grid** (`us_liquidity.build_us`): the US series is built on a DAILY calendar,
+  not WALCL's weekly Wednesdays. The two volatile swing factors are taken daily — TGA
+  from the U.S. Treasury Daily Treasury Statement (`api.fiscaldata.treasury.gov`,
+  `operating_cash_balance`, `close_today_bal`, honouring both the modern "Treasury
+  General Account (TGA) Closing Balance" and legacy "Federal Reserve Account" labels)
+  and RRP from FRED — while WALCL / bank credit / securities are forward-filled. So the
+  line advances every day and runs through the latest published day. If the DTS is
+  unreachable/implausible, TGA falls back to weekly WTREGEN and the series still builds.
+  YoY is 365-day with a 91-day smoothing.
 - **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
   magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
   passthrough returns ACTUAL DOLLARS. `_fetch` snaps every value back to canonical
