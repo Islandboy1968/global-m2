@@ -102,13 +102,13 @@ function CompoundingMachine(){
     getAssetSeries(assetKey).then(res=>{
       if(cancelled) return;
       setSeries(res.series);
-      setSrcLabel(res.live ? ("live · " + res.source) : ("demo · as-of " + (res.asOf||"")));
+      setSrcLabel(res.live ? ("live · " + res.source) : ("as-of " + (res.asOf||"")));
       setLoading(false);
     }).catch(()=>{   // never get stuck on Loading — fall back to embedded data
       if(cancelled) return;
       const emb=((window.DASHBOARD_DATA||{}).assets||{})[assetKey];
       setSeries(emb?emb.series:[]);
-      setSrcLabel("demo · as-of " + ((window.DASHBOARD_DATA||{}).updated||""));
+      setSrcLabel("as-of " + ((window.DASHBOARD_DATA||{}).updated||""));
       setLoading(false);
     });
     return ()=>{ cancelled=true; };

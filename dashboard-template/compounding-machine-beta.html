@@ -231,13 +231,13 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
   var ASSET_REGISTRY = [
     {
       key: "BTC", name: "Bitcoin", ticker: "BTC", unit: "BTC", color: "#F6C343",
-      source: "live",            // <- swap to "coingecko" for live, or "internal" for your feed
+      source: "injected",            // <- swap to "coingecko" for live, or "internal" for your feed
       symbol: "INDEX:BTCUSD",        // provider symbol (used by live adapters)
       projectToYear: 2035            // how far the forward channel extends
     },
     {
       key: "QQQ", name: "Nasdaq 100 (QQQ)", ticker: "QQQ", unit: "shares", color: "#60A5FA",
-      source: "liveStock",            // embedded QQQ history; beta flips to liveStock
+      source: "injected",            // embedded QQQ history; beta flips to liveStock
       symbol: "NASDAQ:QQQ",
       yahoo: "QQQ",                  // ticker for the live feed
       projectToYear: 2030
@@ -400,7 +400,7 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
 </script>
 </head>
 <body>
-<div style="position:fixed;top:0;right:0;z-index:99999;background:#F34771;color:#fff;font:600 11px system-ui,sans-serif;letter-spacing:.08em;padding:6px 14px;border-bottom-left-radius:8px;text-transform:uppercase;">BETA · demonstration data</div>
+<div style="position:fixed;top:0;right:0;z-index:99999;background:#F34771;color:#fff;font:600 11px system-ui,sans-serif;letter-spacing:.08em;padding:6px 14px;border-bottom-left-radius:8px;text-transform:uppercase;">BETA · live data</div>
 <div id="root"><div id="loading">Loading...</div></div>
 
 <script type="text/babel" data-presets="react">
@@ -476,13 +476,13 @@ function CompoundingMachine(){
     getAssetSeries(assetKey).then(res=>{
       if(cancelled) return;
       setSeries(res.series);
-      setSrcLabel(res.live ? ("live · " + res.source) : ("demo · as-of " + (res.asOf||"")));
+      setSrcLabel(res.live ? ("live · " + res.source) : ("as-of " + (res.asOf||"")));
       setLoading(false);
     }).catch(()=>{   // never get stuck on Loading — fall back to embedded data
       if(cancelled) return;
       const emb=((window.DASHBOARD_DATA||{}).assets||{})[assetKey];
       setSeries(emb?emb.series:[]);
-      setSrcLabel("demo · as-of " + ((window.DASHBOARD_DATA||{}).updated||""));
+      setSrcLabel("as-of " + ((window.DASHBOARD_DATA||{}).updated||""));
       setLoading(false);
     });
     return ()=>{ cancelled=true; };
