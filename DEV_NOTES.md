@@ -246,7 +246,15 @@ The `us` and `big` sections come from FRED's keyless CSV endpoint via
 Symptom: a section shows the "generated server-side… once the Action has run"
 banner with an empty chart even though the pipeline "succeeded" (the failure is
 swallowed by a try/except and the block is written as `null`). Hardening in place:
-- `_fetch` retries 5x with exponential backoff and a 45s timeout.
+- `_fetch` is dual-source: it tries the FRED CSV endpoint and FRED's TradingView
+  passthrough (`FRED:<id>`), falling back to the other if one fails, so a
+  transient outage on either source no longer blanks a block. The two large
+  daily series that *reliably* time out on the CSV endpoint from the runner —
+  `RRPONTSYD` (US Liquidity) and `DGS5` (big.y5) — are listed in `TV_FIRST` and
+  hit TradingView first (the CSV stays as their backup). This is what fixed the
+  US Liquidity tab going perpetually stale: RRPONTSYD timing out dropped *every*
+  weekly row (`build_us` needs all five inputs per row), emptying the block, so
+  it was carried forward unchanged on every run.
 - `build_big` is per-series tolerant — one stalled series (it was `DGS5`) no
   longer blanks the whole tab; the others still render.
 - `update_data.py` carries forward the last committed `us`/`big` (whole-block,

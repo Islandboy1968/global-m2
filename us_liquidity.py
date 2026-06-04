@@ -18,6 +18,7 @@ TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
 import datetime as dt
 from fred import fred_series
+from tv_pull import pull_series
 
 # series_id -> unit multiplier to reach $millions
 SERIES = {
@@ -30,24 +31,59 @@ SERIES = {
 
 START = "2010-01-01"   # FRED returns from each series' own start; harmless if earlier than data
 
+# Large daily FRED series that reliably read-time-out on FRED's keyless CSV
+# endpoint from the GitHub Actions runner — RRPONTSYD (overnight reverse repo,
+# daily since 2013) and DGS5 (5y Treasury yield, daily since 1962). FRED's
+# TradingView passthrough mirrors the identical series and serves them fast and
+# reliably from the runner (it's the same path build_inflation / build_labor /
+# … already use for their FRED series, e.g. FRED:T10YIE pulls cleanly every
+# run). So for these two we hit TradingView first and keep the CSV as a backup;
+# every other series keeps the CSV as primary with TradingView as the safety net.
+TV_FIRST = {"RRPONTSYD", "DGS5"}
+_TV_RES = "1D"     # both fallback series are daily
+_TV_BARS = 6200    # ~17yr of daily bars; frontend windows what it shows
+
+
+def _from_csv(series_id, timeout, retries):
+    """{epoch_seconds: float} from FRED's keyless CSV endpoint. We deliberately
+    do NOT send FRED's &cosd= range parameter — that makes FRED regenerate a
+    custom CSV and hangs indefinitely; the full series returns FRED's cached CSV."""
+    return {epoch: v for epoch, v in fred_series(series_id, retries=retries, timeout=timeout)}
+
+
+def _from_tradingview(series_id):
+    """{epoch_seconds: float} from FRED's TradingView passthrough (FRED:<id>)."""
+    return {epoch: v for epoch, v in pull_series(f"FRED:{series_id}", _TV_RES, _TV_BARS, retries=3)}
+
 
 def _fetch(series_id, start=START, timeout=30, retries=4):
-    """Return {YYYY-MM-DD: float} for a FRED series.
-
-    Delegates to fred.py's fred_series — the public CSV path proven to work from
-    the GitHub Actions runner. We deliberately do NOT send FRED's &cosd= range
-    parameter: that makes FRED regenerate a custom CSV and hangs indefinitely.
-    Asking for the full series returns FRED's cached CSV instead.
-
-    Most series return in a second or two. A couple of large daily series
-    (notably DGS5 back to 1962 and RRPONTSYD) are unreliable from the runner no
-    matter the timeout, so we fail FAST (30s x 4) rather than stalling the whole
-    job: update_data.py then carries the block forward and the dashboard's
-    freshness badge flags it as stale. (The durable fix for those two is a paid
-    data provider, or rerouting just them through the TradingView passthrough.)
+    """Return {YYYY-MM-DD: float} for a FRED series, resilient to either source
+    failing. The two large daily series in TV_FIRST go to TradingView first
+    (the CSV endpoint times out on them from the runner no matter the timeout);
+    all others use the CSV first. Whichever is primary, the other is tried as a
+    fallback, so a transient outage on one source no longer blanks the block.
     One fetcher serves the whole pipeline (big_picture.py imports this too)."""
+    csv = ("FRED CSV", lambda: _from_csv(series_id, timeout, retries))
+    tv = ("TradingView FRED", lambda: _from_tradingview(series_id))
+    order = [tv, csv] if series_id in TV_FIRST else [csv, tv]
+
+    raw, last_err = None, None
+    for name, fn in order:
+        try:
+            raw = fn()
+            if raw:
+                break
+            last_err = f"{name}: no data rows"
+            raw = None
+        except Exception as e:
+            last_err = f"{name}: {e!r}"
+            print(f"    {series_id} via {name} failed: {str(e)[:80]}")
+            raw = None
+    if not raw:
+        raise RuntimeError(f"FRED {series_id}: all sources failed ({last_err})")
+
     out = {}
-    for epoch, v in fred_series(series_id, retries=retries, timeout=timeout):
+    for epoch, v in raw.items():
         d = dt.datetime.fromtimestamp(epoch, dt.timezone.utc).strftime("%Y-%m-%d")
         if d >= start:
             out[d] = v
