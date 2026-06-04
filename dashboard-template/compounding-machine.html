@@ -102,7 +102,7 @@ function CompoundingMachine(){
     getAssetSeries(assetKey).then(res=>{
       if(cancelled) return;
       setSeries(res.series);
-      setSrcLabel(res.live ? "live" : ("demo · as-of " + (res.asOf||"")));
+      setSrcLabel(res.live ? ("live · " + res.source) : ("demo · as-of " + (res.asOf||"")));
       setLoading(false);
     });
     return ()=>{ cancelled=true; };

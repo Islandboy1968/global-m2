@@ -237,9 +237,9 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
     },
     {
       key: "NDX", name: "Nasdaq 100", ticker: "NDX", unit: "units", color: "#60A5FA",
-      source: "liveIndex",            // NDX stays on injected/pipeline data (no public live feed)
+      source: "qqqProxy",            // NDX stays on injected/pipeline data (no public live feed)
       symbol: "NASDAQ:NDX",
-      yahoo: "%5ENDX",               // best-effort keyless live tip (beta only); native build uses RV's QQQ feed
+      proxyTicker: "QQQ",            // ETF proxy for live tip (beta); native build uses RV's QQQ feed
       projectToYear: 2030
     }
   ];
@@ -256,6 +256,16 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
   function embeddedSeries(asset) {
     return (((global.DASHBOARD_DATA || {}).assets || {})[asset.key] || {}).series || [];
   }
+  // Fetch JSON through a public CORS proxy so a browser can reach feeds (like
+  // Yahoo) that refuse keyless cross-origin requests directly. Tries two free
+  // proxies, then gives up (caller falls back to demo). Beta-only crutch.
+  function proxiedJson(targetUrl) {
+    var a = "https://api.allorigins.win/raw?url=" + encodeURIComponent(targetUrl);
+    var b = "https://corsproxy.io/?url=" + encodeURIComponent(targetUrl);
+    return fetch(a).then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .catch(function () { return fetch(b).then(function (r) { if (!r.ok) throw 0; return r.json(); }); });
+  }
+
   // Append/replace today's live price as the current weekly point on top of the
   // embedded history. Keeps the frozen regression (built on history) intact.
   function withLiveTip(base, price, src) {
@@ -319,22 +329,33 @@ window.DASHBOARD_DATA = {"updated":"2026-04-10","assets":{"BTC":{"series":[{"d":
         .catch(function () { return { series: base, live: false, src: "demo" }; });
     },
 
-    // BETA-ONLY, external, BEST-EFFORT — index/stock feeds rarely allow keyless
-    // browser access (CORS), so this may not connect in every browser. Tries
-    // Yahoo's chart endpoint for the asset's `yahoo` symbol to refresh the
-    // current price; on any failure it falls back to honest demo data. The
-    // RELIABLE answer for indices is the platform adapter (RV's QQQ end-of-day).
-    liveIndex: function (asset) {
+    // BETA-ONLY, external, BEST-EFFORT — refresh an index's current level using
+    // its ETF proxy (e.g. QQQ for NDX), the same proxy the team uses. Index/ETF
+    // quotes need a CORS proxy to reach a browser keyless, so this is fragile;
+    // on any failure it falls back to honest demo. The RELIABLE answer is the
+    // platform adapter (RV's QQQ end-of-day feed, which they already have).
+    //
+    // QQQ trades ~$500 while NDX history is in index units (~24,000), so we
+    // calibrate the scale: ratio = NDX(last embedded) / QQQ(close near that
+    // date), then NDX_now ≈ QQQ_now × ratio. This keeps the line continuous.
+    qqqProxy: function (asset) {
       var base = embeddedSeries(asset);
-      var url = "https://query1.finance.yahoo.com/v8/finance/chart/" + (asset.yahoo || "") + "?range=1mo&interval=1d";
-      return fetch(url)
-        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-        .then(function (j) {
-          var res = j.chart.result[0], closes = res.indicators.quote[0].close, price = null;
-          for (var i = closes.length - 1; i >= 0; i--) { if (closes[i] != null) { price = closes[i]; break; } }
-          return withLiveTip(base, price, "yahoo");
-        })
-        .catch(function () { return { series: base, live: false, src: "demo" }; });
+      if (!base.length) return Promise.resolve({ series: base, live: false, src: "demo" });
+      var last = base[base.length - 1], lastMs = Date.parse(last.d);
+      var yurl = "https://query1.finance.yahoo.com/v8/finance/chart/" + (asset.proxyTicker || "QQQ") + "?range=3mo&interval=1d";
+      return proxiedJson(yurl).then(function (j) {
+        var res = j.chart.result[0], ts = res.timestamp, cl = res.indicators.quote[0].close;
+        var qAnchor = null, bestDiff = Infinity, qNow = null;
+        for (var i = 0; i < ts.length; i++) {
+          if (cl[i] == null) continue;
+          var diff = Math.abs(ts[i] * 1000 - lastMs);
+          if (diff < bestDiff) { bestDiff = diff; qAnchor = cl[i]; }
+          qNow = cl[i];                                  // ascending → last non-null is latest
+        }
+        if (!(qAnchor > 0) || !(qNow > 0)) throw 0;
+        var ratio = last.c / qAnchor;                    // QQQ → NDX-units scale at the splice
+        return withLiveTip(base, qNow * ratio, "qqq→ndx");
+      }).catch(function () { return { series: base, live: false, src: "demo" }; });
     }
 
     // internal: function (asset) { ... }   // <- a team drops their own feed in here.
@@ -451,7 +472,7 @@ function CompoundingMachine(){
     getAssetSeries(assetKey).then(res=>{
       if(cancelled) return;
       setSeries(res.series);
-      setSrcLabel(res.live ? "live" : ("demo · as-of " + (res.asOf||"")));
+      setSrcLabel(res.live ? ("live · " + res.source) : ("demo · as-of " + (res.asOf||"")));
       setLoading(false);
     });
     return ()=>{ cancelled=true; };
