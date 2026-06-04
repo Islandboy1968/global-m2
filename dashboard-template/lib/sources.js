@@ -27,10 +27,10 @@
       projectToYear: 2035            // how far the forward channel extends
     },
     {
-      key: "NDX", name: "Nasdaq 100", ticker: "NDX", unit: "units", color: "#60A5FA",
-      source: "injected",            // NDX stays on injected/pipeline data (no public live feed)
-      symbol: "NASDAQ:NDX",
-      proxyTicker: "QQQ",            // ETF proxy for live tip (beta); native build uses RV's QQQ feed
+      key: "QQQ", name: "Nasdaq 100 (QQQ)", ticker: "QQQ", unit: "shares", color: "#60A5FA",
+      source: "injected",            // embedded QQQ history; beta flips to liveStock
+      symbol: "NASDAQ:QQQ",
+      yahoo: "QQQ",                  // ticker for the live feed
       projectToYear: 2030
     }
   ];
@@ -120,32 +120,28 @@
         .catch(function () { return { series: base, live: false, src: "demo" }; });
     },
 
-    // BETA-ONLY, external, BEST-EFFORT — refresh an index's current level using
-    // its ETF proxy (e.g. QQQ for NDX), the same proxy the team uses. Index/ETF
-    // quotes need a CORS proxy to reach a browser keyless, so this is fragile;
-    // on any failure it falls back to honest demo. The RELIABLE answer is the
-    // platform adapter (RV's QQQ end-of-day feed, which they already have).
-    //
-    // QQQ trades ~$500 while NDX history is in index units (~24,000), so we
-    // calibrate the scale: ratio = NDX(last embedded) / QQQ(close near that
-    // date), then NDX_now ≈ QQQ_now × ratio. This keeps the line continuous.
-    qqqProxy: function (asset) {
+    // BETA-ONLY, external, BEST-EFFORT — real QQQ weekly closes from Yahoo,
+    // routed through a CORS proxy so a keyless browser can reach it. Replaces
+    // the embedded (approximate) history with REAL QQQ when it connects; on any
+    // failure it falls back to the honest embedded demo series. The RELIABLE
+    // answer is the platform adapter (RV's QQQ end-of-day feed they already have).
+    liveStock: function (asset) {
       var base = embeddedSeries(asset);
-      if (!base.length) return Promise.resolve({ series: base, live: false, src: "demo" });
-      var last = base[base.length - 1], lastMs = Date.parse(last.d);
-      var yurl = "https://query1.finance.yahoo.com/v8/finance/chart/" + (asset.proxyTicker || "QQQ") + "?range=3mo&interval=1d";
+      var sym = asset.yahoo || asset.ticker;
+      var yurl = "https://query1.finance.yahoo.com/v8/finance/chart/" + sym + "?range=10y&interval=1wk";
+      var START = Date.parse("2017-09-01");
       return proxiedJson(yurl).then(function (j) {
         var res = j.chart.result[0], ts = res.timestamp, cl = res.indicators.quote[0].close;
-        var qAnchor = null, bestDiff = Infinity, qNow = null;
+        var byWeek = {};
         for (var i = 0; i < ts.length; i++) {
           if (cl[i] == null) continue;
-          var diff = Math.abs(ts[i] * 1000 - lastMs);
-          if (diff < bestDiff) { bestDiff = diff; qAnchor = cl[i]; }
-          qNow = cl[i];                                  // ascending → last non-null is latest
+          var ms = ts[i] * 1000;
+          if (ms < START) continue;
+          byWeek[fridayKey(ms)] = Math.round(cl[i] * 100) / 100;   // weekly close, Friday-anchored
         }
-        if (!(qAnchor > 0) || !(qNow > 0)) throw 0;
-        var ratio = last.c / qAnchor;                    // QQQ → NDX-units scale at the splice
-        return withLiveTip(base, qNow * ratio, "qqq→ndx");
+        var out = Object.keys(byWeek).sort().map(function (k) { return { d: k, c: byWeek[k] }; });
+        if (out.length < 50) throw 0;
+        return { series: out, live: true, src: "qqq" };
       }).catch(function () { return { series: base, live: false, src: "demo" }; });
     }
 
