@@ -31,7 +31,7 @@
       source: "injected",            // embedded QQQ history; beta flips to liveStock
       symbol: "NASDAQ:QQQ",
       yahoo: "QQQ",                  // ticker for the live feed
-      projectToYear: 2030
+      projectToYear: 2035            // match BTC's horizon so the two charts scale consistently
     }
   ];
 

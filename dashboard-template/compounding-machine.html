@@ -72,6 +72,7 @@ const C = {
   text:"#e9ecf3", muted:"#8b93a6", faint:"#5b6477",
   lime:"#c3f53c", green:"#34c759", red:"#f04f5f", gold:"#f5c451",
   cyan:"#22d3ee", purple:"#b794f4", blue:"#60a5fa",
+  buyDot:"#4ade80", sellDot:"#ff5d6c",
 };
 const MONO="'Hanken Grotesk',system-ui,sans-serif";
 
@@ -375,8 +376,8 @@ function CompoundingMachine(){
           {color:C.text,label:"Log trend",dash:true},
           {color:C.purple,label:"±1σ band",dash:true,w:1.5},
           {color:C.faint,label:"±2σ band",dash:true,w:1.5},
-          {color:C.green,label:`Buys (${buys.length})`,dot:true,strong:true},
-          ...(sells.length?[{color:C.red,label:`Sells (${sells.length})`,dot:true,strong:true}]:[]),
+          {color:C.buyDot,label:`Buys (${buys.length})`,dot:true,strong:true},
+          ...(sells.length?[{color:C.sellDot,label:`Sells (${sells.length})`,dot:true,strong:true}]:[]),
         ]}/>
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart data={cd} margin={{top:8,right:16,left:8,bottom:4}}>
@@ -393,8 +394,8 @@ function CompoundingMachine(){
             <Line dataKey="lower1" stroke={C.purple} strokeWidth={1.25} strokeDasharray="4 5" dot={false} connectNulls isAnimationActive={false} opacity={0.7}/>
             <Line dataKey="trend" stroke={C.text} strokeWidth={1.5} strokeDasharray="6 5" dot={false} connectNulls isAnimationActive={false} opacity={0.85}/>
             <Line dataKey="price" stroke={C.cyan} strokeWidth={2} dot={false} connectNulls isAnimationActive={false}/>
-            {buys.map((b,i)=>(<ReferenceDot key={"buy"+i} x={b.date} y={b.price} r={3.5} fill={C.green} stroke={C.bg} strokeWidth={1.5} isFront ifOverflow="extendDomain"/>))}
-            {sells.map((s,i)=>(<ReferenceDot key={"sell"+i} x={s.date} y={s.price} r={3.5} fill={C.red} stroke={C.bg} strokeWidth={1.5} isFront ifOverflow="extendDomain"/>))}
+            {buys.map((b,i)=>(<ReferenceDot key={"buy"+i} x={b.date} y={b.price} r={5} fill={C.buyDot} stroke={C.bg} strokeWidth={1.75} isFront ifOverflow="extendDomain"/>))}
+            {sells.map((s,i)=>(<ReferenceDot key={"sell"+i} x={s.date} y={s.price} r={5} fill={C.sellDot} stroke={C.bg} strokeWidth={1.75} isFront ifOverflow="extendDomain"/>))}
           </ComposedChart>
         </ResponsiveContainer>
       </Card>
