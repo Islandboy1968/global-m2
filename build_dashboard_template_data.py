@@ -101,11 +101,6 @@ def build_beta(data_js):
     shell = shell.replace('<script src="data/data.js"></script>', inline(data_js))
     shell = shell.replace('<script src="lib/compute.js"></script>', inline(compute))
     shell = shell.replace('<script src="lib/sources.js"></script>', inline(sources))
-    ribbon = ('<div style="position:fixed;top:0;right:0;z-index:99999;background:#F34771;'
-              'color:#fff;font:600 11px system-ui,sans-serif;letter-spacing:.08em;'
-              'padding:6px 14px;border-bottom-left-radius:8px;text-transform:uppercase;">'
-              'BETA · live data</div>')
-    shell = shell.replace('<div id="root">', ribbon + "\n" + '<div id="root">')
     out = os.path.join(TPL, "compounding-machine-beta.html")
     open(out, "w").write(shell)
     print("rebuilt", out)
