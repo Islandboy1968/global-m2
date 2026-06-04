@@ -186,9 +186,9 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>Liquidity leads QQQ</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>Liquidity leads Nasdaq 100</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>QQQ (RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
@@ -233,9 +233,9 @@
       <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>US Liquidity (Broad) leads QQQ</h2><span class="ccap" id="usNdxLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>US Liquidity (Broad) leads Nasdaq 100</h2><span class="ccap" id="usNdxLead">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span><span class="lg pink"><i class="sw pnk"></i>QQQ (RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="usNdx"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
@@ -911,12 +911,12 @@ const GLOBAL = (function(){
   const tglPts=ptsBN("v");
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
   charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
-  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "QQQ (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
+  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
   charts.forEach((c,i)=>c.$auto=(i<3));
   [momoChart,levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]);
   controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
-  controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs QQQ", leadEl:document.getElementById("ndxLead"), def:DEF});
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
   // open the momentum panel on a recent window so the % axis isn't compressed by early-history swings
   (function(){const c=charts[0]; const ext=xExtent(c);
     c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);
@@ -952,12 +952,12 @@ const US = (function(){
     {data:P("yo"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT)}));
   const DEF=(U.lag_days||90);
-  charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "QQQ (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
+  charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
   charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
   charts.forEach((c,i)=>c.$auto=(i<4));
   [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]);
-  controls(charts[4],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs QQQ", leadEl:document.getElementById("usNdxLead"), def:DEF});
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
   controls(charts[5],{asset:DATA.btc, leftLabel:"US Total Liquidity, Narrow ($BN)", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
   return {charts};
 })();

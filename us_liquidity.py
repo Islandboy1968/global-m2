@@ -21,8 +21,8 @@ unreachable, TGA falls back to FRED's weekly WTREGEN and the series still builds
 Units: WALCL & TGA are $millions; RRP, TOTBKCR, SBCACBW are $billions (x1000 -> $M).
 Output values are in $ trillions to match the global series.
 
-BTC/QQQ for the US overlay charts are NOT fetched here — the dashboard reuses
-TGL_DATA["btc"] and TGL_DATA["ndx"] (QQQ) already produced by the global pipeline.
+BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
+TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
 import datetime as dt
 import json, time, urllib.request

@@ -50,7 +50,7 @@ PROBE_BARS = 60   # enough recent bars to read the latest observation quickly
 # Human-readable labels, grouped by dashboard tab (also defines display order).
 EXPECTED = {
     "Global Liquidity": {"series": "GMI Total Liquidity (daily)",
-                         "btc": "Bitcoin price", "ndx": "QQQ price"},
+                         "btc": "Bitcoin price", "ndx": "Nasdaq 100 price"},
     "US Liquidity": {"us.series": "US net liquidity (weekly)"},
     "Big Picture": {"big.lfpr": "Labour force participation", "big.births": "Birth rate",
                     "big.debt": "Federal debt % GDP", "big.interest": "Interest payments",

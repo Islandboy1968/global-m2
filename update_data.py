@@ -37,9 +37,7 @@ FX_BARS = 6200    # daily, ~17yr
 CHINA_M2_OVERRIDE = {"2026-03": 353.86e12, "2026-04": 353.04e12}
 
 # Risk assets for the liquidity-leads overlay charts (symbol, daily bars)
-# The "ndx" slot holds QQQ — the Invesco QQQ Trust, the tradeable Nasdaq-100 ETF
-# everyone actually trades (tracks the index ~1:1). Key kept as "ndx" for back-compat.
-ASSETS = {"btc": ("INDEX:BTCUSD", 4300), "ndx": ("NASDAQ:QQQ", 6200)}
+ASSETS = {"btc": ("INDEX:BTCUSD", 4300), "ndx": ("NASDAQ:NDX", 6200)}
 
 # ------------------------------------------------------------------ pulls
 def pull_into(cache_path, symbols, resolution, bars):
