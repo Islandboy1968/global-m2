@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The GMI Compounding Machine</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #08080F; color: #E2E2F0; font-family: system-ui, sans-serif; }
+  #root { min-height: 100vh; }
+  #loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; color: #B794F4; font-size: 18px; font-family: system-ui, sans-serif; }
+</style>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- ===================================================================== -->
+<!--  THE THREE LAYERS, loaded before the shell. The shell (the <script    -->
+<!--  type="text/babel"> below) is FIXED and reads only these globals:     -->
+<!--    data/data.js     -> window.DASHBOARD_DATA   (pipeline rewrites this)-->
+<!--    lib/compute.js   -> window.GMI_COMPUTE      (pure maths, unchanged) -->
+<!--    lib/sources.js   -> window.GMI_SOURCES      (registry + adapters)   -->
+<!-- ===================================================================== -->
+<script src="data/data.js"></script>
+<script src="lib/compute.js"></script>
+<script src="lib/sources.js"></script>
+</head>
+<body>
+<div id="root"><div id="loading">Loading...</div></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+const { ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, ReferenceDot } = Recharts;
+
+const C = {
+  bg: "#08080F", card: "#111122", border: "#1a1a3a",
+  text: "#E2E2F0", muted: "#8888AA", lilac: "#B794F4",
+  pink: "#F34771", green: "#4ADE80", gold: "#F6C343", grid: "#1a1a2e", blue: "#60A5FA",
+};
+
+// The shell holds NO price data and NO maths. It reads the asset registry and
+// the compute module that were loaded above.
+const REGISTRY = window.GMI_SOURCES.ASSET_REGISTRY;
+const getAssetSeries = window.GMI_SOURCES.getAssetSeries;
+const COMPUTE = window.GMI_COMPUTE;
+
+const fmt$=v=>v>=1e9?"$"+(v/1e9).toFixed(1)+"B":v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+(v/1e3).toFixed(0)+"K":"$"+v.toFixed(0);
+const fmtP=v=>v>=1e6?"$"+(v/1e6).toFixed(1)+"M":v>=1e3?"$"+(v/1e3).toFixed(0)+"K":"$"+v.toFixed(0);
+const fmtDate=ts=>new Date(ts).toLocaleDateString("en-US",{month:"short",year:"2-digit"});
+const fmtDateFull=ts=>new Date(ts).toLocaleDateString("en-US",{day:"numeric",month:"short",year:"2-digit"});
+
+function Sl({label,value,onChange,min,max,step,pre="",suf="",editable=false}){
+  const [draft,setDraft]=useState(null);
+  const display=draft!==null?draft:(typeof value==='number'&&value>=1000?value.toLocaleString():String(value));
+  const commit=()=>{
+    if(draft===null)return;
+    const raw=draft.replace(/[^0-9.]/g,"");
+    if(raw===""){setDraft(null);return;}
+    const n=Number(raw);
+    if(isNaN(n)){setDraft(null);return;}
+    onChange(Math.max(min,Math.min(max,n)));
+    setDraft(null);
+  };
+  return(<div style={{marginBottom:18}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+      <span style={{fontSize:13,color:C.muted}}>{label}</span>
+      {editable?(
+        <div style={{display:"flex",alignItems:"center",background:C.bg,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 8px"}}>
+          {pre&&<span style={{fontSize:14,color:C.muted,fontFamily:"'JetBrains Mono',monospace"}}>{pre}</span>}
+          <input type="text" inputMode="numeric" value={display}
+            onChange={e=>setDraft(e.target.value)} onBlur={commit}
+            onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}
+            style={{background:"transparent",border:"none",outline:"none",color:C.text,fontFamily:"'JetBrains Mono',monospace",fontWeight:600,fontSize:15,width:100,textAlign:"right",padding:"2px 0"}}/>
+          {suf&&<span style={{fontSize:14,color:C.muted,fontFamily:"'JetBrains Mono',monospace",marginLeft:2}}>{suf}</span>}
+        </div>
+      ):(
+        <span style={{fontSize:15,color:C.text,fontFamily:"'JetBrains Mono',monospace",fontWeight:600}}>{pre}{typeof value==='number'&&value>=1000?value.toLocaleString():value}{suf}</span>
+      )}
+    </div>
+    <input type="range" min={min} max={max} step={step} value={value} onChange={e=>onChange(Number(e.target.value))} style={{width:"100%",accentColor:C.lilac,height:4,cursor:"pointer"}}/>
+  </div>);
+}
+
+function CompoundingMachine(){
+  const [assetKey, setAssetKey] = useState(REGISTRY[0].key);
+  const [series, setSeries] = useState(null);
+  const [srcLabel, setSrcLabel] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [initialStake, setInitialStake] = useState(100000);
+  const [buyThreshold, setBuyThreshold] = useState(1.0);
+  const [buyAmount, setBuyAmount] = useState(25000);
+  const [sellThreshold, setSellThreshold] = useState(1.0);
+  const [sellPct, setSellPct] = useState(20);
+
+  const meta = useMemo(()=>REGISTRY.filter(a=>a.key===assetKey)[0], [assetKey]);
+
+  // Load the asset's series through the socket. The shell does not know or care
+  // whether it came from injected pipeline data, CoinGecko, or an internal feed.
+  useEffect(()=>{
+    let cancelled=false; setLoading(true);
+    getAssetSeries(assetKey).then(res=>{
+      if(cancelled) return;
+      setSeries(res.series);
+      setSrcLabel(res.live ? ("live · " + res.source) : ("as-of " + (res.asOf||"")));
+      setLoading(false);
+    }).catch(()=>{   // never get stuck on Loading — fall back to embedded data
+      if(cancelled) return;
+      const emb=((window.DASHBOARD_DATA||{}).assets||{})[assetKey];
+      setSeries(emb?emb.series:[]);
+      setSrcLabel("as-of " + ((window.DASHBOARD_DATA||{}).updated||""));
+      setLoading(false);
+    });
+    return ()=>{ cancelled=true; };
+  },[assetKey]);
+
+  const analysis = useMemo(()=>{
+    if(!series||series.length<10) return null;
+    return COMPUTE.analyse(series, {
+      startDate:"2017-09-01", freezeDate:"2025-12-31", projectToYear:meta.projectToYear,
+      initialStake, buyThreshold, buyAmount, sellThreshold, sellPct
+    });
+  },[series, meta, initialStake, buyThreshold, buyAmount, sellThreshold, sellPct]);
+
+  if(loading || !analysis) return(<div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.lilac,fontFamily:"'Outfit',sans-serif"}}><div style={{fontSize:24}}>Loading price history...</div></div>);
+
+  const { reg, run, currentSigma, trendNow, lastPrice, lastDate:div } = analysis;
+  const { impliedCAGR, sd1pct } = reg;
+  const { buys, sells, stats } = run;
+  const { totalDeployed, outOfPocket, btcVal, cash, curH, curPure, pureCap } = stats;
+
+  // Sample the full point set down for the charts (identical to the prototype).
+  const all = run.sim, pure = run.pure;
+  const step = Math.max(1, Math.floor(all.length/500));
+  const cd = all.filter((_,i)=>i%step===0||i===all.length-1).map(d=>({date:d.date,price:d.price,trend:d.trend,upper1:d.upper1,lower1:d.lower1,upper2:d.upper2,lower2:d.lower2}));
+  const histSim = all.filter(r=>!r.isProjection), histPure = pure.filter(r=>!r.isProjection);
+  const pd = histSim.filter((_,i)=>i%step===0||i===histSim.length-1).map((d,idx,arr)=>{
+    const pi=Math.round(idx*(histPure.length-1)/(arr.length-1));
+    return {date:d.date,strategy:d.strategy,hodl:d.hodl,pure:(histPure[Math.min(pi,histPure.length-1)]||{}).pure ?? d.hodl};
+  });
+
+  const Tip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0]?.payload;if(!d)return null;
+    return(<div style={{background:C.card,border:`1px solid ${C.border}`,padding:"10px 14px",borderRadius:8,fontSize:12,color:C.text,fontFamily:"'JetBrains Mono',monospace"}}>
+      <div style={{color:C.muted,marginBottom:4}}>{fmtDate(d.date)}</div>
+      {d.price!=null&&<div>Price: {fmtP(d.price)}</div>}{d.trend!=null&&<div style={{color:C.lilac}}>Trend: {fmtP(d.trend)}</div>}
+      {d.strategy!=null&&<div style={{color:C.green}}>With sells: {fmt$(d.strategy)}</div>}
+      {d.pure!=null&&<div style={{color:C.lilac}}>No sells: {fmt$(d.pure)}</div>}
+      {d.hodl!=null&&<div style={{color:C.muted}}>HODL only: {fmt$(d.hodl)}</div>}
+    </div>);};
+
+  const St=({label,value,color=C.text,sub})=>(<div style={{textAlign:"center",padding:"12px 8px"}}>
+    <div style={{fontSize:11,color:C.muted,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:4}}>{label}</div>
+    <div style={{fontSize:20,fontWeight:700,color,fontFamily:"'JetBrains Mono',monospace"}}>{value}</div>
+    {sub&&<div style={{fontSize:11,color:C.muted,marginTop:2}}>{sub}</div>}</div>);
+
+  const sigCol=currentSigma<-buyThreshold?C.green:currentSigma>sellThreshold?C.pink:C.text;
+  const inBuyZone=currentSigma<-buyThreshold;
+  const inSellZone=currentSigma>sellThreshold;
+  const accentColor = meta.color;
+
+  return(<div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:"'Outfit',sans-serif",padding:"24px 20px"}}>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <div style={{maxWidth:1100,margin:"0 auto 28px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:16}}>
+        <div>
+          <h1 style={{fontSize:28,fontWeight:700,margin:0,lineHeight:1.2}}>The GMI Compounding Machine</h1>
+          <div style={{fontSize:13,color:meta.color,textTransform:"uppercase",letterSpacing:"0.15em",marginTop:8,fontWeight:500}}>{meta.name} · Log Trend Strategy</div>
+          <p style={{fontSize:14,color:C.muted,marginTop:8,maxWidth:700,lineHeight:1.5}}>
+            Regression frozen end of 2025 ({impliedCAGR}% CAGR, 1σ = {sd1pct}%). Weekly signals, fixed dollar adds at the lows.
+            {` Channel extends to ${meta.projectToYear} to show the band of possible prices.`}
+          </p>
+        </div>
+        <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,overflow:"hidden",flexShrink:0}}>
+          {REGISTRY.map(m=>(
+            <button key={m.key} onClick={()=>setAssetKey(m.key)} style={{
+              padding:"10px 24px",fontSize:14,fontWeight:600,fontFamily:"'Outfit',sans-serif",
+              background:assetKey===m.key?m.color+"18":"transparent",
+              color:assetKey===m.key?m.color:C.muted,
+              border:"none",cursor:"pointer",
+              borderBottom:assetKey===m.key?`2px solid ${m.color}`:"2px solid transparent",
+              transition:"all 0.2s ease",
+            }}>{m.ticker}</button>
+          ))}
+        </div>
+      </div>
+    </div>
+    <div style={{maxWidth:1100,margin:"0 auto"}}>
+
+      <div style={{background:inBuyZone?"rgba(74,222,128,0.06)":inSellZone?"rgba(243,71,113,0.06)":C.card,border:`1px solid ${inBuyZone?"rgba(74,222,128,0.3)":inSellZone?"rgba(243,71,113,0.3)":C.border}`,borderRadius:12,padding:"16px 24px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+        <div>
+          <span style={{fontSize:13,color:C.muted}}>{meta.ticker}: </span>
+          <span style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace"}}>{fmtP(lastPrice)}</span>
+          <span style={{fontSize:13,color:C.muted,marginLeft:16}}>Trend: </span>
+          <span style={{fontSize:16,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:C.lilac}}>{fmtP(trendNow)}</span>
+          <span style={{fontSize:13,color:C.muted,marginLeft:16}}>Distance: </span>
+          <span style={{fontSize:14,fontFamily:"'JetBrains Mono',monospace"}}>{Math.round((lastPrice/trendNow-1)*100)}%</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <span style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:sigCol}}>{currentSigma>0?"+":""}{currentSigma.toFixed(1)}σ</span>
+          {inBuyZone&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"rgba(74,222,128,0.15)",color:C.green,fontWeight:600}}>BUY ZONE</span>}
+          {inSellZone&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"rgba(243,71,113,0.15)",color:C.pink,fontWeight:600}}>SELL ZONE</span>}
+          <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:srcLabel.indexOf("live")===0?"rgba(74,222,128,0.12)":"rgba(136,136,170,0.12)",color:srcLabel.indexOf("live")===0?C.green:C.muted}}>{srcLabel}</span>
+        </div>
+      </div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 24px",marginBottom:28}}>
+        <div style={{marginBottom:16}}><Sl label="Initial Investment" value={initialStake} onChange={setInitialStake} min={10000} max={1000000} step={25000} pre="$" editable/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          <div>
+            <div style={{fontSize:11,color:C.green,textTransform:"uppercase",letterSpacing:"0.12em",fontWeight:600,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Buy Zone</div>
+            <Sl label="Buy when oversold by" value={buyThreshold} onChange={setBuyThreshold} min={0.5} max={2.0} step={0.1} suf="σ"/>
+            <Sl label="Fixed amount to add each time" value={buyAmount} onChange={setBuyAmount} min={5000} max={1000000} step={25000} pre="$" editable/>
+          </div>
+          <div>
+            <div style={{fontSize:11,color:C.gold,textTransform:"uppercase",letterSpacing:"0.12em",fontWeight:600,marginBottom:12,paddingBottom:8,borderBottom:`1px solid ${C.border}`}}>Lifestyle Chips (set to 0% to disable)</div>
+            <Sl label="Sell when overbought by" value={sellThreshold} onChange={setSellThreshold} min={0.5} max={2.0} step={0.1} suf="σ"/>
+            <Sl label="Amount to sell" value={sellPct} onChange={setSellPct} min={0} max={50} step={5} suf={"% of " + meta.unit}/>
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:1,marginBottom:28,background:C.border,borderRadius:12,overflow:"hidden"}}>
+        <div style={{background:C.card,padding:4}}><St label="Total Invested" value={fmt$(totalDeployed)} color={C.lilac} sub={`${fmt$(initialStake)} initial + ${buys.length} × ${fmt$(buyAmount)}`}/></div>
+        <div style={{background:C.card,padding:4}}><St label="Out of Pocket" value={fmt$(outOfPocket)} color={C.text} sub={`New money from you`}/></div>
+        <div style={{background:C.card,padding:4}}><St label={`${meta.ticker} in Market`} value={fmt$(btcVal)} color={C.green} sub={`${(btcVal/totalDeployed).toFixed(0)}x total deployed`}/></div>
+        <div style={{background:C.card,padding:4}}><St label="Cash from Sells" value={fmt$(cash)} color={C.gold} sub={sells.length>0?"Lifestyle or reload":"No sells yet"}/></div>
+        <div style={{background:C.card,padding:4}}><St label="vs Just Holding" value={fmt$(curH)} color={C.muted} sub={`${(curH/initialStake).toFixed(0)}x initial only`}/></div>
+        <div style={{background:C.card,padding:4}}><St label="No Sells Strategy" value={fmt$(curPure)} color={C.lilac} sub={`${fmt$(pureCap)} invested, ${(curPure/pureCap).toFixed(0)}x`}/></div>
+      </div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 12px 12px 0",marginBottom:24}}>
+        <div style={{paddingLeft:20,marginBottom:12}}>
+          <span style={{fontSize:15,fontWeight:600}}>{meta.ticker} Price vs Log Trend</span>
+          <span style={{fontSize:12,color:C.muted,marginLeft:12}}>Frozen Dec '25 · Buy at -{buyThreshold}σ{sellPct>0?` · Sell at +${sellThreshold}σ`:""} · Forward channel shows possible price ranges, not a forecast</span>
+        </div>
+        <ResponsiveContainer width="100%" height={380}>
+          <ComposedChart data={cd} margin={{top:5,right:20,bottom:5,left:10}}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid}/>
+            <XAxis dataKey="date" type="number" domain={["dataMin","dataMax"]} tickFormatter={fmtDate} stroke={C.muted} fontSize={10} fontFamily="'JetBrains Mono',monospace"/>
+            <YAxis scale="log" domain={["auto","auto"]} tickFormatter={fmtP} stroke={C.muted} fontSize={10} fontFamily="'JetBrains Mono',monospace"/>
+            <Tooltip content={<Tip/>}/>
+            <Line dataKey="upper2" stroke={C.pink} strokeWidth={1.5} dot={false} strokeDasharray="2 5" opacity={0.75} type="monotone"/>
+            <Line dataKey="lower2" stroke={C.pink} strokeWidth={1.5} dot={false} strokeDasharray="2 5" opacity={0.75} type="monotone"/>
+            <Line dataKey="upper1" stroke={C.lilac} strokeWidth={1.5} dot={false} strokeDasharray="5 4" opacity={0.85} type="monotone"/>
+            <Line dataKey="lower1" stroke={C.lilac} strokeWidth={1.5} dot={false} strokeDasharray="5 4" opacity={0.85} type="monotone"/>
+            <Line dataKey="trend" stroke={C.lilac} strokeWidth={2} dot={false} type="monotone"/>
+            <Line dataKey="price" stroke={accentColor} strokeWidth={1.8} dot={false} type="monotone" connectNulls={false}/>
+            <ReferenceLine x={div} stroke={C.muted} strokeDasharray="8 4" opacity={0.5} label={{value:"now",position:"top",fill:C.muted,fontSize:10}}/>
+            {buys.map((e,i)=><ReferenceDot key={`b${i}`} x={e.date} y={e.price} r={5} fill={C.green} stroke={C.bg} strokeWidth={1.5}/>)}
+            {sells.map((e,i)=><ReferenceDot key={`s${i}`} x={e.date} y={e.price} r={5} fill={C.gold} stroke={C.bg} strokeWidth={1.5}/>)}
+          </ComposedChart>
+        </ResponsiveContainer>
+        <div style={{display:"flex",gap:16,paddingLeft:20,paddingTop:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:accentColor}}>— Price</span><span style={{fontSize:11,color:C.lilac}}>— Trend</span>
+          <span style={{fontSize:11,color:C.lilac,opacity:0.85}}>┄ ±1σ</span><span style={{fontSize:11,color:C.pink,opacity:0.75}}>┄ ±2σ</span>
+          <span style={{fontSize:11,color:C.green}}>● Buy</span>{sellPct>0&&<span style={{fontSize:11,color:C.gold}}>● Sell</span>}
+        </div>
+      </div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"20px 12px 12px 0",marginBottom:24}}>
+        <div style={{paddingLeft:20,marginBottom:12}}>
+          <span style={{fontSize:15,fontWeight:600}}>Portfolio Comparison</span>
+          <span style={{fontSize:12,color:C.muted,marginLeft:12}}>Three approaches side by side</span>
+        </div>
+        <ResponsiveContainer width="100%" height={360}>
+          <ComposedChart data={pd} margin={{top:5,right:20,bottom:5,left:10}}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.grid}/>
+            <XAxis dataKey="date" type="number" domain={["dataMin","dataMax"]} tickFormatter={fmtDate} stroke={C.muted} fontSize={10} fontFamily="'JetBrains Mono',monospace"/>
+            <YAxis scale="log" domain={["auto","auto"]} tickFormatter={fmt$} stroke={C.muted} fontSize={10} fontFamily="'JetBrains Mono',monospace"/>
+            <Tooltip content={<Tip/>}/>
+            <Line dataKey="hodl" stroke={C.muted} strokeWidth={1.5} dot={false} type="monotone" strokeDasharray="4 4"/>
+            {sellPct>0&&<Line dataKey="strategy" stroke={C.green} strokeWidth={2} dot={false} type="monotone"/>}
+            <Line dataKey="pure" stroke={C.lilac} strokeWidth={2.5} dot={false} type="monotone"/>
+            <ReferenceLine x={div} stroke={C.muted} strokeDasharray="8 4" opacity={0.4}/>
+            {buys.map((e,i)=><ReferenceDot key={`pb${i}`} x={e.date} y={e.sv} r={5} fill={C.green} stroke={C.bg} strokeWidth={1.5}/>)}
+            {sellPct>0&&sells.map((e,i)=><ReferenceDot key={`ps${i}`} x={e.date} y={e.sv} r={5} fill={C.gold} stroke={C.bg} strokeWidth={1.5}/>)}
+          </ComposedChart>
+        </ResponsiveContainer>
+        <div style={{display:"flex",gap:16,paddingLeft:20,paddingTop:8,flexWrap:"wrap"}}>
+          <span style={{fontSize:11,color:C.lilac}}>— Buy + Hold (no sells)</span>
+          {sellPct>0&&<span style={{fontSize:11,color:C.green}}>— With lifestyle chips</span>}
+          <span style={{fontSize:11,color:C.muted}}>┄ HODL only (initial, no adds)</span>
+        </div>
+      </div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:24}}>
+        <div style={{fontSize:15,fontWeight:600,marginBottom:16}}>Signal History</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div>
+            <div style={{fontSize:12,color:C.green,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,fontWeight:600}}>Buy Signals ({buys.length}) — {fmt$(buyAmount)} each</div>
+            <div style={{maxHeight:260,overflowY:"auto",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+              {buys.map((e,i)=>(<div key={i} style={{padding:"5px 0",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{color:C.muted}}>{fmtDateFull(e.date)}</span><span>{fmtP(e.price)}</span><span style={{color:C.green}}>+{fmt$(e.amount)}</span></div>))}
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:C.gold,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10,fontWeight:600}}>Lifestyle Chips ({sells.length}){sellPct===0?" — DISABLED":""}</div>
+            <div style={{maxHeight:260,overflowY:"auto",fontSize:12,fontFamily:"'JetBrains Mono',monospace"}}>
+              {sells.length===0&&<div style={{color:C.muted,padding:8}}>No sells — pure compounding mode</div>}
+              {sells.map((e,i)=>(<div key={i} style={{padding:"5px 0",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between"}}>
+                <span style={{color:C.muted}}>{fmtDateFull(e.date)}</span><span>{fmtP(e.price)}</span><span style={{color:C.gold}}>-{fmt$(e.amount)}</span></div>))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:20,marginBottom:24,fontSize:13,color:C.muted,lineHeight:1.7}}>
+        <div style={{fontSize:13,fontWeight:600,color:C.text,marginBottom:8}}>How it works</div>
+        <p style={{margin:"0 0 8px"}}>
+          Frozen log regression on weekly closes (Sept 2017–Dec 2025, {impliedCAGR}% CAGR, 1σ = {sd1pct}%). Each buy signal adds a fixed {fmt$(buyAmount)}. Sells trim {sellPct}% of {meta.unit} to cash. Cash stays in the system: it funds future buys first, reducing out-of-pocket cost.
+        </p>
+        <p style={{margin:0}}>
+          The forward channel shows where the trend and the ±1σ / ±2σ bands sit in future months. It is not a price forecast. The bands simply show the range that statistically contains most of the historical action against the trend.
+        </p>
+      </div>
+    </div>
+  </div>);
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<CompoundingMachine />);
+</script>
+</body>
+</html>

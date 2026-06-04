@@ -1,0 +1,44 @@
+name: Refresh Compounding Machine data
+
+# Pulls real weekly QQQ + BTC closes from TradingView and bakes them into the
+# dashboard template (data.js + the self-contained beta html). Manual now;
+# hourly once this workflow lives on the default branch (GitHub only schedules
+# cron from the default branch).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '7 * * * *'   # hourly at :07 (effective once on the default branch)
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pull data + rebuild beta
+        run: python build_dashboard_template_data.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dashboard-template/data/data.js dashboard-template/compounding-machine-beta.html
+          if git diff --staged --quiet; then
+            echo "No changes."
+          else
+            git commit -m "dashboard data: refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
