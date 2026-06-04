@@ -65,27 +65,39 @@
       return Promise.reject(new Error("platform adapter not wired yet"));
     },
 
-    // EXAMPLE ONLY — external API; remove for platform builds. Demonstrates a
-    // genuinely different provider behind the same socket. Builds Friday-anchored
-    // weekly closes from CoinGecko's daily prices, like the original prototype.
-    coingecko: function (asset) {
-      var url = "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=3200&interval=daily";
-      var START = new Date(2017, 8, 1).getTime();
-      return fetch(url).then(function (r) {
-        if (!r.ok) throw new Error("coingecko " + r.status);
-        return r.json();
-      }).then(function (j) {
-        var byWeek = {};
-        j.prices.forEach(function (row) {
-          var t = row[0], p = row[1];
-          if (t < START) return;
-          var dt = new Date(t), day = dt.getUTCDay();
-          var fri = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate() + ((5 - day + 7) % 7));
-          var k = new Date(fri);
-          var key = k.getUTCFullYear() + "-" + String(k.getUTCMonth() + 1).padStart(2, "0") + "-" + String(k.getUTCDate()).padStart(2, "0");
-          byWeek[key] = p; // last write in the week wins
+    // BETA-ONLY, external — remove for platform builds. Takes the embedded
+    // weekly history as the base and refreshes the current price from a keyless,
+    // browser-safe, US-reachable source (Coinbase spot, with Kraken as backup).
+    // It does NOT use CoinGecko's historical endpoint, which now needs a paid key
+    // (that was why the old build silently fell back to stale data). Returns
+    // { series, live, src } so the UI can label honestly: "LIVE" only when the
+    // feed actually answered, otherwise an honest "DEMO · as-of <date>".
+    live: function (asset) {
+      var base = ((global.DASHBOARD_DATA || {}).assets[asset.key] || {}).series || [];
+      function fridayKey(ms) {
+        var dt = new Date(ms), day = dt.getUTCDay();
+        var fri = Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate() + ((5 - day + 7) % 7));
+        var k = new Date(fri);
+        return k.getUTCFullYear() + "-" + String(k.getUTCMonth() + 1).padStart(2, "0") + "-" + String(k.getUTCDate()).padStart(2, "0");
+      }
+      // Primary: Coinbase (keyless, CORS, US-friendly). Backup: Kraken.
+      var spot = fetch("https://api.coinbase.com/v2/prices/BTC-USD/spot")
+        .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+        .then(function (j) { return parseFloat(j.data.amount); })
+        .catch(function () {
+          return fetch("https://api.kraken.com/0/public/Ticker?pair=XBTUSD")
+            .then(function (r) { return r.json(); })
+            .then(function (j) { return parseFloat(j.result.XXBTZUSD.c[0]); });
         });
-        return Object.keys(byWeek).sort().map(function (k) { return { d: k, c: byWeek[k] }; });
+      return spot.then(function (price) {
+        if (!(price > 0)) throw 0;
+        var out = base.slice();
+        var k = fridayKey(Date.now());
+        if (out.length && out[out.length - 1].d === k) out[out.length - 1] = { d: k, c: price };
+        else out.push({ d: k, c: price });        // extend the line to today's live price
+        return { series: out, live: true, src: "coinbase" };
+      }).catch(function () {
+        return { series: base, live: false, src: "demo" };   // honest fallback, never blank
       });
     }
 
@@ -99,14 +111,22 @@
   // "skip the asset, keep the rest" resilience).
   function getAssetSeries(key) {
     var asset = ASSET_REGISTRY.filter(function (a) { return a.key === key; })[0];
-    if (!asset) return Promise.resolve({ series: [], source: "missing", asset: null });
+    if (!asset) return Promise.resolve({ series: [], source: "missing", live: false, asset: null });
     var adapter = ADAPTERS[asset.source] || ADAPTERS.injected;
-    return adapter(asset).then(function (series) {
-      if (series && series.length > 10) return { series: series, source: asset.source, asset: asset };
-      return ADAPTERS.injected(asset).then(function (s) { return { series: s, source: "injected", asset: asset }; });
-    }).catch(function () {
-      return ADAPTERS.injected(asset).then(function (s) { return { series: s, source: "injected", asset: asset }; });
-    });
+    var asOf = (global.DASHBOARD_DATA || {}).updated || "";
+    function injectedFallback() {
+      return ADAPTERS.injected(asset).then(function (s) {
+        return { series: s, source: "injected", live: false, asOf: asOf, asset: asset };
+      });
+    }
+    return Promise.resolve(adapter(asset)).then(function (out) {
+      // Adapters return either a bare series array or { series, live, src }.
+      var series = Array.isArray(out) ? out : (out && out.series);
+      var live = Array.isArray(out) ? false : !!(out && out.live);
+      var src = Array.isArray(out) ? asset.source : ((out && out.src) || asset.source);
+      if (series && series.length > 10) return { series: series, source: src, live: live, asOf: asOf, asset: asset };
+      return injectedFallback();
+    }).catch(injectedFallback);
   }
 
   global.GMI_SOURCES = {

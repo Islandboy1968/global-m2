@@ -101,7 +101,9 @@ function CompoundingMachine(){
     let cancelled=false; setLoading(true);
     getAssetSeries(assetKey).then(res=>{
       if(cancelled) return;
-      setSeries(res.series); setSrcLabel(res.source); setLoading(false);
+      setSeries(res.series);
+      setSrcLabel(res.live ? "live" : ("demo · as-of " + (res.asOf||"")));
+      setLoading(false);
     });
     return ()=>{ cancelled=true; };
   },[assetKey]);
@@ -191,7 +193,7 @@ function CompoundingMachine(){
           <span style={{fontSize:28,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:sigCol}}>{currentSigma>0?"+":""}{currentSigma.toFixed(1)}σ</span>
           {inBuyZone&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"rgba(74,222,128,0.15)",color:C.green,fontWeight:600}}>BUY ZONE</span>}
           {inSellZone&&<span style={{fontSize:12,padding:"4px 10px",borderRadius:6,background:"rgba(243,71,113,0.15)",color:C.pink,fontWeight:600}}>SELL ZONE</span>}
-          <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(96,165,250,0.08)",color:C.blue}}>{srcLabel}</span>
+          <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:srcLabel.indexOf("live")===0?"rgba(74,222,128,0.12)":"rgba(136,136,170,0.12)",color:srcLabel.indexOf("live")===0?C.green:C.muted}}>{srcLabel}</span>
         </div>
       </div>
 
