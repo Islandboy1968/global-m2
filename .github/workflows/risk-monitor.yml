@@ -1,0 +1,47 @@
+name: Refresh GMI Risk Monitor
+
+# Pulls each position from TradingView, computes signals/secular/vol via the
+# verified modules, reuses M2/ISM from data.js, and bakes the result into
+# dashboard-risk-monitor/index.html. Weekly (after Fri close) + manual.
+# If any feed fails the job goes RED (fail-loud) but still commits what resolved
+# so the gap is visible for inspection — a broken feed is caught here, not live.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 6'   # Saturdays 08:00 UTC
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Build Risk Monitor (fail-loud on bad feeds)
+        id: build
+        run: python build_risk_monitor.py
+
+      - name: Commit refreshed dashboard
+        if: always()   # commit what resolved even if the feed gate failed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dashboard-risk-monitor/index.html
+          if git diff --staged --quiet; then
+            echo "No changes."
+          else
+            git commit -m "risk monitor: refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
