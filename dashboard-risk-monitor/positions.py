@@ -31,7 +31,7 @@ PRO_POSITIONS = [
     # name,              ticker, tv_symbol,           category,     secular,       is_yield
     {"name": "Bitcoin",      "ticker": "BTC",  "tv_symbol": "INDEX:BTCUSD",   "category": "Crypto",    "secular_method": "logchannel", "is_yield": False},
     {"name": "Ethereum",     "ticker": "ETH",  "tv_symbol": "INDEX:ETHUSD",   "category": "Crypto",    "secular_method": "logchannel", "is_yield": False},
-    {"name": "Solana",       "ticker": "SOL",  "tv_symbol": "INDEX:SOLUSD",   "category": "Crypto",    "secular_method": "logchannel", "is_yield": False},
+    {"name": "Solana",       "ticker": "SOL",  "tv_symbol": "COINBASE:SOLUSD","category": "Crypto",    "secular_method": "logchannel", "is_yield": False},
     {"name": "Sui",          "ticker": "SUI",  "tv_symbol": "COINBASE:SUIUSD","category": "Crypto",    "secular_method": "logchannel", "is_yield": False},  # verify feed
     {"name": "DeepBook",     "ticker": "DEEP", "tv_symbol": "COINBASE:DEEPUSD","category": "Crypto",   "secular_method": "logchannel", "is_yield": False},  # verify feed (niche)
     {"name": "Nasdaq 100",   "ticker": "QQQ",  "tv_symbol": "NASDAQ:QQQ",     "category": "Equity",    "secular_method": "sma60",      "is_yield": False},
@@ -47,7 +47,7 @@ ALPHA_ASSETS = [
     {"name": "Bitcoin",        "ticker": "BTC",   "tv_symbol": "INDEX:BTCUSD", "category": "Risk Asset", "secular_method": "logchannel", "is_yield": False},
     {"name": "Nasdaq 100",     "ticker": "NDX",   "tv_symbol": "NASDAQ:NDX",   "category": "Risk Asset", "secular_method": "sma60",      "is_yield": False},
     {"name": "Gold",           "ticker": "XAU",   "tv_symbol": "TVC:GOLD",     "category": "Safe Haven", "secular_method": "sma60",      "is_yield": False},
-    {"name": "Copper",         "ticker": "HG",    "tv_symbol": "TVC:COPPER",   "category": "Cyclical",   "secular_method": "sma60",      "is_yield": False},
+    {"name": "Copper",         "ticker": "HG",    "tv_symbol": "COMEX:HG1!",   "category": "Cyclical",   "secular_method": "sma60",      "is_yield": False},
     {"name": "US Dollar Index","ticker": "DXY",   "tv_symbol": "TVC:DXY",      "category": "Currency",   "secular_method": "sma60",      "is_yield": False},
     {"name": "2-Year Yields",  "ticker": "US2Y",  "tv_symbol": "TVC:US02Y",    "category": "Rates",      "secular_method": "sma60",      "is_yield": True},
     {"name": "10-Year Yields", "ticker": "US10Y", "tv_symbol": "TVC:US10Y",    "category": "Rates",      "secular_method": "sma60",      "is_yield": True},
