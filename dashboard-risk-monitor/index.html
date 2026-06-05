@@ -594,10 +594,12 @@ buildTable(alphaAssets, document.getElementById("alphaTable"));
   if (!bar) return;
   var items = [];
 
-  // Count signal changes
-  var proChanges = proPositions.filter(function(d){ return d.trendChange; });
-  var alphaChanges = alphaAssets.filter(function(d){ return d.trendChange; });
-  var totalChanges = proChanges.length + alphaChanges.length;
+  // Count signal changes — dedupe by ticker (BTC is in both Pro & Alpha, but a
+  // flip is one event, not two).
+  var changedSet = {};
+  proPositions.concat(alphaAssets).forEach(function(d){ if (d.trendChange) changedSet[d.ticker] = true; });
+  var changedTickers = Object.keys(changedSet);
+  var totalChanges = changedTickers.length;
 
   // Regime summary
   var key = m2Trend + "_" + ismTrend;
@@ -607,7 +609,7 @@ buildTable(alphaAssets, document.getElementById("alphaTable"));
 
   // Signal changes
   if (totalChanges > 0) {
-    var changeNames = proChanges.concat(alphaChanges).map(function(d){ return d.ticker; }).join(", ");
+    var changeNames = changedTickers.join(", ");
     items.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);animation:pulse 2s ease-in-out infinite"><span style="font-size:10px">\u26A0\uFE0F</span><span style="font-size:10px;font-weight:700;color:#fbbf24;letter-spacing:0.03em">' + totalChanges + ' signal change' + (totalChanges > 1 ? 's' : '') + ': ' + changeNames + '</span></span>');
   } else {
     items.push('<span style="font-size:10px;color:rgba(148,163,184,0.5)">No signal changes this week</span>');
