@@ -14,71 +14,51 @@ module ``metrics.py`` in this directory so the module runs in the
 network-restricted dashboard build environment.
 
 ==============================================================================
-1. INTERPRETATION OF THE INDICATOR
+1. THE WEEKLY SIGNAL -- 1:1 PORT OF THE PINE v6 "GMI Weekly Trend Signal"
 ==============================================================================
-The spec describes a "volatility-adaptive trailing band" whose support band
-"only ratchets UP (never down)" in an uptrend (symmetric on the downside). That
-is exactly the mechanic of an **ATR-based SuperTrend / Chandelier-style trailing
-stop**:
+`weekly_signal(...)` is a faithful, line-by-line port of the locked Pine v6
+indicator (NOT an ATR/SuperTrend). The band is MULTIPLICATIVE around the close,
+sized by the population stdev of weekly log returns. The full Pine source and a
+Pine<->Python correspondence table live next to the function. The recurrence:
 
-  * Compute a volatility unit (ATR -- Average True Range).
-  * Build an upper band = source + mult*ATR and a lower band = source - mult*ATR.
-  * The ACTIVE band ratchets monotonically in the trend direction (lower band can
-    only rise while in an uptrend; upper band can only fall while in a downtrend)
-    and the trend flips when price closes through the active band.
+    logRet = math.log(close / nz(close[1], close))   # bar0 -> log(c/c) = 0
+    vol    = ta.stdev(logRet, lookback)              # POPULATION stdev (divisor N)
+    avgVol = ta.sma(vol, regimeLen)                  # 50-bar trailing mean of vol
+    annVol = avgVol * math.sqrt(52) * 100
+    isExtreme = annVol > 45.0
+    sens   = isExtreme ? 4.0 : 3.5
+    bw     = sens * vol
+    rawUp  = close * (1.0 - bw)                       # trailing-stop floor
+    rawDn  = close * (1.0 + bw)                       # trailing-stop ceiling
 
-This is the classic SuperTrend recurrence (Olivier Seban). The only GMI-specific
-twist is the **confirmation filter** on the WEEKLY signal: a flip is not taken on
-the first piercing close; it requires N consecutive closes beyond the band
-(N = 2 normally, N = 3 in the "Extreme" volatility regime). The MONTHLY signal
-uses the same band machinery but with N = 1 (flips instantly).
+followed by a stateful trailing + ASYMMETRIC-confirmation machine (`var int
+trend`, `var float tUp/tDn`, `pendFlip`, `pendCnt`):
+  * trend==1 : tUp ratchets UP (tUp = max(tUp,rawUp)); a flip to -1 needs
+    `sellConf` CONSECUTIVE closes below tUp (sellConf = 3 if extreme else 2).
+  * trend==-1: tDn ratchets DOWN (tDn = min(tDn,rawDn)); a flip to +1 needs
+    `confirmBuy`=2 consecutive closes above tDn.
+  * pendCnt only accrues on consecutive same-direction breaches; any bar that
+    closes back inside the band resets pendFlip/pendCnt to 0.
 
---- ATR with close-only data vs OHLC -----------------------------------------
-True Range needs OHLC: TR_t = max(High-Low, |High-Close_{t-1}|, |Low-Close_{t-1}|).
-The GMI Risk Monitor feeds (M2 composite, ISM, and the weekly asset closes it
-recomputes server-side) are CLOSE-ONLY series. With no high/low, the robust and
-standard fallback is the **close-to-close true range**:
-
-        TR_t = |Close_t - Close_{t-1}|        (t >= 1),   TR_0 = 0
-
-ATR is then the rolling average of TR over `atr_period`. We use a **simple moving
-average (SMA) of TR**, seeded by the SMA of the first `atr_period` TRs, because it
-is exactly reproducible by hand and matches TradingView's default `ta.atr` when
-fed a close-only true range. (TradingView's `ta.atr` actually uses RMA/Wilder
-smoothing; we expose `atr_smoothing` so a human can switch to Wilder once the real
-indicator's setting is confirmed -- see ASSUMPTIONS.)
-
-When OHLC IS available, pass it via `weekly_signal(..., ohlc=...)` /
-`true_range_ohlc()` and the full Wilder true range is used instead. The default
-path is close-only.
-
---- Parameter mapping --------------------------------------------------------
-"sensitivity 3.5 / 4.0"  -> the ATR multiplier `mult`:
-        Normal  regime: mult = 3.5
-        Extreme regime: mult = 4.0   (wider band in violent markets -> fewer whipsaws)
-"confirm 2 / 2 / 3"      -> consecutive-close confirmation count:
-        Normal  regime: 2   (1st number)
-        Normal  regime: 2   (2nd number -- the symmetric up/down count; the spec
-                             lists the same value for "flip down" and "flip up")
-        Extreme regime: 3   (3rd number -- the Extreme-regime confirmation count)
-   i.e. the triplet is (confirm_down_normal, confirm_up_normal, confirm_extreme).
-   Both directions share the same count within a regime; Extreme raises it to 3.
-"lookback 3"             -> the ATR period for the WEEKLY signal (atr_period=3).
-"regime lookback 50"     -> the realised-vol window (50 weekly returns).
-"extreme threshold 45%"  -> annualised 50-week vol > 45% => Extreme.
+PARAMETERS (locked, mirrored as module constants):
+    lookback=3, sensNorm=3.5, sensXHi=4.0, confirmBuy=2, confirmSell=2,
+    confirmSellX=3, regimeLen=50, threshXHi=45.0.
 
 ==============================================================================
-2. THE "EXTREME" VOLATILITY REGIME
+2. THE MONTHLY SIGNAL -- ATR SUPERTREND (UNCHANGED, author-confirmed)
 ==============================================================================
-Realised volatility over the trailing `REGIME_LOOKBACK` (=50) weekly log returns,
-annualised by sqrt(52):
+`monthly_signal(...)` is the M2/ISM "normal SuperTrend" and is a SEPARATE,
+already-confirmed mechanic. It is intentionally left intact:
 
-    r_i      = ln(C_i / C_{i-1})                     (weekly log returns)
-    sigma_w  = sample stdev of the last 50 r_i       (divisor n-1)
-    vol_ann  = sigma_w * sqrt(52)                     (as a fraction)
-    Extreme  <=>  vol_ann * 100 > 45.0               (i.e. > 45%)
+  * Volatility unit = ATR over a close-to-close true range TR_t=|C_t-C_{t-1}|
+    (the dashboard feeds are close-only); SMA smoothing by default, Wilder
+    optional via `atr_smoothing`.
+  * Bands = close +/- mult*ATR; the active band ratchets monotonically and the
+    trend flips INSTANTLY (confirm=1) on the first piercing close.
+  * Dev-locked params: M2 (atr_period=6, mult=3.0), ISM (atr_period=12, mult=3.0).
 
-If fewer than `REGIME_LOOKBACK`+1 closes exist, all available returns are used.
+`monthly_signal` and the shared `_supertrend` / ATR helpers below it are NOT part
+of the Pine weekly port; the weekly assumptions (A-notes) do not apply to them.
 
 ==============================================================================
 3-5. IMPLEMENTATION, TESTS, ASSUMPTIONS  -- see code + bottom of file.
@@ -94,14 +74,18 @@ from typing import Dict, List, Optional, Sequence, Tuple
 # Dev-locked constants (surfaced so a human can confirm against TradingView)
 # ----------------------------------------------------------------------------
 
-WEEKLY_ATR_PERIOD = 3            # "lookback 3"
-SENS_NORMAL = 3.5               # "sensitivity 3.5" -> ATR multiplier, Normal regime
-SENS_EXTREME = 4.0              # "sensitivity 4.0" -> ATR multiplier, Extreme regime
-CONFIRM_NORMAL = 2             # "confirm 2/2" -> consecutive closes to flip (Normal)
-CONFIRM_EXTREME = 3           # "confirm ...3" -> consecutive closes to flip (Extreme)
-REGIME_LOOKBACK = 50          # "regime lookback 50 weeks"
-EXTREME_VOL_THRESHOLD = 45.0  # "extreme volatility threshold 45%" (annualised, %)
-WEEKS_PER_YEAR = 52           # annualisation factor for weekly vol
+# ---- WEEKLY signal: 1:1 port of the Pine "GMI Weekly Trend Signal" ----------
+# These names mirror the Pine `// PARAMETERS (locked)` block exactly.
+WEEKLY_LOOKBACK = 3            # Pine: lookback = 3        (ta.stdev window for logRet)
+SENS_NORM = 3.5               # Pine: sensNorm = 3.5      (band-width mult, normal)
+SENS_XHI = 4.0                # Pine: sensXHi = 4.0       (band-width mult, extreme)
+CONFIRM_BUY = 2               # Pine: confirmBuy = 2      (closes above tDn to flip up)
+CONFIRM_SELL = 2              # Pine: confirmSell = 2     (closes below tUp, normal)
+CONFIRM_SELL_X = 3            # Pine: confirmSellX = 3    (closes below tUp, extreme)
+REGIME_LEN = 50               # Pine: regimeLen = 50      (ta.sma window for vol)
+THRESH_XHI = 45.0             # Pine: threshXHi = 45.0    (annVol % -> extreme)
+WEEKS_PER_YEAR = 52           # Pine: math.sqrt(52)       (vol annualisation factor)
+
 MONTHS_PER_YEAR = 12          # (unused for monthly band; kept for documentation)
 
 M2_ATR_PERIOD, M2_MULT = 6, 3.0     # monthly M2 composite dev-locked params
@@ -112,39 +96,147 @@ ISM_ATR_PERIOD, ISM_MULT = 12, 3.0  # monthly ISM dev-locked params
 # Internal helpers
 # ============================================================================
 
-def _stdev_sample(xs: Sequence[float]) -> float:
-    """Sample standard deviation (divisor n-1). 0.0 if fewer than 2 points."""
+def _stdev_pop(xs: Sequence[float]) -> float:
+    """Population standard deviation (divisor n) -- matches Pine `ta.stdev`.
+
+    Pine's ``ta.stdev(src, length)`` uses the BIASED estimator (divisor N), not
+    the sample (N-1) estimator. We replicate that here. Returns 0.0 for an empty
+    window (only reached during warm-up before `lookback` bars exist).
+    """
     n = len(xs)
-    if n < 2:
+    if n == 0:
         return 0.0
     mean = sum(xs) / n
-    var = sum((x - mean) ** 2 for x in xs) / (n - 1)
+    var = sum((x - mean) ** 2 for x in xs) / n
     return math.sqrt(var)
 
 
-def realised_vol_weekly(closes: Sequence[float],
-                        lookback: int = REGIME_LOOKBACK) -> Optional[float]:
-    """Annualised realised vol (%) from the trailing `lookback` WEEKLY log returns.
+def _log_returns(closes: Sequence[float]) -> List[float]:
+    """Pine: ``logRet = math.log(close / nz(close[1], close))`` for every bar.
 
-    Returns None if there are fewer than 2 closes (cannot form a return).
+    Bar 0 has no prior close, so ``nz(close[1], close) -> close`` and
+    ``logRet[0] = log(close/close) = 0``. Returned list is aligned 1:1 to
+    `closes` (same length), with index 0 being that degenerate 0.0.
     """
-    if closes is None or len(closes) < 2:
-        return None
-    rets = [math.log(closes[i] / closes[i - 1])
-            for i in range(1, len(closes))
-            if closes[i - 1] > 0 and closes[i] > 0]
-    if len(rets) < 2:
-        return None
-    window = rets[-lookback:]
-    return _stdev_sample(window) * math.sqrt(WEEKS_PER_YEAR) * 100.0
+    n = len(closes)
+    out = [0.0] * n
+    for i in range(1, n):
+        prev = closes[i - 1] if closes[i - 1] else closes[i]   # nz fallback
+        out[i] = math.log(closes[i] / prev) if prev and closes[i] else 0.0
+    return out
 
 
-def is_extreme_regime(closes: Sequence[float],
-                      lookback: int = REGIME_LOOKBACK,
-                      threshold: float = EXTREME_VOL_THRESHOLD) -> bool:
-    """True iff annualised 50-week realised vol > threshold (%). Default False."""
-    v = realised_vol_weekly(closes, lookback)
-    return v is not None and v > threshold
+def stdev_series(xs: Sequence[float], length: int) -> List[Optional[float]]:
+    """Pine: ``ta.stdev(xs, length)`` aligned 1:1 to `xs`.
+
+    Population (biased) stdev over the trailing `length` values. Pine returns
+    ``na`` until `length` values exist, i.e. for index < length-1; we mirror that
+    with ``None``. (The warm-up `na` only affects the first `length-1` bars.)
+    """
+    n = len(xs)
+    out: List[Optional[float]] = [None] * n
+    for i in range(length - 1, n):
+        out[i] = _stdev_pop(xs[i - length + 1:i + 1])
+    return out
+
+
+def sma_series(xs: Sequence[Optional[float]], length: int) -> List[Optional[float]]:
+    """Pine: ``ta.sma(xs, length)`` aligned 1:1 to `xs`.
+
+    Trailing simple mean over `length` values. Because `xs` here is the `vol`
+    series (which is ``na`` for its first `lookback-1` bars), Pine's `ta.sma`
+    only begins emitting once it has `length` consecutive NON-na inputs. We
+    replicate the steady-state exactly: output is ``None`` until a full window of
+    non-None values is available; thereafter it is the plain mean of that window.
+    """
+    n = len(xs)
+    out: List[Optional[float]] = [None] * n
+    for i in range(n):
+        if i - length + 1 < 0:
+            continue
+        window = xs[i - length + 1:i + 1]
+        if any(w is None for w in window):
+            continue
+        out[i] = sum(window) / length            # type: ignore[arg-type]
+    return out
+
+
+def weekly_vol_series(closes: Sequence[float],
+                      lookback: int = WEEKLY_LOOKBACK) -> List[Optional[float]]:
+    """Pine: ``vol = ta.stdev(logRet, lookback)`` -- per-bar vol of log returns."""
+    return stdev_series(_log_returns(closes), lookback)
+
+
+def weekly_regime_series(closes: Sequence[float],
+                         lookback: int = WEEKLY_LOOKBACK,
+                         regime_len: int = REGIME_LEN,
+                         thresh: float = THRESH_XHI
+                         ) -> List[bool]:
+    """Per-bar ``isExtreme`` flag, faithful to the Pine REGIME block:
+
+        avgVol   = ta.sma(vol, regimeLen)
+        annVol   = avgVol * math.sqrt(52) * 100
+        isExtreme = annVol > threshXHi
+
+    Where ``avgVol`` is ``na`` (warm-up), ``annVol`` is ``na`` and the Pine
+    ternary ``isExtreme ? ... : ...`` treats the comparison as false, so the bar
+    is NOT extreme. We return a plain ``bool`` per bar (False during warm-up).
+    """
+    vol = weekly_vol_series(closes, lookback)
+    avg_vol = sma_series(vol, regime_len)
+    out: List[bool] = []
+    for av in avg_vol:
+        if av is None:
+            out.append(False)
+        else:
+            ann_vol = av * math.sqrt(WEEKS_PER_YEAR) * 100.0
+            out.append(ann_vol > thresh)
+    return out
+
+
+def weekly_annvol_series(closes: Sequence[float],
+                         lookback: int = WEEKLY_LOOKBACK,
+                         regime_len: int = REGIME_LEN
+                         ) -> List[Optional[float]]:
+    """Pine: ``annVol = ta.sma(vol, regimeLen) * math.sqrt(52) * 100`` per bar.
+
+    Returns the per-bar annualised volatility *percentage* (the exact quantity
+    the Pine compares against ``threshXHi`` to set ``isExtreme``). ``None`` where
+    Pine's ``annVol`` is ``na`` (warm-up before a full ``regimeLen`` window of
+    non-na ``vol`` exists).
+    """
+    vol = weekly_vol_series(closes, lookback)
+    avg_vol = sma_series(vol, regime_len)
+    out: List[Optional[float]] = []
+    for av in avg_vol:
+        out.append(None if av is None
+                   else av * math.sqrt(WEEKS_PER_YEAR) * 100.0)
+    return out
+
+
+def realised_vol_weekly(closes: Sequence[float],
+                        lookback: int = WEEKLY_LOOKBACK,
+                        regime_len: int = REGIME_LEN) -> Optional[float]:
+    """Annualised realised volatility (%) on the LAST bar -- the Pine ``annVol``.
+
+    This is a convenience scalar mirroring the Pine REGIME block exactly:
+    ``avgVol = ta.sma(ta.stdev(logRet, lookback), regimeLen); annVol =
+    avgVol*sqrt(52)*100``. If the series is too short for a full ``regimeLen``
+    window of non-na ``vol`` (so Pine's ``avgVol`` would still be ``na``), we
+    fall back to the mean of ALL available non-na ``vol`` values so callers and
+    tests on short synthetic series still get a representative number. The
+    warm-up fallback only affects series shorter than ``lookback + regimeLen``
+    bars and never changes the steady-state value. Returns ``None`` if there is
+    not even one ``vol`` value (fewer than ``lookback`` bars).
+    """
+    vol = weekly_vol_series(closes, lookback)
+    avg = sma_series(vol, regime_len)
+    if avg and avg[-1] is not None:                 # steady state: exact Pine
+        return avg[-1] * math.sqrt(WEEKS_PER_YEAR) * 100.0
+    non_na = [v for v in vol if v is not None]       # warm-up fallback
+    if not non_na:
+        return None
+    return (sum(non_na) / len(non_na)) * math.sqrt(WEEKS_PER_YEAR) * 100.0
 
 
 def true_range_close_only(closes: Sequence[float]) -> List[float]:
@@ -184,7 +276,7 @@ def atr_series(tr: Sequence[float], period: int,
 
     NOTE on indexing: TR[0] is the degenerate first bar (0.0 for close-only).
     We average over the raw TR array as given; the first usable ATR therefore
-    appears at index `period-1`. See ASSUMPTIONS for why this matters.
+    appears at index `period-1`. See ASSUMPTIONS M1 (monthly only).
     """
     n = len(tr)
     out: List[Optional[float]] = [None] * n
@@ -244,8 +336,9 @@ def _supertrend(closes: Sequence[float],
     pierce") is deliberate: with the close-only true range, a single large move
     makes ATR explode, and the textbook reset would let the support collapse
     below price on the very next bar -- silently cancelling the confirmation
-    streak. Holding the band monotonic preserves the 2/3-close confirmation the
-    spec requires. See ASSUMPTIONS A3.
+    streak. Holding the band monotonic preserves the confirmation streak. See
+    ASSUMPTIONS M1 (monthly only -- this engine is NOT used by the weekly Pine
+    port, which has its own state machine inline in weekly_signal).
     """
     n = len(closes)
     band: List[Optional[float]] = [None] * n
@@ -260,7 +353,7 @@ def _supertrend(closes: Sequence[float],
     pierce_up = 0    # consecutive closes ABOVE the active resistance
     pierce_down = 0  # consecutive closes BELOW the active support
 
-    cur_dir = 1                       # seed rising (warm-up; see ASSUMPTIONS A3)
+    cur_dir = 1                       # seed rising (warm-up; see ASSUMPTIONS M1)
     support = closes[start] - mult * atr[start]    # active band when rising
     resistance = closes[start] + mult * atr[start] # active band when falling
 
@@ -320,99 +413,213 @@ def _month_year(date_str: str) -> str:
 # ============================================================================
 # Public: WEEKLY signal
 # ============================================================================
+#
+# PINE <-> PYTHON CORRESPONDENCE TABLE (proves 1:1 fidelity).
+# Pine source line                                  | Python location
+# --------------------------------------------------+-------------------------------
+# lookback=3                                         | WEEKLY_LOOKBACK = 3
+# sensNorm=3.5 / sensXHi=4.0                         | SENS_NORM / SENS_XHI
+# confirmBuy=2                                       | CONFIRM_BUY = 2
+# confirmSell=2 / confirmSellX=3                     | CONFIRM_SELL / CONFIRM_SELL_X
+# regimeLen=50 / threshXHi=45.0                      | REGIME_LEN / THRESH_XHI
+# logRet=math.log(close/nz(close[1],close))          | _log_returns()  (bar0 -> 0.0)
+# vol=ta.stdev(logRet, lookback)                     | weekly_vol_series()/stdev_series()
+#   (Pine ta.stdev = BIASED/population, divisor N)   |   _stdev_pop() (divisor n)
+#   (na until `lookback` values exist)               |   None for i < lookback-1
+# avgVol=ta.sma(vol, regimeLen)                      | sma_series(vol, REGIME_LEN)
+#   (na until regimeLen non-na vol values)           |   None until full non-None window
+# annVol=avgVol*math.sqrt(52)*100                    | weekly_annvol_series()
+# isExtreme=annVol>threshXHi                         | weekly_regime_series() (False if na)
+# sens=isExtreme?sensXHi:sensNorm                    | sens = SENS_XHI if extreme else SENS_NORM
+# bw=sens*vol                                        | bw = sens * vol[i]
+# rawUp=close*(1.0-bw) / rawDn=close*(1.0+bw)        | raw_up[i] / raw_dn[i]
+# var int trend = 1                                  | trend = 1
+# var float tUp/tDn = na                             | t_up = None / t_dn = None
+# var int pendFlip=0 / pendCnt=0                     | pend_flip = 0 / pend_cnt = 0
+# if na(tUp): tUp:=rawUp; tDn:=rawDn                 | if t_up is None: t_up=ru; t_dn=rd
+# sellConf=isExtreme?confirmSellX:confirmSell        | sell_conf = CONFIRM_SELL_X/CONFIRM_SELL
+# if trend==1: tUp:=math.max(tUp,rawUp)              | t_up = max(t_up, ru)
+#   if close<tUp: pendCnt:=pendFlip==-1?pendCnt+1:1  | pend_cnt = pend_cnt+1 if pend_flip==-1 else 1
+#     pendFlip:=-1; if pendCnt>=sellConf:            | pend_flip=-1; if pend_cnt>=sell_conf:
+#       trend:=-1; tDn:=rawDn; reset pend            |   trend=-1; t_dn=rd; pend_flip=pend_cnt=0
+#   else: pendFlip:=0; pendCnt:=0                    | else: pend_flip=pend_cnt=0
+# else: tDn:=math.min(tDn,rawDn)                     | t_dn = min(t_dn, rd)
+#   if close>tDn: pendCnt:=pendFlip==1?pendCnt+1:1   | pend_cnt = pend_cnt+1 if pend_flip==1 else 1
+#     pendFlip:=1; if pendCnt>=confirmBuy:           | pend_flip=1; if pend_cnt>=CONFIRM_BUY:
+#       trend:=1; tUp:=rawUp; reset pend             |   trend=1; t_up=ru; pend_flip=pend_cnt=0
+#   else: pendFlip:=0; pendCnt:=0                    | else: pend_flip=pend_cnt=0
+# alertcondition(trend==1 and trend[1]==-1) Buy      | trend_change (flip vs prior bar)
+# alertcondition(trend==-1 and trend[1]==1) Sell     | trend_change (flip vs prior bar)
+# --------------------------------------------------+-------------------------------
 
 def weekly_signal(closes_with_dates: Sequence[Tuple[str, float]],
-                  ohlc: Optional[Sequence[Tuple[float, float, float]]] = None,
-                  atr_period: int = WEEKLY_ATR_PERIOD,
-                  atr_smoothing: str = "sma") -> Optional[Dict]:
-    """Compute the GMI Weekly Trend Signal for one asset.
+                  lookback: int = WEEKLY_LOOKBACK) -> Optional[Dict]:
+    """Compute the GMI Weekly Trend Signal -- a 1:1 port of the Pine v6 indicator
+    "GMI Weekly Trend Signal".
+
+    This is NOT an ATR/SuperTrend band. The Pine builds a MULTIPLICATIVE band
+    around the close from the population stdev of weekly log returns:
+
+        logRet = log(close / nz(close[1], close))          # bar0 -> 0
+        vol    = ta.stdev(logRet, lookback)                # population (biased)
+        avgVol = ta.sma(vol, regimeLen)                    # 50-bar mean of vol
+        annVol = avgVol * sqrt(52) * 100
+        isExtreme = annVol > 45
+        sens   = isExtreme ? 4.0 : 3.5
+        bw     = sens * vol
+        rawUp  = close * (1 - bw)                           # trailing-stop floor
+        rawDn  = close * (1 + bw)                           # trailing-stop ceil
+
+    Then a stateful trailing + ASYMMETRIC-confirmation machine (the Pine
+    `var int trend` / `var float tUp,tDn` / `pendFlip` / `pendCnt` block):
+      * In an uptrend (trend==1) tUp ratchets UP: tUp = max(tUp, rawUp).
+        A flip to -1 needs `sellConf` CONSECUTIVE closes below tUp
+        (sellConf = 3 if extreme else 2).
+      * In a downtrend (trend==-1) tDn ratchets DOWN: tDn = min(tDn, rawDn).
+        A flip to +1 needs `confirmBuy`=2 consecutive closes above tDn.
+      * pendCnt only accumulates on consecutive same-direction breaches; any bar
+        that closes back inside the band resets pendFlip/pendCnt to 0.
 
     Args:
       closes_with_dates: chronologically sorted list of (date_str, close).
           date_str is 'YYYY-MM-DD' (weekly bar date).
-      ohlc: optional aligned list of (high, low, close) to use the full Wilder
-          true range. When None (default) the close-only true range is used.
-      atr_period: ATR lookback (dev-locked 3).
-      atr_smoothing: "sma" (default, hand-reproducible) or "wilder".
+      lookback: Pine `lookback` (dev-locked 3); the ta.stdev window for logRet.
 
-    Returns dict or None (None if fewer than atr_period+1 bars):
+    Returns dict or None (None if no bars):
       {
-        "trend":       "green" | "red",   # current trend (rising/falling)
-        "since":       "Mon YYYY",        # date the CURRENT trend began
-        "trendChange": bool,              # flipped this week or last week
+        "trend":       "green" | "red",   # final Pine `trend` var (1->green, -1->red)
+        "since":       "Mon YYYY",        # first bar of the current uninterrupted run
+        "trendChange": bool,              # flip on the last bar or the bar before
+        "regime":      "normal" | "extreme",   # isExtreme on the LAST bar
         "band_series": [{"d","c","s","g"}, ...]   # full per-bar series
       }
-
-    The regime (Normal/Extreme) is evaluated on the trailing 50 weekly returns of
-    the SAME closes; it sets the multiplier (3.5/4.0) and confirmation count (2/3).
+      `s` = the ACTIVE stop AFTER the per-bar update (tUp when trend==1, else
+      tDn). `g` = 1 if trend==1 else 0.
     """
     pts = list(closes_with_dates)
-    if len(pts) < atr_period + 1:
+    if not pts:
         return None
     dates = [d for d, _ in pts]
     closes = [float(c) for _, c in pts]
+    n = len(closes)
 
-    extreme = is_extreme_regime(closes)
-    mult = SENS_EXTREME if extreme else SENS_NORMAL
-    confirm = CONFIRM_EXTREME if extreme else CONFIRM_NORMAL
+    # --- VOLATILITY + REGIME (per bar) --------------------------------------
+    vol = weekly_vol_series(closes, lookback)             # ta.stdev(logRet, lookback)
+    extreme_bar = weekly_regime_series(closes, lookback)  # isExtreme per bar
 
-    if ohlc is not None:
-        highs = [h for h, _, _ in ohlc]
-        lows = [l for _, l, _ in ohlc]
-        ocl = [c for _, _, c in ohlc]
-        tr = true_range_ohlc(highs, lows, ocl)
-    else:
-        tr = true_range_close_only(closes)
+    # --- BAND WIDTH (per bar) -----------------------------------------------
+    # bw = sens*vol ; rawUp = close*(1-bw) ; rawDn = close*(1+bw).
+    # Where vol is na (warm-up), Pine's `bw` is na so rawUp/rawDn are na and the
+    # band/state are not yet meaningful; we hold them as None and let the seed
+    # logic below pick up the first bar that has a real vol value.
+    raw_up: List[Optional[float]] = [None] * n
+    raw_dn: List[Optional[float]] = [None] * n
+    for i in range(n):
+        if vol[i] is None:
+            continue
+        sens = SENS_XHI if extreme_bar[i] else SENS_NORM
+        bw = sens * vol[i]
+        raw_up[i] = closes[i] * (1.0 - bw)
+        raw_dn[i] = closes[i] * (1.0 + bw)
 
-    atr = atr_series(tr, atr_period, smoothing=atr_smoothing)
-    band, direction = _supertrend(closes, atr, mult, confirm=confirm)
+    # --- TRAILING + ASYMMETRIC CONFIRMATION STATE MACHINE -------------------
+    # Pine `var` semantics: trend/tUp/tDn/pendFlip/pendCnt persist across bars.
+    trend = 1                       # var int trend = 1
+    t_up: Optional[float] = None    # var float tUp = na
+    t_dn: Optional[float] = None    # var float tDn = na
+    pend_flip = 0                   # var int pendFlip = 0
+    pend_cnt = 0                    # var int pendCnt = 0
 
-    # build the per-bar series
+    trend_hist: List[Optional[int]] = [None] * n   # trend var AFTER each bar
+    stop_hist: List[Optional[float]] = [None] * n  # active stop AFTER each bar
+
+    for i in range(n):
+        ru = raw_up[i]
+        rd = raw_dn[i]
+        if ru is None or rd is None:
+            # warm-up: rawUp/rawDn na -> nothing updates; record current state.
+            trend_hist[i] = None
+            stop_hist[i] = None
+            continue
+
+        # if na(tUp) -> seed both bands from this bar's raw bands.
+        if t_up is None:
+            t_up = ru
+            t_dn = rd
+
+        sell_conf = CONFIRM_SELL_X if extreme_bar[i] else CONFIRM_SELL
+
+        if trend == 1:
+            t_up = max(t_up, ru)            # tUp := math.max(tUp, rawUp)
+            if closes[i] < t_up:
+                pend_cnt = pend_cnt + 1 if pend_flip == -1 else 1
+                pend_flip = -1
+                if pend_cnt >= sell_conf:
+                    trend = -1
+                    t_dn = rd               # tDn := rawDn
+                    pend_flip = 0
+                    pend_cnt = 0
+            else:
+                pend_flip = 0
+                pend_cnt = 0
+        else:  # trend == -1
+            t_dn = min(t_dn, rd)            # tDn := math.min(tDn, rawDn)
+            if closes[i] > t_dn:
+                pend_cnt = pend_cnt + 1 if pend_flip == 1 else 1
+                pend_flip = 1
+                if pend_cnt >= CONFIRM_BUY:
+                    trend = 1
+                    t_up = ru               # tUp := rawUp
+                    pend_flip = 0
+                    pend_cnt = 0
+            else:
+                pend_flip = 0
+                pend_cnt = 0
+
+        trend_hist[i] = trend
+        stop_hist[i] = t_up if trend == 1 else t_dn
+
+    # --- build the per-bar series (only bars where the band is live) --------
     series = []
-    for i in range(len(closes)):
-        if direction[i] is None:
+    for i in range(n):
+        if trend_hist[i] is None:
             continue
         series.append({
             "d": dates[i][:7] if len(dates[i]) >= 7 else dates[i],
             "c": round(closes[i], 4),
-            "s": None if band[i] is None else round(band[i], 4),
-            "g": 1 if direction[i] == 1 else 0,
+            "s": None if stop_hist[i] is None else round(stop_hist[i], 4),
+            "g": 1 if trend_hist[i] == 1 else 0,
         })
-
     if not series:
         return None
 
-    # current trend
-    last_dir = direction[-1]
-    trend = "green" if last_dir == 1 else "red"
+    valid_idx = [i for i in range(n) if trend_hist[i] is not None]
 
-    # "since": walk back to the first bar of the current uninterrupted run
-    since_idx = len(direction) - 1
-    while since_idx > 0 and direction[since_idx - 1] == last_dir:
-        since_idx -= 1
-    # but only count bars that actually have a direction
-    since_idx = max(since_idx, next(i for i in range(len(direction))
-                                    if direction[i] is not None))
-    since = _month_year(dates[since_idx])
+    # final trend var -> colour
+    last = valid_idx[-1]
+    trend_final = trend_hist[last]
+    trend_str = "green" if trend_final == 1 else "red"
 
-    # trendChange: flipped this week (last bar starts a new run) or last week
-    valid_idx = [i for i in range(len(direction)) if direction[i] is not None]
+    # "since": first bar of the current uninterrupted run (over valid bars)
+    since_pos = len(valid_idx) - 1
+    while since_pos > 0 and trend_hist[valid_idx[since_pos - 1]] == trend_final:
+        since_pos -= 1
+    since = _month_year(dates[valid_idx[since_pos]])
+
+    # trendChange: Pine alert fires when trend flips vs the prior bar. We surface
+    # it as "flipped on the last bar OR the bar before" (this week / last week).
     trend_change = False
     if len(valid_idx) >= 2:
-        last = valid_idx[-1]
-        prev = valid_idx[-2]
-        flipped_this_week = direction[last] != direction[prev]
-        flipped_last_week = False
-        if len(valid_idx) >= 3:
-            prev2 = valid_idx[-3]
-            flipped_last_week = direction[prev] != direction[prev2]
-        trend_change = flipped_this_week or flipped_last_week
+        flipped_this = trend_hist[valid_idx[-1]] != trend_hist[valid_idx[-2]]
+        flipped_prev = (len(valid_idx) >= 3 and
+                        trend_hist[valid_idx[-2]] != trend_hist[valid_idx[-3]])
+        trend_change = flipped_this or flipped_prev
 
     return {
-        "trend": trend,
+        "trend": trend_str,
         "since": since,
         "trendChange": trend_change,
-        "regime": "extreme" if extreme else "normal",
+        "regime": "extreme" if extreme_bar[last] else "normal",
         "band_series": series,
     }
 
@@ -601,6 +808,77 @@ def _run_tests() -> None:
           len(r1["since"].split()) == 2 and r1["since"].split()[1].isdigit(),
           f"since={r1['since']}")
 
+    # ======================================================================
+    # PINE-PRIMITIVE unit tests (pin the NEW logic with hand-math expecteds)
+    # ======================================================================
+
+    # ---- Test 9: logRet -- Pine `math.log(close/nz(close[1],close))` ------
+    # closes [10, 20, 10]:
+    #   bar0: nz(na,10)=10 -> log(10/10)=0
+    #   bar1: log(20/10)=ln2  = 0.6931471805599453
+    #   bar2: log(10/20)=-ln2 = -0.6931471805599453
+    lr9 = _log_returns([10.0, 20.0, 10.0])
+    check("T9 logRet[0] == 0 (nz fallback close[1]->close)", lr9[0] == 0.0,
+          f"got {lr9[0]}")
+    check("T9 logRet[1] == ln(2)", abs(lr9[1] - _m.log(2)) < 1e-12, f"got {lr9[1]}")
+    check("T9 logRet[2] == -ln(2)", abs(lr9[2] + _m.log(2)) < 1e-12, f"got {lr9[2]}")
+
+    # ---- Test 10: ta.stdev is POPULATION (divisor N), na before `length` --
+    # logRet for [10,20,10] = [0, ln2, -ln2]. stdev over length=3 of these:
+    #   mean = 0 ; var = (0 + ln2^2 + ln2^2)/3 = 2*ln2^2/3
+    #   stdev = ln2*sqrt(2/3) = 0.6931471805599453*0.816496580927726
+    vs10 = stdev_series([0.0, _m.log(2), -_m.log(2)], 3)
+    exp10 = _m.log(2) * _m.sqrt(2.0 / 3.0)
+    check("T10 stdev na for index < length-1",
+          vs10[0] is None and vs10[1] is None, f"got {vs10[:2]}")
+    check("T10 stdev is POPULATION (divisor N)",
+          vs10[2] is not None and abs(vs10[2] - exp10) < 1e-12,
+          f"got {vs10[2]} want {exp10}")
+    # sanity: sample (N-1) stdev would be ln2*sqrt(2/2)=ln2; confirm we are NOT that
+    check("T10 NOT the sample (N-1) estimator",
+          abs(vs10[2] - _m.log(2)) > 1e-6, f"got {vs10[2]}")
+
+    # ---- Test 11: annVol formula avgVol*sqrt(52)*100 & threshold ----------
+    # Build closes whose 3-bar logRet stdev is a known constant, then avg over
+    # 50 bars equals that constant. Use a +/- alternating multiplicative move of
+    # magnitude m so |logRet| = ln(1+m) every bar (after warm-up); with a 3-bar
+    # window over alternating +/- values the population stdev is constant.
+    # Easiest exact check: feed weekly_annvol_series a constant-vol synthetic and
+    # confirm annVol = vol*sqrt(52)*100 with vol the population stdev.
+    # Use the T4 extreme history: steady annVol must exceed 45 and equal
+    # avgVol*sqrt(52)*100 by construction.
+    av_last = sma_series(weekly_vol_series(hist), REGIME_LEN)[-1]
+    ann_last = weekly_annvol_series(hist)[-1]
+    check("T11 annVol == avgVol*sqrt(52)*100 (exact identity)",
+          av_last is not None and ann_last is not None and
+          abs(ann_last - av_last * _m.sqrt(52) * 100.0) < 1e-9,
+          f"ann={ann_last} avg={av_last}")
+    check("T11 isExtreme == (annVol>45) consistent with regime series",
+          weekly_regime_series(hist)[-1] == (ann_last > THRESH_XHI),
+          f"ann={ann_last}")
+
+    # ---- Test 12: deterministic state machine (hand-traceable) -----------
+    # Zero-vol flat-then-step series so bw=0 and tUp==close each bar, isolating
+    # the consecutive-confirmation logic. 6 equal bars (warm-up + flat) keep
+    # trend=1; then we force closes strictly below the ratcheted tUp.
+    # With vol=0, rawUp=close, tUp=max(tUp,close). A strictly DECREASING tail
+    # makes close < tUp (=prior max) every step -> pendCnt accrues.
+    flat = [100.0] * 6                 # warm-up + establish tUp=100, trend=1
+    # one dip then recover (resets pendCnt), then 2 consecutive dips (Normal=2)
+    seq = flat + [99.0, 100.0, 99.0, 98.0]
+    r12 = weekly_signal(list(zip(wk_dates(len(seq)), seq)))
+    # regime normal (vol ~0); single dip at idx6 then recover -> no flip there;
+    # two consecutive dips at idx8,9 -> flip to red on idx9.
+    check("T12 regime normal (zero-vol flat history)",
+          r12["regime"] == "normal", f"got {r12['regime']}")
+    check("T12 two consecutive sub-band closes flip Normal asset -> red",
+          r12["trend"] == "red", f"got {r12['trend']}")
+    # and: a SINGLE dip earlier must NOT have flipped (proves reset-on-recover)
+    seq_single = flat + [99.0, 100.0, 99.0, 100.0]   # never 2 in a row
+    r12b = weekly_signal(list(zip(wk_dates(len(seq_single)), seq_single)))
+    check("T12 isolated single dips never flip (pendCnt resets) -> green",
+          r12b["trend"] == "green", f"got {r12b['trend']}")
+
     print("-" * 72)
     print("Worked numbers (for eyeballing):")
     print(f"  T4 Extreme-history realised vol = {v:.1f}% (threshold 45%)")
@@ -613,66 +891,65 @@ def _run_tests() -> None:
 
 
 # ============================================================================
-# ASSUMPTIONS & UNCERTAINTIES  (confirm against the real TradingView indicator)
+# ASSUMPTIONS & RESIDUAL AMBIGUITY  (one chart spot-check should confirm)
 # ============================================================================
+# These are the ONLY places the weekly Pine port could still differ from a live
+# TradingView render. The Pine logic/parameters themselves are reproduced 1:1
+# (see the correspondence table above); the items below are interpretation calls
+# about Pine's built-in `ta.*` warm-up behaviour and the dashboard output shape.
 #
-# A1. ATR DEFINITION (close-only vs OHLC). The dashboard feeds are close-only, so
-#     we default to close-to-close true range TR_t=|C_t - C_{t-1}|. The real
-#     TradingView indicator very likely runs on OHLC bars and uses ta.atr (full
-#     true range). Band WIDTHS will differ. If OHLC is available server-side,
-#     pass ohlc= / use true_range_ohlc and reconfirm the multipliers. (Hook
-#     provided.)
+# --- WEEKLY (Pine port) -----------------------------------------------------
+# W1. ta.stdev BIASED DEFAULT. Pine's `ta.stdev(src,len)` defaults to the BIASED
+#     (population, divisor N) estimator. We use population stdev (_stdev_pop,
+#     divisor n), NOT the sample (N-1) estimator. If the live indicator passed
+#     `ta.stdev(..., biased=false)` (it does not in the locked source), vol would
+#     be larger by sqrt(N/(N-1)) = sqrt(3/2) ~ +22% and could tip near-45%
+#     assets into Extreme. Pinned by test T10. Spot-check: read annVol off one
+#     bar in TradingView vs realised_vol_weekly() on the same closes.
 #
-# A2. ATR SMOOTHING. We default to SMA of TR (exactly hand-reproducible).
-#     TradingView's ta.atr uses Wilder/RMA smoothing. Set atr_smoothing="wilder"
-#     to match if confirmed. This shifts band levels modestly, mostly early in
-#     the series. Direction/flip results are usually unaffected for clean tests.
+# W2. WARM-UP na HANDLING. Pine `ta.stdev` is na for the first `lookback-1` bars;
+#     `ta.sma(vol, regimeLen)` is na until it has `regimeLen` consecutive non-na
+#     vol inputs. We replicate this (None during warm-up; bw/rawUp/rawDn na ->
+#     state machine idles, recording None). The very first non-na bar seeds
+#     tUp/tDn (matching Pine's `if na(tUp)` re-seeding through the na warm-up).
+#     This only affects roughly the first `lookback+regimeLen` (~53) bars, which
+#     are ancient for a 10y weekly series. `realised_vol_weekly()` additionally
+#     provides an all-available-bars FALLBACK for series shorter than ~53 bars
+#     (used by tests); the steady-state value is exact Pine and unaffected.
 #
-# A3. BAND INITIALISATION / SEED DIRECTION. SuperTrend has no canonical first
-#     bar. We seed direction=+1 (rising) at the first bar that has an ATR
-#     (index atr_period-1) and let the confirmed-pierce logic establish the real
-#     trend from there. Early bars (first ~atr_period+confirm) should be treated
-#     as warm-up and not trusted. The real indicator may seed from the first
-#     close vs its band; confirm the very first few points if they matter.
+# W3. ta.sma OVER na INPUTS. We treat `ta.sma(vol, regimeLen)` as requiring a
+#     full window of non-na vol values before emitting (any None in the window
+#     -> None). This matches Pine's standard `ta.sma` na-propagation on a series
+#     that is itself na early. If TradingView's session/gap handling differs on
+#     the user's symbol, only the first ~53 bars could shift.
 #
-# A4. "CONFIRM 2/2/3" TRIPLET. Interpreted as
-#     (confirm_down_normal, confirm_up_normal, confirm_extreme) = (2, 2, 3),
-#     i.e. both directions use 2 in Normal and 3 in Extreme. The spec text
-#     ("2 consecutive... 3 when Extreme... Symmetric for the reverse") supports
-#     a single per-regime count shared by both directions. If instead the three
-#     numbers mean (down, up, extreme-for-both) with DIFFERENT up vs down counts,
-#     split CONFIRM_NORMAL into two constants -- one-line change.
+# W4. annVol ANNUALISATION. Exactly `avgVol*math.sqrt(52)*100` (sqrt(52), times
+#     100 for percent), per the locked source. No alternative (252/52.18) is
+#     used. Pinned by test T11.
 #
-# A5. SENSITIVITY -> MULTIPLIER. We map sensitivity 3.5/4.0 directly to the ATR
-#     multiplier (Normal 3.5, Extreme 4.0). Some indicators invert "sensitivity"
-#     (higher sensitivity = TIGHTER band = smaller multiplier). The spec's intent
-#     ("Extreme regime widens the band to avoid whipsaws") is consistent with our
-#     mapping (4.0 > 3.5). Confirm the direction of the sensitivity knob.
+# W5. OUTPUT-SHAPE MAPPING (dashboard contract, not Pine). The dict the pipeline
+#     consumes is derived from the Pine `var`s:
+#       - trend: final `trend` var (1->"green", -1->"red").
+#       - regime: isExtreme on the LAST bar ("extreme"/"normal").
+#       - since: first bar of the current uninterrupted run, as "Mon YYYY" from
+#         the weekly bar date. (Granularity choice -- exact week/flip-date is a
+#         one-line change if the dashboard wants it.)
+#       - trendChange: Pine's alertcondition fires on a flip vs the immediately
+#         prior bar; we surface it as "flipped on the last bar OR the one before"
+#         (this week or last week). If "last week" must mean a fixed calendar
+#         lag, adjust.
+#       - band_series[i].s: the ACTIVE stop AFTER the per-bar update (tUp when
+#         trend==1, tDn when trend==-1); .g = 1 if trend==1 else 0; .d = 'YYYY-MM'.
+#     None of this changes the Pine trend/flip computation -- only how it is
+#     reported.
 #
-# A6. REGIME WINDOW UNITS. "regime lookback 50 weeks" is applied to 50 weekly
-#     LOG returns, annualised by sqrt(52). If the real indicator uses simple
-#     returns or sqrt(52) on a different base (e.g. 52.18), figures shift a few
-#     tenths of a percent -- rarely enough to cross the 45% boundary, but check
-#     near-boundary assets.
-#
-# A7. "SINCE" GRANULARITY. We emit "Mon YYYY" (e.g. "Nov 2025") taken from the
-#     weekly bar date that STARTS the current run. If the dashboard wants the
-#     exact week date or the FLIP-confirmation date (vs the run-start date), this
-#     is a one-line change in weekly_signal.
-#
-# A8. "TRENDCHANGE = this week or last week". We define it as: the trend flipped
-#     between the last two valid bars (this week) OR between the prior two (last
-#     week). If "last week" should instead mean a fixed calendar lag, adjust.
-#
-# A9. WEEKLY ATR PERIOD = "lookback 3". We read the weekly "lookback 3" as the
-#     ATR period (3 weekly bars). It could alternatively mean a 3-bar source
-#     smoothing or a different internal lookback; confirm against the indicator's
-#     input labels.
-#
-# A10. MONTHLY band level reported. We report s = the ACTIVE band (support when
-#      green, resistance when red), matching SuperTrend's single visible stop
-#      line. If the chart wants BOTH bands or the opposite-side band at a flip,
-#      expose final_upper/final_lower (already computed internally).
+# --- MONTHLY (ATR SuperTrend -- author-confirmed, NOT part of the Pine port) -
+# M1. monthly_signal is the M2/ISM SuperTrend and is left intact by request.
+#     It uses a close-to-close true range (feeds are close-only), SMA smoothing
+#     by default (Wilder optional via atr_smoothing), seeds direction=+1 at the
+#     first ATR-available bar, flips instantly (confirm=1), and reports the active
+#     band as `s`. These choices belong to the monthly signal only; the weekly
+#     W-notes above do not apply to it.
 
 if __name__ == "__main__":
     _run_tests()
