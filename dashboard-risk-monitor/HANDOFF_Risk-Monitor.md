@@ -70,9 +70,12 @@ instantly (M2 ATR 6, ISM ATR 12, ×3.0), computed on **full history** so "since"
 true cross. `lib/signals.py` → `monthly_signal`.
 
 ### Weekly trend signal (per asset)
-Volatility-adaptive ATR-SuperTrend trailing band; flip needs 2 consecutive weekly
-closes through the band (3 in an "Extreme" vol regime, = 50-wk realised vol > 45%).
-`lib/signals.py` → `weekly_signal`. **⚠ Needs calibration — see §10.**
+The **GMI proprietary** volatility-scaled %-band trailing signal: band width =
+`sensitivity × stdev(weekly log-returns, 3)`; support/resistance = `close × (1∓bw)`;
+asymmetric confirmation (buy 2; sell 2 normal / 3 in an Extreme regime, = 50-week
+annualised vol > 45%). `lib/signals.py` → `weekly_signal` — a **verified 1:1 port of
+the GMI Pine v6 indicator** (Pine↔Python line map embedded in the file), **confirmed
+against the live TradingView chart**: BTC / ETH / Gold / NDX flip dates matched exactly.
 
 ### Secular trend
 60-month SMA for traditional assets; log-regression ±2σ channel for crypto /
@@ -85,7 +88,9 @@ High >40); a 1-year `annVol` is also shown. `lib/metrics.py`.
 
 **How we'll know it's right (verified):** macro outputs reproduce exactly from
 `data.js` (M2 green since Mar '25, ISM 54.0 green since Jan '25, YoY 6.5% / 6m 6.6%);
-self-tests pass; fail-loud caught 2 bad symbols (SOL, Copper) on the first run.
+self-tests pass (signals 32/32, metrics 9/9); the weekly signal's flip dates match
+the live TradingView "GMI Weekly Trend Signal" (BTC/ETH/Gold/NDX confirmed);
+fail-loud caught 2 bad symbols (SOL, Copper) on the first run.
 
 ## 9. Component Data Details
 Injection contract: the pipeline rewrites **only** the block between
@@ -109,19 +114,15 @@ UI on the same list.
 **What's yours (P&E):** wire `isProSubscriber` to real auth + the upgrade link;
 optionally re-skin into RV components/design; hosting/cadence. The data layer is done.
 
-**⚠ Open item — weekly-signal calibration (the one thing to confirm before "live"):**
-The weekly signal is a *tested interpretation* of the TradingView "GMI Weekly Trend
-Signal", built from **close-only** data. Its exact knobs need a spot-check against the
-real indicator. Tune order (each is one constant in `lib/signals.py`):
-1. **True range** — close-only vs OHLC (`true_range_ohlc` hook exists) — biggest effect.
-2. **Smoothing** — SMA vs Wilder (`atr_smoothing="wilder"` hook exists).
-3. **Multiplier** — `SENS_NORMAL=3.5 / SENS_EXTREME=4.0`.
-4. **Confirmation** — `CONFIRM_NORMAL=2 / CONFIRM_EXTREME=3` (a plain SuperTrend = 1).
-5. **Regime** — `EXTREME_VOL_THRESHOLD=45 / REGIME_LOOKBACK=50`.
-
-Minimum 4 spot-checks: (a) band levels on a clean trender (BTC), (b) the exact flip
-week on a recently-flipped name (ETH/Gold), (c) regime/band width on a high-vol name
-(SUI/DEEP/COIN), (d) band gap on any name. Re-run the self-tests after each change.
+**✅ Weekly signal — verified.** `lib/signals.py` → `weekly_signal` is a faithful
+1:1 port of the GMI Pine v6 indicator: volatility-scaled % bands
+(`bw = sens × stdev(weekly log-returns, 3)`; support/resistance `close × (1∓bw)`),
+locked params (lookback 3, sens 3.5 / 4.0, confirm buy 2 · sell 2|3, regime 50-week,
+extreme > 45% annualised vol), trailing ratchet + asymmetric confirmation. A
+Pine↔Python line map sits in the file; 32/32 self-tests pass; and the output was
+**confirmed against the live TradingView chart — BTC / ETH / Gold / NDX flip dates
+matched exactly.** Params are locked to the Pine; if the indicator is revised, edit
+the constants at the top of `signals.py` and re-run the tests.
 
 **Documented assumptions (audit, non-blocking):** the displayed **regime**
 (Normal/Extreme) is the signal's *weekly* 50-wk vol regime, while `annVol` is a
