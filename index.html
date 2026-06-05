@@ -935,7 +935,7 @@ const US = (function(){
   const U = DATA && DATA.us;
   if(!U || !U.series || !U.series.length){ document.getElementById("us-missing").hidden=false; return null; }
   const S=U.series, su=U.summary;
-  descrUS="Fed balance sheet − TGA − RRP + bank loans (Broad) · daily (TGA & RRP daily, Fed balance sheet weekly) · latest "+dayDate(su.latest);
+  descrUS="Fed balance sheet − TGA − RRP + bank loans (Broad) · weekly FRED · latest "+dayDate(su.latest);
   document.getElementById("cap-us-lvl").textContent=bn(su.new_tn)+" $BN · "+dayDate(su.latest);
   document.getElementById("cap-us-lvl-old").textContent=bn(su.old_tn)+" $BN · "+dayDate(su.narrow_as_of||su.latest);
   document.getElementById("cap-us-yoy").textContent="12-month % change · "+sgn(su.yoy_new)+"% (3m avg "+su.yoy_new_s+"%)";
