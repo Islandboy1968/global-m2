@@ -106,10 +106,22 @@ price, category, since, secular("rising"|"falling"|null), vol30d, regime("Normal
 each position via `tv_pull`, runs `lib/signals.py` + `lib/metrics.py`, injects into
 `index.html`. Workflow `.github/workflows/risk-monitor.yml` runs it weekly + on dispatch.
 
-**Add/remove positions (author-owned):** edit `positions.py` (Pro + Alpha lists) —
-one row per asset (ticker, TradingView symbol, category, secular method, yield flag).
-The pipeline recomputes on the next run. No RV involvement; RV can later put an admin
-UI on the same list.
+**Add/remove positions (author-owned):** edit `dashboard-risk-monitor/positions.py` —
+two lists, `PRO_POSITIONS` and `ALPHA_ASSETS`. One line per position:
+```python
+{"name": "Bitcoin", "ticker": "BTC", "tv_symbol": "INDEX:BTCUSD", "category": "Crypto", "secular_method": "logchannel", "is_yield": False},
+```
+- **Add** a position → add a line (e.g. `{"name": "MicroStrategy", "ticker": "MSTR", "tv_symbol": "NASDAQ:MSTR", "category": "Equity", "secular_method": "logchannel", "is_yield": False},`).
+- **Remove** → delete its line. **Reorder** → move lines (the table renders in list order).
+- Fields: `name`/`ticker` (shown in the table) · `tv_symbol` (the TradingView symbol the
+  pipeline pulls, e.g. `NASDAQ:MSTR`, `TVC:GOLD`) · `category` (grouping label) ·
+  `secular_method` (`"logchannel"` for crypto + crypto-adjacent equities + carbon, else
+  `"sma60"`) · `is_yield` (`True` only for yields → renders as %).
+- **Goes live:** commit the edit → the scheduled Action recomputes (or trigger the
+  workflow to refresh now). If a symbol doesn't resolve, the build **fails loud** in CI
+  and names the bad symbol — a typo can never silently blank a row.
+
+No RV involvement to change the list; RV can later put an admin UI on the same file.
 
 **What's yours (P&E):** wire `isProSubscriber` to real auth + the upgrade link;
 optionally re-skin into RV components/design; hosting/cadence. The data layer is done.
