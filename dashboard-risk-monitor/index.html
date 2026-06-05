@@ -249,139 +249,26 @@ tr.changed { background: rgba(251,191,36,0.06); border-left: 3px solid #fbbf24; 
 // ═══════════════════════════════════════════════════
 // __PIPELINE_DATA_START__
 
-// ── SUBSCRIPTION GATE ──
-// P&E: Replace this with your real auth check.
-// Set to true for Pro subscribers, false for free/Alpha-only users.
+// P&E: replace with your real auth check (Pro = true, free/Alpha = false).
 var isProSubscriber = true;
 
-var lastUpdatedStr = "Tuesday, March 3, 2026";
+var lastUpdatedStr = "Friday, June 5, 2026";
 
-var m2Roc = { yoy: 9.1, mom6: 2.8 };
+var m2Roc = {"yoy": 6.5, "mom6": 6.5};
 
-var m2ChartData = [
-  {"d":"2022-01","c":104.20,"s":101.71,"g":1},
-  {"d":"2022-02","c":104.47,"s":102.28,"g":1},
-  {"d":"2022-03","c":105.52,"s":102.76,"g":1},
-  {"d":"2022-04","c":104.88,"s":103.01,"g":1},
-  {"d":"2022-05","c":103.25,"s":103.01,"g":1},
-  {"d":"2022-06","c":102.66,"s":105.45,"g":0},
-  {"d":"2022-07","c":101.32,"s":104.74,"g":0},
-  {"d":"2022-08","c":100.97,"s":103.69,"g":0},
-  {"d":"2022-09","c":100.05,"s":103.09,"g":0},
-  {"d":"2022-10","c":98.12,"s":102.20,"g":0},
-  {"d":"2022-11","c":97.71,"s":100.76,"g":0},
-  {"d":"2022-12","c":98.84,"s":100.76,"g":0},
-  {"d":"2023-01","c":101.76,"s":96.40,"g":1},
-  {"d":"2023-02","c":103.18,"s":98.51,"g":1},
-  {"d":"2023-03","c":104.22,"s":99.88,"g":1},
-  {"d":"2023-04","c":103.72,"s":100.53,"g":1},
-  {"d":"2023-05","c":103.33,"s":100.53,"g":1},
-  {"d":"2023-06","c":103.60,"s":100.60,"g":1},
-  {"d":"2023-07","c":102.70,"s":100.60,"g":1},
-  {"d":"2023-08","c":102.29,"s":100.60,"g":1},
-  {"d":"2023-09","c":102.10,"s":100.60,"g":1},
-  {"d":"2023-10","c":100.87,"s":100.60,"g":1},
-  {"d":"2023-11","c":101.35,"s":100.60,"g":1},
-  {"d":"2023-12","c":102.46,"s":100.60,"g":1},
-  {"d":"2024-01","c":103.96,"s":100.60,"g":1},
-  {"d":"2024-02","c":104.24,"s":101.40,"g":1},
-  {"d":"2024-03","c":105.05,"s":101.99,"g":1},
-  {"d":"2024-04","c":104.23,"s":102.02,"g":1},
-  {"d":"2024-05","c":103.93,"s":102.02,"g":1},
-  {"d":"2024-06","c":104.22,"s":102.02,"g":1},
-  {"d":"2024-07","c":104.10,"s":102.02,"g":1},
-  {"d":"2024-08","c":105.06,"s":102.29,"g":1},
-  {"d":"2024-09","c":106.91,"s":103.15,"g":1},
-  {"d":"2024-10","c":107.64,"s":104.55,"g":1},
-  {"d":"2024-11","c":107.78,"s":105.17,"g":1},
-  {"d":"2024-12","c":107.08,"s":105.17,"g":1},
-  {"d":"2025-01","c":106.76,"s":105.17,"g":1},
-  {"d":"2025-02","c":106.72,"s":105.17,"g":1},
-  {"d":"2025-03","c":108.21,"s":105.17,"g":1},
-  {"d":"2025-04","c":109.21,"s":106.06,"g":1},
-  {"d":"2025-05","c":110.24,"s":107.00,"g":1},
-  {"d":"2025-06","c":111.85,"s":107.97,"g":1},
-  {"d":"2025-07","c":112.55,"s":109.29,"g":1},
-  {"d":"2025-08","c":113.26,"s":110.13,"g":1},
-  {"d":"2025-09","c":114.30,"s":110.94,"g":1},
-  {"d":"2025-10","c":114.16,"s":111.58,"g":1},
-  {"d":"2025-11","c":114.60,"s":111.88,"g":1},
-  {"d":"2025-12","c":115.62,"s":112.52,"g":1},
-  {"d":"2026-01","c":116.48,"s":113.46,"g":1},
-  {"d":"2026-02","c":116.42,"s":114.00,"g":1}
-];
+var m2ChartData = [{"d": "2022-11", "c": 99.57, "s": 95.19, "g": 1}, {"d": "2022-12", "c": 100.82, "s": 95.81, "g": 1}, {"d": "2023-01", "c": 103.76, "s": 97.43, "g": 1}, {"d": "2023-02", "c": 101.63, "s": 97.43, "g": 1}, {"d": "2023-03", "c": 102.82, "s": 97.43, "g": 1}, {"d": "2023-04", "c": 102.35, "s": 97.43, "g": 1}, {"d": "2023-05", "c": 101.25, "s": 97.43, "g": 1}, {"d": "2023-06", "c": 101.11, "s": 97.43, "g": 1}, {"d": "2023-07", "c": 101.52, "s": 98.8, "g": 1}, {"d": "2023-08", "c": 100.42, "s": 98.8, "g": 1}, {"d": "2023-09", "c": 99.86, "s": 98.8, "g": 1}, {"d": "2023-10", "c": 99.47, "s": 98.8, "g": 1}, {"d": "2023-11", "c": 102.3, "s": 99.58, "g": 1}, {"d": "2023-12", "c": 103.96, "s": 100.48, "g": 1}, {"d": "2024-01", "c": 103.18, "s": 100.48, "g": 1}, {"d": "2024-02", "c": 103.08, "s": 100.48, "g": 1}, {"d": "2024-03", "c": 103.38, "s": 100.48, "g": 1}, {"d": "2024-04", "c": 102.77, "s": 100.48, "g": 1}, {"d": "2024-05", "c": 103.37, "s": 101.35, "g": 1}, {"d": "2024-06", "c": 103.37, "s": 102.18, "g": 1}, {"d": "2024-07", "c": 104.03, "s": 102.9, "g": 1}, {"d": "2024-08", "c": 106.26, "s": 104.07, "g": 1}, {"d": "2024-09", "c": 107.75, "s": 104.96, "g": 1}, {"d": "2024-10", "c": 106.05, "s": 104.96, "g": 1}, {"d": "2024-11", "c": 105.58, "s": 104.96, "g": 1}, {"d": "2024-12", "c": 104.71, "s": 108.42, "g": 0}, {"d": "2025-01", "c": 106.01, "s": 108.42, "g": 0}, {"d": "2025-02", "c": 106.72, "s": 108.42, "g": 0}, {"d": "2025-03", "c": 108.67, "s": 105.17, "g": 1}, {"d": "2025-04", "c": 110.4, "s": 106.88, "g": 1}, {"d": "2025-05", "c": 111.77, "s": 107.8, "g": 1}, {"d": "2025-06", "c": 113.6, "s": 109.15, "g": 1}, {"d": "2025-07", "c": 112.98, "s": 109.15, "g": 1}, {"d": "2025-08", "c": 114.14, "s": 109.81, "g": 1}, {"d": "2025-09", "c": 115.01, "s": 111.22, "g": 1}, {"d": "2025-10", "c": 114.51, "s": 111.33, "g": 1}, {"d": "2025-11", "c": 115.4, "s": 112.46, "g": 1}, {"d": "2025-12", "c": 117.14, "s": 114.24, "g": 1}, {"d": "2026-01", "c": 119.13, "s": 115.55, "g": 1}, {"d": "2026-02", "c": 119.77, "s": 116.45, "g": 1}, {"d": "2026-03", "c": 119.74, "s": 116.83, "g": 1}, {"d": "2026-04", "c": 121.09, "s": 117.76, "g": 1}, {"d": "2026-05", "c": 121.2, "s": 118.26, "g": 1}, {"d": "2026-06", "c": 120.94, "s": 118.75, "g": 1}];
 
-var ismChartData = [
-  {"d":"2023-03","c":46.5,"s":50.56,"g":0},
-  {"d":"2023-04","c":47.0,"s":50.04,"g":0},
-  {"d":"2023-05","c":46.6,"s":49.92,"g":0},
-  {"d":"2023-06","c":46.4,"s":49.34,"g":0},
-  {"d":"2023-07","c":46.5,"s":49.25,"g":0},
-  {"d":"2023-08","c":47.6,"s":49.25,"g":0},
-  {"d":"2023-09","c":48.6,"s":49.25,"g":0},
-  {"d":"2023-10","c":46.9,"s":49.25,"g":0},
-  {"d":"2023-11","c":46.6,"s":49.25,"g":0},
-  {"d":"2023-12","c":47.1,"s":49.25,"g":0},
-  {"d":"2024-01","c":49.1,"s":49.25,"g":0},
-  {"d":"2024-02","c":47.6,"s":49.25,"g":0},
-  {"d":"2024-03","c":49.8,"s":45.29,"g":1},
-  {"d":"2024-04","c":48.8,"s":45.93,"g":1},
-  {"d":"2024-05","c":48.5,"s":45.93,"g":1},
-  {"d":"2024-06","c":48.3,"s":45.93,"g":1},
-  {"d":"2024-07","c":47.0,"s":45.93,"g":1},
-  {"d":"2024-08","c":47.5,"s":45.93,"g":1},
-  {"d":"2024-09","c":47.5,"s":45.93,"g":1},
-  {"d":"2024-10","c":46.9,"s":45.93,"g":1},
-  {"d":"2024-11","c":48.4,"s":45.93,"g":1},
-  {"d":"2024-12","c":49.2,"s":46.02,"g":1},
-  {"d":"2025-01","c":50.9,"s":47.07,"g":1},
-  {"d":"2025-02","c":50.3,"s":47.72,"g":1},
-  {"d":"2025-03","c":49.0,"s":47.72,"g":1},
-  {"d":"2025-04","c":48.7,"s":47.72,"g":1},
-  {"d":"2025-05","c":48.5,"s":47.72,"g":1},
-  {"d":"2025-06","c":49.0,"s":47.72,"g":1},
-  {"d":"2025-07","c":48.0,"s":47.72,"g":1},
-  {"d":"2025-08","c":48.7,"s":47.72,"g":1},
-  {"d":"2025-09","c":48.7,"s":47.72,"g":1},
-  {"d":"2025-10","c":48.7,"s":47.72,"g":1},
-  {"d":"2025-11","c":48.2,"s":47.72,"g":1},
-  {"d":"2025-12","c":47.9,"s":47.72,"g":1},
-  {"d":"2026-01","c":52.6,"s":47.72,"g":1},
-  {"d":"2026-02","c":52.4,"s":47.72,"g":1}
-];
+var ismChartData = [{"d": "2024-05", "c": 48.7, "s": 45.38, "g": 1}, {"d": "2024-06", "c": 48.5, "s": 45.38, "g": 1}, {"d": "2024-07", "c": 46.8, "s": 45.38, "g": 1}, {"d": "2024-08", "c": 47.2, "s": 45.38, "g": 1}, {"d": "2024-09", "c": 47.2, "s": 45.38, "g": 1}, {"d": "2024-10", "c": 46.5, "s": 45.38, "g": 1}, {"d": "2024-11", "c": 48.4, "s": 45.38, "g": 1}, {"d": "2024-12", "c": 49.2, "s": 45.92, "g": 1}, {"d": "2025-01", "c": 50.9, "s": 47.7, "g": 1}, {"d": "2025-02", "c": 50.3, "s": 47.7, "g": 1}, {"d": "2025-03", "c": 49.0, "s": 47.7, "g": 1}, {"d": "2025-04", "c": 48.7, "s": 47.7, "g": 1}, {"d": "2025-05", "c": 48.5, "s": 47.7, "g": 1}, {"d": "2025-06", "c": 49.0, "s": 47.7, "g": 1}, {"d": "2025-07", "c": 48.0, "s": 47.7, "g": 1}, {"d": "2025-08", "c": 48.7, "s": 47.7, "g": 1}, {"d": "2025-09", "c": 49.1, "s": 47.7, "g": 1}, {"d": "2025-10", "c": 48.7, "s": 47.7, "g": 1}, {"d": "2025-11", "c": 48.2, "s": 47.7, "g": 1}, {"d": "2025-12", "c": 47.9, "s": 47.7, "g": 1}, {"d": "2026-01", "c": 52.6, "s": 49.88, "g": 1}, {"d": "2026-02", "c": 52.4, "s": 49.88, "g": 1}, {"d": "2026-03", "c": 52.7, "s": 50.33, "g": 1}, {"d": "2026-04", "c": 52.7, "s": 50.4, "g": 1}, {"d": "2026-05", "c": 54.0, "s": 51.42, "g": 1}];
 
-var proPositions = [
-  { asset: "Bitcoin", ticker: "BTC", trend: "red", trendChange: false, price: 67131, category: "Crypto", since: "Nov 2025", secular: "rising", vol30d: 55.2, regime: "Normal", annVol: 25.8 },
-  { asset: "Ethereum", ticker: "ETH", trend: "red", trendChange: false, price: 1963, category: "Crypto", since: "Feb 2026", secular: "rising", vol30d: 72.4, regime: "Extreme", annVol: 46.9 },
-  { asset: "Solana", ticker: "SOL", trend: "red", trendChange: false, price: 83.90, category: "Crypto", since: "Feb 2026", secular: "rising", vol30d: 85.1, regime: "Extreme", annVol: 47.7 },
-  { asset: "Sui", ticker: "SUI", trend: "red", trendChange: false, price: 0.8952, category: "Crypto", since: "Feb 2026", secular: null, vol30d: 95.3, regime: "Extreme", annVol: 68.3 },
-  { asset: "DeepBook", ticker: "DEEP", trend: "red", trendChange: false, price: 0.0250, category: "Crypto", since: "Oct 2025", secular: null, vol30d: 120.6, regime: "Extreme", annVol: 82.3 },
-  { asset: "Nasdaq 100", ticker: "QQQ", trend: "red", trendChange: false, price: 608, category: "Equity", since: "Feb 2026", secular: "rising", vol30d: 18.3, regime: "Normal", annVol: 14.4 },
-  { asset: "Apple", ticker: "AAPL", trend: "green", trendChange: false, price: 264, category: "Equity", since: "Feb 2026", secular: "rising", vol30d: 22.1, regime: "Normal", annVol: 24.6 },
-  { asset: "Tesla", ticker: "TSLA", trend: "red", trendChange: false, price: 403, category: "Equity", since: "Jan 2026", secular: "rising", vol30d: 58.7, regime: "Normal", annVol: 33.2 },
-  { asset: "Coinbase", ticker: "COIN", trend: "red", trendChange: false, price: 185, category: "Equity", since: "Dec 2025", secular: "rising", vol30d: 68.4, regime: "Extreme", annVol: 50.2 },
-  { asset: "Robinhood", ticker: "HOOD", trend: "red", trendChange: false, price: 78.78, category: "Equity", since: "Jan 2026", secular: "rising", vol30d: 62.9, regime: "Extreme", annVol: 50.4 },
-  { asset: "Invesco Solar", ticker: "TAN", trend: "green", trendChange: false, price: 56.36, category: "Equity", since: "Jan 2026", secular: "falling", vol30d: 35.8, regime: "Normal", annVol: 28.0 },
-  { asset: "EU Carbon (EUA)", ticker: "EUA", trend: "red", trendChange: false, price: 25.98, category: "Commodity", since: "Jan 2026", secular: "rising", vol30d: 31.2, regime: "Normal", annVol: 19.6 }
-];
+var proPositions = [{"asset": "Bitcoin", "ticker": "BTC", "trend": "green", "trendChange": false, "price": 63772.74, "category": "Crypto", "since": "Apr 2026", "secular": "rising", "vol30d": 30.2, "regime": "Normal", "annVol": 39.4}, {"asset": "Ethereum", "ticker": "ETH", "trend": "red", "trendChange": true, "price": 1765.67, "category": "Crypto", "since": "Jun 2026", "secular": "rising", "vol30d": 32.6, "regime": "Extreme", "annVol": 55.1}, {"asset": "Sui", "ticker": "SUI", "trend": "green", "trendChange": false, "price": 0.7606, "category": "Crypto", "since": "May 2026", "secular": "rising", "vol30d": 53.8, "regime": "Extreme", "annVol": 77.8}, {"asset": "DeepBook", "ticker": "DEEP", "trend": "green", "trendChange": false, "price": 0.0185, "category": "Crypto", "since": "Mar 2026", "secular": null, "vol30d": 92.8, "regime": "Extreme", "annVol": 84.0}, {"asset": "Nasdaq 100", "ticker": "QQQ", "trend": "green", "trendChange": false, "price": 740.61, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 15.6, "regime": "Normal", "annVol": 15.9}, {"asset": "Apple", "ticker": "AAPL", "trend": "green", "trendChange": false, "price": 311.23, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 17.4, "regime": "Normal", "annVol": 22.2}, {"asset": "Tesla", "ticker": "TSLA", "trend": "green", "trendChange": false, "price": 418.45, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 42.2, "regime": "Normal", "annVol": 46.7}, {"asset": "Coinbase", "ticker": "COIN", "trend": "green", "trendChange": false, "price": 164.13, "category": "Equity", "since": "Mar 2026", "secular": "rising", "vol30d": 66.2, "regime": "Extreme", "annVol": 69.6}, {"asset": "Robinhood", "ticker": "HOOD", "trend": "red", "trendChange": false, "price": 88.33, "category": "Equity", "since": "Jan 2026", "secular": "rising", "vol30d": 76.2, "regime": "Extreme", "annVol": 68.4}, {"asset": "Invesco Solar", "ticker": "TAN", "trend": "green", "trendChange": false, "price": 70.44, "category": "Equity", "since": "Aug 2025", "secular": "rising", "vol30d": 40.6, "regime": "Normal", "annVol": 37.0}, {"asset": "EU Carbon (EUA)", "ticker": "EUA", "trend": "green", "trendChange": false, "price": 28.815, "category": "Commodity", "since": "Apr 2026", "secular": "rising", "vol30d": 22.3, "regime": "Normal", "annVol": 29.8}];
 
-var alphaAssets = [
-  { asset: "Bitcoin", ticker: "BTC", trend: "red", trendChange: false, price: 67131, category: "Risk Asset", since: "Nov 2025", secular: "rising", vol30d: 55.2, regime: "Normal", annVol: 25.8 },
-  { asset: "Nasdaq 100", ticker: "NDX", trend: "red", trendChange: false, price: 24992, category: "Risk Asset", since: "Feb 2026", secular: "rising", vol30d: 18.3, regime: "Normal", annVol: 14.5 },
-  { asset: "Gold", ticker: "XAU", trend: "green", trendChange: false, price: 5179, category: "Safe Haven", since: "Dec 2025", secular: "rising", vol30d: 14.7, regime: "Normal", annVol: 16.4 },
-  { asset: "Copper", ticker: "HG", trend: "green", trendChange: false, price: 5.83, category: "Cyclical", since: "Sep 2025", secular: "rising", vol30d: 24.5, regime: "Normal", annVol: 24.9 },
-  { asset: "US Dollar Index", ticker: "DXY", trend: "red", trendChange: false, price: 99.29, category: "Currency", since: "Jan 2026", secular: "falling", vol30d: 8.1, regime: "Normal", annVol: 4.5 },
-  { asset: "2-Year Yields", ticker: "US2Y", trend: "green", trendChange: false, price: 3.61, category: "Rates", since: "Feb 2026", secular: "rising", vol30d: 12.3, regime: "Normal", annVol: 4.3 },
-  { asset: "10-Year Yields", ticker: "US10Y", trend: "red", trendChange: false, price: 4.11, category: "Rates", since: "Feb 2026", secular: "rising", vol30d: 15.6, regime: "Normal", annVol: 12.5 },
-  { asset: "Crude Oil", ticker: "CL", trend: "green", trendChange: false, price: 77.52, category: "Cyclical", since: "Jan 2026", secular: "falling", vol30d: 28.9, regime: "Normal", annVol: 25.0 }
-];
+var alphaAssets = [{"asset": "Bitcoin", "ticker": "BTC", "trend": "green", "trendChange": false, "price": 63771.3, "category": "Risk Asset", "since": "Apr 2026", "secular": "rising", "vol30d": 30.2, "regime": "Normal", "annVol": 39.4}, {"asset": "Nasdaq 100", "ticker": "NDX", "trend": "green", "trendChange": false, "price": 30407.8115, "category": "Risk Asset", "since": "Apr 2026", "secular": "rising", "vol30d": 15.7, "regime": "Normal", "annVol": 16.1}, {"asset": "Gold", "ticker": "XAU", "trend": "red", "trendChange": false, "price": 4452.54, "category": "Safe Haven", "since": "Mar 2026", "secular": "rising", "vol30d": 15.7, "regime": "Normal", "annVol": 25.9}, {"asset": "US Dollar Index", "ticker": "DXY", "trend": "green", "trendChange": false, "price": 99.434, "category": "Currency", "since": "Mar 2026", "secular": "falling", "vol30d": 4.0, "regime": "Normal", "annVol": 5.9}, {"asset": "2-Year Yields", "ticker": "US2Y", "trend": "green", "trendChange": false, "price": 4.051, "category": "Rates", "since": "Jan 2026", "secular": "rising", "vol30d": 17.2, "regime": "Normal", "annVol": 19.0}, {"asset": "10-Year Yields", "ticker": "US10Y", "trend": "green", "trendChange": false, "price": 4.477, "category": "Rates", "since": "Mar 2026", "secular": "rising", "vol30d": 15.9, "regime": "Normal", "annVol": 15.6}, {"asset": "Crude Oil", "ticker": "CL", "trend": "green", "trendChange": false, "price": 92.9, "category": "Cyclical", "since": "Feb 2026", "secular": "rising", "vol30d": 44.4, "regime": "Normal", "annVol": 48.1}];
 
-// ── Cycle state (pipeline sets these) ──
 var m2Trend = "green";
 var ismTrend = "green";
-var m2Since = "Jan 2023";
-var ismSince = "Mar 2024";
-var ismValue = 52.4;
+var m2Since = "Mar 2025";
+var ismSince = "May 2024";
+var ismValue = 54.0;
 
 // __PIPELINE_DATA_END__
 
