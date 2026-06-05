@@ -95,7 +95,7 @@ def build_macro(tgl):
     # for the chart display. Raw $tn level (the signal is scale-invariant; the
     # SVG chart auto-scales and shows no absolute y-labels).
     m2_full = [(k, m2_monthly[k]) for k in keys]
-    m2_sig = signals.monthly_signal(m2_full, atr_period=6, mult=3.0)
+    m2_sig = signals.monthly_signal(m2_full, atr_period=10, mult=3.5)
     m2_trend, m2_since = trend_and_since(m2_sig)
     m2_chart = m2_sig[-M2_CHART_MONTHS:]
 
@@ -104,7 +104,7 @@ def build_macro(tgl):
     ism_all = [(p["d"][:7], p["v"]) for p in ism_raw if p.get("v") is not None]
     if len(ism_all) < 14:
         raise SystemExit("FAIL: not enough ISM history in data.js")
-    ism_sig = signals.monthly_signal(ism_all, atr_period=12, mult=3.0)
+    ism_sig = signals.monthly_signal(ism_all, atr_period=10, mult=3.5)
     ism_trend, ism_since = trend_and_since(ism_sig)
     ism_chart = ism_sig[-ISM_CHART_MONTHS:]
     ism_value = round(ism_all[-1][1], 1)

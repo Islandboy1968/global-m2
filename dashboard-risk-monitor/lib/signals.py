@@ -45,20 +45,35 @@ PARAMETERS (locked, mirrored as module constants):
     confirmSellX=3, regimeLen=50, threshXHi=45.0.
 
 ==============================================================================
-2. THE MONTHLY SIGNAL -- ATR SUPERTREND (UNCHANGED, author-confirmed)
+2. THE MONTHLY SIGNAL -- STANDARD TRADINGVIEW SUPERTREND (Wilder/RMA ATR)
 ==============================================================================
-`monthly_signal(...)` is the M2/ISM "normal SuperTrend" and is a SEPARATE,
-already-confirmed mechanic. It is intentionally left intact:
+`monthly_signal(...)` is the M2/ISM "normal SuperTrend". The author confirms it
+is just the STANDARD TradingView SuperTrend, so this is a faithful port of the
+built-in Pine `ta.supertrend(factor, atrPeriod)` band/flip mechanic:
 
-  * Volatility unit = ATR over a close-to-close true range TR_t=|C_t-C_{t-1}|
-    (the dashboard feeds are close-only); SMA smoothing by default, Wilder
-    optional via `atr_smoothing`.
-  * Bands = close +/- mult*ATR; the active band ratchets monotonically and the
-    trend flips INSTANTLY (confirm=1) on the first piercing close.
-  * Dev-locked params: M2 (atr_period=6, mult=3.0), ISM (atr_period=12, mult=3.0).
+  * Volatility unit = ATR over a close-to-close true range TR_t=|C_t-C_{t-1}|.
+    NOTE: the dashboard feeds are close-only (a single series, no OHLC), so the
+    Wilder TR max(H-L, |H-C[1]|, |L-C[1]|) collapses to |C_t - C_{t-1}|. This is
+    the ONLY TR definition available without OHLC.
+  * ATR = Wilder's RMA of TR (the TradingView `ta.atr` default smoothing), NOT
+    a plain SMA. RMA's heavy trailing memory is what gives standard SuperTrend
+    its smooth, slow-to-flip bands.
+  * upperBasic = src + mult*ATR ; lowerBasic = src - mult*ATR. The canonical TV
+    band-carry/lock rule then keeps each final band locked unless the basic band
+    moves it further out, or the PRIOR close pierced it (so a touched band is
+    released). Trend flips INSTANTLY (no confirmation) when the close crosses the
+    locked band, per the standard `ta.supertrend` direction recurrence.
+  * Calibrated params (see build_risk_monitor.build_macro): M2 and ISM both use
+    atr_period=10 (TV default), mult=3.5 (one notch above the TV default 3.0).
+    The factor was raised from 3.0 to 3.5 to widen the bands just enough to
+    remove the spurious monthly red flips; everything else is TV-default.
 
-`monthly_signal` and the shared `_supertrend` / ATR helpers below it are NOT part
-of the Pine weekly port; the weekly assumptions (A-notes) do not apply to them.
+The earlier engine was an SMA-based, close-only ATR SuperTrend with short periods
+(M2=6, ISM=12). The SMA smoothing + short ATR made the bands too tight and caused
+the over-sensitive red flips this rewrite fixes.
+
+`monthly_signal` and the `_supertrend_standard` / ATR helpers below it are NOT
+part of the Pine weekly port; the weekly assumptions (A-notes) do not apply.
 
 ==============================================================================
 3-5. IMPLEMENTATION, TESTS, ASSUMPTIONS  -- see code + bottom of file.
@@ -88,8 +103,12 @@ WEEKS_PER_YEAR = 52           # Pine: math.sqrt(52)       (vol annualisation fac
 
 MONTHS_PER_YEAR = 12          # (unused for monthly band; kept for documentation)
 
-M2_ATR_PERIOD, M2_MULT = 6, 3.0     # monthly M2 composite dev-locked params
-ISM_ATR_PERIOD, ISM_MULT = 12, 3.0  # monthly ISM dev-locked params
+# Monthly SuperTrend params (standard TradingView SuperTrend, Wilder/RMA ATR).
+# TV defaults are length 10 / factor 3.0; we keep length 10 and raise the factor
+# to 3.5 (the smallest bump that removes the spurious monthly red flips). Same
+# settings for both series so the deviation from default is single + consistent.
+M2_ATR_PERIOD, M2_MULT = 10, 3.5     # monthly Global M2 composite SuperTrend
+ISM_ATR_PERIOD, ISM_MULT = 10, 3.5   # monthly ISM SuperTrend
 
 
 # ============================================================================
@@ -298,100 +317,94 @@ def atr_series(tr: Sequence[float], period: int,
 
 
 # ============================================================================
-# Core SuperTrend band engine (shared by weekly + monthly)
+# Standard TradingView SuperTrend band engine (monthly M2/ISM)
 # ============================================================================
 
-def _supertrend(closes: Sequence[float],
-                atr: Sequence[Optional[float]],
-                mult: float,
-                confirm: int = 1) -> Tuple[List[Optional[float]], List[Optional[int]]]:
-    """Generic SuperTrend trailing band with a consecutive-close confirmation
-    filter.
+def _supertrend_standard(closes: Sequence[float],
+                         atr: Sequence[Optional[float]],
+                         mult: float
+                         ) -> Tuple[List[Optional[float]], List[Optional[int]]]:
+    """Faithful port of the built-in TradingView Pine `ta.supertrend(factor,
+    atrPeriod)` band + direction recurrence.
 
     Args:
-      closes : source/close series
-      atr    : ATR aligned to `closes` (None where ATR not yet available)
-      mult   : ATR multiplier (the "sensitivity")
-      confirm: consecutive closes beyond the active band required to flip
-               (1 = instant flip, the monthly behaviour).
+      closes : source/close series (`src`; close-only, no OHLC).
+      atr    : Wilder/RMA ATR aligned to `closes` (None where not yet available).
+      mult   : ATR multiplier (`factor`).
 
-    Returns (band, dir) aligned to closes:
-      band[i] = the active trailing-stop level shown for bar i (None until ATR ready)
-      dir[i]  = +1 (rising/green) or -1 (falling/red), or None until initialised.
+    Returns (supertrend, dir) aligned to closes:
+      supertrend[i] = the active SuperTrend stop level for bar i (None pre-ATR).
+      dir[i]        = +1 rising (uptrend) / -1 falling (downtrend); None pre-ATR.
 
-    Mechanic (strict directional ratchet, faithful to the spec's words
-    "support band only ratchets UP (never down)"):
-      basicUpper = close + mult*ATR ;  basicLower = close - mult*ATR
-      While direction == +1 (uptrend) the ACTIVE band is the SUPPORT, which is
-        held at max(prior support, basicLower) -- it can only rise, never fall,
-        even if a volatility spike widens basicLower far below it. A flip DOWN
-        requires `confirm` consecutive closes strictly below that support.
-      While direction == -1 (downtrend) the ACTIVE band is the RESISTANCE, held
-        at min(prior resistance, basicUpper) -- it can only fall. A flip UP
-        requires `confirm` consecutive closes strictly above that resistance.
-      On a confirmed flip the opposite band is (re)seeded from the current
-        basic band so the new trailing stop starts at a sensible distance.
+    Canonical Pine `ta.supertrend` source this mirrors line-for-line::
 
-    The strict ratchet (rather than the textbook Seban "reset on prior-close
-    pierce") is deliberate: with the close-only true range, a single large move
-    makes ATR explode, and the textbook reset would let the support collapse
-    below price on the very next bar -- silently cancelling the confirmation
-    streak. Holding the band monotonic preserves the confirmation streak. See
-    ASSUMPTIONS M1 (monthly only -- this engine is NOT used by the weekly Pine
-    port, which has its own state machine inline in weekly_signal).
+        upperBasic = src + factor*atr
+        lowerBasic = src - factor*atr
+        lowerBand := lowerBasic > prevLowerBand or close[1] < prevLowerBand
+                       ? lowerBasic : prevLowerBand
+        upperBand := upperBasic < prevUpperBand or close[1] > prevUpperBand
+                       ? upperBasic : prevUpperBand
+        if na(atr[1])
+            direction := 1                       // (down-trend seed in Pine)
+        else if prevSuperTrend == prevUpperBand
+            direction := close > upperBand ? -1 : 1
+        else
+            direction := close < lowerBand ? 1 : -1
+        superTrend := direction == -1 ? lowerBand : upperBand
+
+    Pine encodes direction as -1=up / 1=down. We translate to the dashboard
+    convention (+1 rising/green, -1 falling/red) on the way out: a Pine
+    direction of -1 (price riding the lower band) -> our +1.
+
+    Bands are LOCKED (carried forward) unless the new basic band is further out
+    or the PRIOR close pierced the locked band, which releases it. The trend
+    flips INSTANTLY (no confirmation) the bar the close crosses the locked band.
+    The wide Wilder/RMA ATR is what keeps the bands smooth and the flips rare.
     """
     n = len(closes)
-    band: List[Optional[float]] = [None] * n
-    direction: List[Optional[int]] = [None] * n
+    st_out: List[Optional[float]] = [None] * n
+    dir_out: List[Optional[int]] = [None] * n
 
-    # find first bar with an ATR value
     start = next((i for i in range(n) if atr[i] is not None), None)
     if start is None:
-        return band, direction
+        return st_out, dir_out
 
-    # streak counters of consecutive piercing closes (reset on any non-pierce)
-    pierce_up = 0    # consecutive closes ABOVE the active resistance
-    pierce_down = 0  # consecutive closes BELOW the active support
-
-    cur_dir = 1                       # seed rising (warm-up; see ASSUMPTIONS M1)
-    support = closes[start] - mult * atr[start]    # active band when rising
-    resistance = closes[start] + mult * atr[start] # active band when falling
+    prev_lower: Optional[float] = None     # prevLowerBand
+    prev_upper: Optional[float] = None     # prevUpperBand
+    prev_st: Optional[float] = None        # prevSuperTrend
+    prev_close: Optional[float] = None     # close[1]
 
     for i in range(start, n):
-        bu = closes[i] + mult * atr[i]   # basic upper
-        bl = closes[i] - mult * atr[i]   # basic lower
+        src = closes[i]
+        upper_basic = src + mult * atr[i]
+        lower_basic = src - mult * atr[i]
 
-        if cur_dir == 1:
-            # support only ratchets UP
-            support = max(support, bl)
-            if closes[i] < support:
-                pierce_down += 1
+        if prev_lower is None:                       # first ATR bar: na(atr[1])
+            lower_band = lower_basic
+            upper_band = upper_basic
+            pine_dir = 1                             # Pine seeds direction = 1
+        else:
+            lower_band = (lower_basic
+                          if lower_basic > prev_lower or prev_close < prev_lower
+                          else prev_lower)
+            upper_band = (upper_basic
+                          if upper_basic < prev_upper or prev_close > prev_upper
+                          else prev_upper)
+            if prev_st == prev_upper:
+                pine_dir = -1 if src > upper_band else 1
             else:
-                pierce_down = 0
-            pierce_up = 0
-            if pierce_down >= confirm:
-                # confirmed flip to falling: seed the resistance from this bar
-                cur_dir = -1
-                resistance = bu
-                pierce_down = 0
-        else:  # cur_dir == -1
-            # resistance only ratchets DOWN
-            resistance = min(resistance, bu)
-            if closes[i] > resistance:
-                pierce_up += 1
-            else:
-                pierce_up = 0
-            pierce_down = 0
-            if pierce_up >= confirm:
-                # confirmed flip to rising: seed the support from this bar
-                cur_dir = 1
-                support = bl
-                pierce_up = 0
+                pine_dir = 1 if src < lower_band else -1
 
-        direction[i] = cur_dir
-        band[i] = support if cur_dir == 1 else resistance
+        super_trend = lower_band if pine_dir == -1 else upper_band
 
-    return band, direction
+        # translate Pine (-1 up / +1 down) -> dashboard (+1 rising / -1 falling)
+        dir_out[i] = 1 if pine_dir == -1 else -1
+        st_out[i] = super_trend
+
+        prev_lower, prev_upper, prev_st, prev_close = (
+            lower_band, upper_band, super_trend, src)
+
+    return st_out, dir_out
 
 
 # ============================================================================
@@ -631,24 +644,32 @@ def weekly_signal(closes_with_dates: Sequence[Tuple[str, float]],
 def monthly_signal(values_with_dates: Sequence[Tuple[str, float]],
                    atr_period: int,
                    mult: float,
-                   atr_smoothing: str = "sma") -> List[Dict]:
-    """Compute the monthly SuperTrend band that flips INSTANTLY (confirm=1).
+                   atr_smoothing: str = "wilder") -> List[Dict]:
+    """Compute the monthly STANDARD TradingView SuperTrend (Wilder/RMA ATR).
+
+    This is the standard `ta.supertrend(factor=mult, atrPeriod=atr_period)`:
+    Wilder/RMA-smoothed ATR over the close-only true range TR_t=|C_t-C_{t-1}|
+    (the only TR available without OHLC), upper/lower basic bands at
+    src +/- mult*ATR, the canonical band-carry/lock rule, and an INSTANT flip
+    (no confirmation) when the close crosses the locked band.
 
     Args:
       values_with_dates: sorted list of (date_str, value). date_str 'YYYY-MM' or
           'YYYY-MM-DD'.
-      atr_period: dev-locked 6 for M2, 12 for ISM.
-      mult: dev-locked 3.0 for both.
+      atr_period: ATR length (calibrated 10 for both M2 and ISM; TV default 10).
+      mult: ATR multiplier / factor (calibrated 3.5 for both; TV default 3.0).
+      atr_smoothing: "wilder" (standard SuperTrend, default) or "sma".
 
     Returns a list of chart points (only where the band is defined):
       [{"d": "YYYY-MM", "c": value, "s": band_level, "g": 1|0}, ...]
+      where s = the active SuperTrend stop and g = 1 rising / 0 falling.
     """
     pts = list(values_with_dates)
     dates = [d for d, _ in pts]
     closes = [float(v) for _, v in pts]
     tr = true_range_close_only(closes)
     atr = atr_series(tr, atr_period, smoothing=atr_smoothing)
-    band, direction = _supertrend(closes, atr, mult, confirm=1)
+    band, direction = _supertrend_standard(closes, atr, mult)
 
     out = []
     for i in range(len(closes)):
@@ -758,14 +779,16 @@ def _run_tests() -> None:
           r4_three["trend"] == "red",
           f"got {r4_three['trend']}")
 
-    # ---- Test 5: monthly_signal instant flip + output shape --------------
-    # Rising then falling monthly composite; confirm=1 so it flips on the 1st
-    # piercing close. Check field names/types and that g toggles 1->0.
-    mv = [100.0 + i for i in range(12)] + [110.0, 95.0, 80.0, 70.0]
-    mdates = [f"2025-{(i % 12) + 1:02d}" for i in range(len(mv))]
-    # make dates monotonic across the year boundary
+    # ---- Test 5: monthly_signal STANDARD SuperTrend (Wilder ATR) ---------
+    # Rising then crashing monthly composite. Standard SuperTrend flips INSTANTLY
+    # (no confirmation) when the close crosses the locked band. Check field
+    # names/types, that it starts green on the rise and ends red after the crash,
+    # and that the active stop `s` sits below price while green / above while red.
     mdates = []
-    yy, mm = 2025, 1
+    yy, mm = 2023, 1
+    # 18 steadily rising months (so the ST locks green well after warm-up) then a
+    # sharp crash that pierces the green stop and flips it red.
+    mv = [100.0 * (1.03 ** i) for i in range(18)] + [130.0, 100.0, 75.0, 60.0]
     for _ in range(len(mv)):
         mdates.append(f"{yy}-{mm:02d}")
         mm += 1
@@ -779,12 +802,51 @@ def _run_tests() -> None:
           len(out) > 0, f"len={len(out)}")
     check("T5 monthly ends red after the crash (g==0)",
           out[-1]["g"] == 0, f"got g={out[-1]['g']}")
-    check("T5 monthly starts green during the rise (g==1)",
-          out[0]["g"] == 1, f"got g={out[0]['g']}")
-    # instant-flip check: the bar AT the first big crash should already be red.
-    crash_idx = next(i for i, p in enumerate(out) if p["c"] <= 95.0)
-    check("T5 instant flip: crash bar is already red (confirm=1)",
-          out[crash_idx]["g"] == 0, f"g at crash={out[crash_idx]['g']}")
+    # The seed bar's direction is arbitrary (Pine seeds down at the first ATR
+    # bar); the steady rise locks the ST green before the crash. There must be a
+    # block of green bars during the rise, and the crash flips it back to red.
+    check("T5 monthly is green during the rise (>=3 green bars)",
+          sum(1 for p in out if p["g"] == 1) >= 3,
+          f"green bars={sum(1 for p in out if p['g']==1)}")
+    # instant flip: the FIRST crash bar (price drops far below the green stop) is
+    # already red on that very bar, with no confirmation lag.
+    last_green_i = max(i for i, p in enumerate(out) if p["g"] == 1)
+    check("T5 instant flip: bar after last green is red (no confirmation)",
+          out[last_green_i + 1]["g"] == 0,
+          f"g after last green={out[last_green_i + 1]['g']}")
+    # Standard-SuperTrend invariant: while green the stop is the lower band
+    # (<= price); while red the stop is the upper band (>= price).
+    check("T5 green stop <= price, red stop >= price (band side correct)",
+          all((p["s"] <= p["c"]) if p["g"] == 1 else (p["s"] >= p["c"])
+              for p in out),
+          "a stop is on the wrong side of price")
+
+    # ---- Test 5b: Wilder SuperTrend HAND-COMPUTED on a tiny series -------
+    # closes = [10, 11, 12, 9]; TR = [0, 1, 1, 3]; period=2, Wilder ATR:
+    #   atr[1] = (0+1)/2 = 0.5  (seed = SMA of first 2 TRs)
+    #   atr[2] = (0.5*1 + 1)/2 = 0.75
+    #   atr[3] = (0.75*1 + 3)/2 = 1.875
+    # factor mult=1.0. Walk the standard SuperTrend:
+    #  i=1 (seed): lower=11-0.5=10.5, upper=11+0.5=11.5, pine_dir=1(down) ->
+    #              st=upper=11.5, our g = (pine_dir==-1)?1:0 = 0 (red seed).
+    #  i=2 src=12 atr=0.75: lowerBasic=11.25 upperBasic=12.75
+    #     prev_close=11; lower: 11.25>10.5 -> 11.25; upper: 12.75<11.5? no,
+    #       and 11>11.5? no -> keep 11.5. prev_st(11.5)==prev_upper(11.5) ->
+    #       pine_dir = (12>11.5)? -1(up): 1 -> -1(up). st=lower=11.25. g=1.
+    #  i=3 src=9 atr=1.875: lowerBasic=7.125 upperBasic=10.875
+    #     prev_close=12; lower: 7.125>11.25? no, 12<11.25? no -> keep 11.25.
+    #       upper: 10.875<11.5 -> 10.875. prev_st(11.25)==prev_upper(11.5)? no ->
+    #       pine_dir = (9<11.25)? 1(down): -1 -> 1(down). st=upper=10.875. g=0.
+    hb = monthly_signal(
+        [("2025-01", 10.0), ("2025-02", 11.0), ("2025-03", 12.0),
+         ("2025-04", 9.0)], atr_period=2, mult=1.0)
+    check("T5b Wilder ST hand-calc g-sequence == [0,1,0]",
+          [p["g"] for p in hb] == [0, 1, 0], f"got {[p['g'] for p in hb]}")
+    check("T5b Wilder ST hand-calc stops == [11.5, 11.25, 10.88]",
+          [p["s"] for p in hb] == [11.5, 11.25, 10.88],
+          f"got {[p['s'] for p in hb]}")
+    check("T5b instant flip up at i=2 (no confirmation needed)",
+          hb[1]["g"] == 1, f"got g={hb[1]['g']}")
 
     # ---- Test 6: ATR SMA closed form (hand-computable) -------------------
     # TR for closes [10, 12, 11, 14] (close-only) = [0, 2, 1, 3].
@@ -795,6 +857,13 @@ def _run_tests() -> None:
     a6 = atr_series(tr6, 2, "sma")
     check("T6 ATR SMA period2 = [None,1.0,1.5,2.0]",
           a6 == [None, 1.0, 1.5, 2.0], f"got {a6}")
+    # Wilder/RMA ATR period 2 on the same TR [0,2,1,3]:
+    #   seed atr[1] = (0+2)/2 = 1.0
+    #   atr[2] = (1.0*1 + 1)/2 = 1.0
+    #   atr[3] = (1.0*1 + 3)/2 = 2.0
+    a6w = atr_series(tr6, 2, "wilder")
+    check("T6 ATR Wilder period2 = [None,1.0,1.0,2.0]",
+          a6w == [None, 1.0, 1.0, 2.0], f"got {a6w}")
 
     # ---- Test 7: regime/vol closed form ---------------------------------
     # Constant geometric growth -> zero return variance -> vol 0% -> Normal.
@@ -882,7 +951,7 @@ def _run_tests() -> None:
     print("-" * 72)
     print("Worked numbers (for eyeballing):")
     print(f"  T4 Extreme-history realised vol = {v:.1f}% (threshold 45%)")
-    print(f"  T6 ATR SMA period2 = {a6}")
+    print(f"  T6 ATR SMA period2 = {a6} ; Wilder period2 = {a6w}")
     print(f"  T1 last band point = {r1['band_series'][-1]}")
     print(f"  T5 monthly tail    = {out[-3:]}")
     print("-" * 72)
@@ -943,13 +1012,24 @@ def _run_tests() -> None:
 #     None of this changes the Pine trend/flip computation -- only how it is
 #     reported.
 #
-# --- MONTHLY (ATR SuperTrend -- author-confirmed, NOT part of the Pine port) -
-# M1. monthly_signal is the M2/ISM SuperTrend and is left intact by request.
-#     It uses a close-to-close true range (feeds are close-only), SMA smoothing
-#     by default (Wilder optional via atr_smoothing), seeds direction=+1 at the
-#     first ATR-available bar, flips instantly (confirm=1), and reports the active
-#     band as `s`. These choices belong to the monthly signal only; the weekly
-#     W-notes above do not apply to it.
+# --- MONTHLY (STANDARD TradingView SuperTrend -- NOT part of the Pine port) --
+# M1. monthly_signal is the M2/ISM standard `ta.supertrend`. It uses Wilder/RMA
+#     ATR over a close-to-close true range TR_t=|C_t-C_{t-1}| (the feeds are
+#     close-only, so this is the only TR definition possible -- the OHLC Wilder
+#     TR collapses to it). It applies the canonical band-carry/lock rule, seeds
+#     direction at the first ATR-available bar (Pine na(atr[1]) branch), and
+#     flips INSTANTLY (no confirmation). Params: M2 and ISM both length 10 /
+#     factor 3.5 (TV default 10/3.0, factor raised one notch to widen the bands
+#     and remove the over-sensitive monthly red flips).
+#
+# M2note. ISM "green since early 2023" is NOT achievable for a trend-following
+#     SuperTrend and is a genuine data constraint, not a tuning artefact. The
+#     real ISM PMI fell from ~57 (Jan 2022) to a 46.0 trough (Jun 2023) and only
+#     durably turned up in 2024. Any honest SuperTrend therefore stays RED
+#     through the 2022-2023 decline and flips GREEN only as the uptrend forms
+#     (Mar 2024 at length 10 / factor 3.5), with ZERO red flips after the 2022
+#     red -- which is what the calibration delivers. M2, by contrast, rose from
+#     late 2022 and DOES satisfy green-since-Nov-2022 with no later reds.
 
 if __name__ == "__main__":
     _run_tests()
