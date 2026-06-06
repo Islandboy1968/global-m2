@@ -31,11 +31,50 @@ CYCLE_SERIES = {
     "gdp":       ("ECONOMICS:USGDPQQ", "3M"),
 }
 
+# ISM Services / Non-Manufacturing PMI. FRED can't carry ISM (copyright), and
+# TradingView's ECONOMICS symbol for it varies, so try a few and use the first
+# that returns data (logged so we know which one TradingView served).
+SERVICES_ISM_CANDS = ("ECONOMICS:USNMPMI", "ECONOMICS:USSPMI", "ECONOMICS:USNMI",
+                      "ECONOMICS:USSP", "ECONOMICS:USNMIPM")
+
 BARS = 400   # monthly: ~33y; quarterly: capped by available history. The frontend windows it.
 
 
 def _iso(t):
     return dt.datetime.utcfromtimestamp(int(t)).date().strftime("%Y-%m-%d")
+
+
+def _pull_first(cands, res, bars):
+    """Return (symbol, points) for the first candidate symbol that yields data."""
+    for sym in cands:
+        try:
+            pts = pull_series(sym, res, bars)
+        except Exception as e:
+            print(f"  {sym}: {str(e)[:60]}")
+            continue
+        if pts:
+            return sym, pts
+    return None, []
+
+
+def build_services_ism(bars=BARS):
+    """ISM Services PMI, monthly, via TradingView ECONOMICS (first working symbol)."""
+    sym, pts = _pull_first(SERVICES_ISM_CANDS, "1M", bars)
+    if not pts:
+        raise RuntimeError("no Services ISM symbol returned data")
+    print(f"  services_ism via {sym} ({len(pts)} pts)")
+    return [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
+
+
+def build_m2_yoy(bars=BARS):
+    """US M2 money stock (FRED:M2SL, $bn), year-on-year % change, monthly."""
+    lvl = dict(pull_series("FRED:M2SL", "1M", bars))
+    ks = sorted(lvl)
+    out = []
+    for i, t in enumerate(ks):
+        if i >= 12 and lvl[ks[i - 12]]:
+            out.append({"d": _iso(t), "v": round((lvl[t] / lvl[ks[i - 12]] - 1) * 100, 2)})
+    return out
 
 
 def build_capex(bars=400):
@@ -75,6 +114,16 @@ def build_cycle(bars=BARS):
     except Exception as e:
         out["capex_g"] = None
         print("  capex_g build FAILED:", str(e)[:100])
+    try:
+        out["services_ism"] = build_services_ism(bars)
+    except Exception as e:
+        out["services_ism"] = None
+        print("  services_ism build FAILED:", str(e)[:100])
+    try:
+        out["m2_yoy"] = build_m2_yoy(bars)
+    except Exception as e:
+        out["m2_yoy"] = None
+        print("  m2_yoy build FAILED:", str(e)[:100])
     return out
 
 
