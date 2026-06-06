@@ -1314,7 +1314,9 @@ function buildSimpleTab(missingId, specs){
     chart.$auto=false; charts.push(chart); built.push({s, chart});
   });
   built.forEach(({s,chart})=>{ attach(s.cv, chart);
-    controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def}); });
+    controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def});
+    // single-series panel (no right asset): drop the empty right axis so it reads clean
+    if(!chart.data.datasets[1].data.length){ chart.options.scales.y1.display=false; chart.update("none"); } });
   built.forEach(({s,chart})=>{ const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(s.start)); chart.options.scales.x.max=hi; chart.update("none"); fitY(chart);
     [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on")); });
