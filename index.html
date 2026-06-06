@@ -233,7 +233,15 @@
       <div class="src">Source: FRED (Federal Reserve) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>US Liquidity (Broad) leads Nasdaq 100</h2><span class="ccap" id="usNdxLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>US M2 &mdash; Year-on-year</h2><span class="ccap" id="cap-us-m2">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>US M2 YoY %</span></div>
+      <div class="chartbox"><canvas id="usM2Yoy"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">US M2 money stock, year-on-year &middot; FRED (M2SL) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">06</span><h2>US Liquidity (Broad) leads Nasdaq 100</h2><span class="ccap" id="usNdxLead">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Broad ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="usNdx"></canvas></div>
@@ -241,7 +249,7 @@
       <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">06</span><h2>US Liquidity (Narrow) leads Bitcoin</h2><span class="ccap" id="usBtcLead">&mdash;</span></div>
+    <div class="chead"><span class="cnum">07</span><h2>US Liquidity (Narrow) leads Bitcoin</h2><span class="ccap" id="usBtcLead">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
       <div class="chartbox"><canvas id="usBtc"></canvas></div>
@@ -440,6 +448,22 @@
       <div class="chartbox"><canvas id="cycSemiCapexC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Taiwan exports (a global semis/tech-demand proxy) lead the US capex cycle &middot; TradingView, FRED (BEA) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">10</span><h2>ISM vs Services ISM</h2><span class="ccap" id="cycIsmSvc">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>ISM Services PMI</span></div>
+      <div class="chartbox"><canvas id="cycIsmSvcC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Manufacturing vs the services side of the economy &middot; TradingView (ISM) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">11</span><h2>Services ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycSvcGdp">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Services PMI</span><span class="lg pink"><i class="sw pnk"></i>GDP QoQ annualised % (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycSvcGdpC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Services PMI vs real GDP growth &middot; services are ~70% of US output &middot; TradingView, FRED (BEA) &middot; Global Macro Investor</div>
     </div>
 
     <!-- 09 dominoes — removed from the page for now (too complex). Kept here to revisit later.
@@ -992,14 +1016,19 @@ const US = (function(){
     {data:P("yos"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
     {data:P("yo"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT),plugins:[zeroLine]}));
+  // 05 US M2 YoY (FRED M2SL) — reused from the cycle block; zero line + smoothing-free
+  const m2y=((DATA.cycle&&DATA.cycle.m2_yoy)||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
+  charts.push(new Chart(usM2Yoy,{type:"line",data:{datasets:[
+    {data:m2y,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
+  ]},options:opts(PINK, fmtPCT),plugins:[zeroLine]}));
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
   charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
-  charts.forEach((c,i)=>c.$auto=(i<4));
-  [usLevel,usYoy,usLevelOld,usYoyOld,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
-  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]);
-  controls(charts[4],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
-  controls(charts[5],{asset:DATA.btc, leftLabel:"US Total Liquidity, Narrow ($BN)", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
+  charts.forEach((c,i)=>c.$auto=(i<5));
+  [usLevel,usYoy,usLevelOld,usYoyOld,usM2Yoy,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]); controls(charts[4]);
+  controls(charts[5],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
+  controls(charts[6],{asset:DATA.btc, leftLabel:"US Total Liquidity, Narrow ($BN)", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
   return {charts};
 })();
 
@@ -1107,6 +1136,16 @@ const CYCLE = (function(){
     {label:"Taiwan exports YoY",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsLin(fmtCapexG,false,fmtPctS)});
   charts.push(semiCapexC);
+  // 10 ISM (left) vs ISM Services PMI (same axis) — both diffusion indices ~40-65
+  const svc = (C.services_ism) ? P(C.services_ism) : [];
+  const ismSvcC=overlaySame(cycIsmSvcC, ism, [], fmtIsm);
+  charts.push(ismSvcC);
+  // 11 ISM Services (left axis) vs GDP QoQ annualised (right axis)
+  const svcGdpC=new Chart(cycSvcGdpC,{type:"line",data:{datasets:[
+    {label:"Services ISM",data:svc,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"GDP QoQ ann.",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtGdp)});
+  charts.push(svcGdpC);
   // dominoes — REMOVED from the page for now (too complex). Code kept for revisit.
   // To restore: un-comment this block + charts.push(domC); re-add cycDomC to the attach
   // array, the controls block and cycStart below, and un-comment the HTML panel (06).
@@ -1119,7 +1158,7 @@ const CYCLE = (function(){
   charts.push(domC);
   */
   charts.forEach(c=>c.$auto=false);
-  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC].forEach((cv,i)=>attach(cv,charts[i]));
+  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC,cycIsmSvcC,cycSvcGdpC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
   controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
   // 04 lead control — forward lead on the FCI blend line (default 12 months)
@@ -1134,6 +1173,10 @@ const CYCLE = (function(){
   controlsFwd(capexGC,{asset:C.capex_g, pairLbl:"ISM vs US capex growth", leadEl:document.getElementById("cycCapexG"), def:-273});
   // 09 Taiwan exports lead US capex — exports shifted forward (default ~9 months)
   controlsFwd(semiCapexC,{asset:(DATA.exp&&DATA.exp.twexp_yy)||[], pairLbl:"Taiwan exports lead US capex", leadEl:document.getElementById("cycSemiCapex"), def:270});
+  // 10 ISM vs Services ISM — coincident, adjustable lead
+  controlsFwd(ismSvcC,{asset:(C.services_ism)||[], pairLbl:"ISM vs Services ISM", leadEl:document.getElementById("cycIsmSvc"), def:0});
+  // 11 Services ISM vs GDP QoQ annualised — coincident, adjustable lead
+  controlsFwd(svcGdpC,{asset:(C.gdp)||[], pairLbl:"Services ISM vs US GDP (QoQ ann.)", leadEl:document.getElementById("cycSvcGdp"), def:0});
   // 09 dominoes — controls kept for revisit (chart currently removed from the page)
   /*
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
@@ -1152,6 +1195,8 @@ const CYCLE = (function(){
   cycStart(charts[5],"1997-01-01");   // ISM vs capex/GDP
   cycStart(charts[6],"1997-01-01");   // ISM vs capex growth
   cycStart(charts[7],"2005-01-01");   // Taiwan exports vs US capex
+  cycStart(charts[8],"2000-01-01");   // ISM vs Services ISM
+  cycStart(charts[9],"2000-01-01");   // Services ISM vs GDP
   return {charts};
 })();
 
