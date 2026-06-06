@@ -158,7 +158,11 @@ def build_us():
     raw = {}
     for s in SERIES:
         try:
-            raw[s] = _fetch(s)
+            # SBCACBW027NBOG (Narrow-only securities) has no TradingView fallback and
+            # its FRED CSV intermittently times out — give it a longer timeout and more
+            # retries so the Narrow leg recomputes rather than being carried forward.
+            kw = {"timeout": 90, "retries": 4} if s == "SBCACBW027NBOG" else {}
+            raw[s] = _fetch(s, **kw)
         except Exception as e:
             print(f"  US: {s} unavailable from all sources ({str(e)[:60]})")
             raw[s] = {}
