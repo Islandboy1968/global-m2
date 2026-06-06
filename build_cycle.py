@@ -37,9 +37,10 @@ CYCLE_SERIES = {
 # USMNBA = US ISM Non-Manufacturing Business Activity (TradingView ECONOMICS), the
 # usual public stand-in for the ISM Services headline. Tried first; the rest are
 # fallbacks. A PMI-range guard (build_services_ism) rejects any that mis-resolve.
-SERVICES_ISM_CANDS = ("ECONOMICS:USNMBA", "ECONOMICS:USMNBA", "ECONOMICS:USNMNO",
-                      "ECONOMICS:USNMEA", "ECONOMICS:USNMPMI", "ECONOMICS:USNMI",
-                      "ECONOMICS:USSPMI", "ECONOMICS:USNPMI")
+# Confirmed working symbol (ISM Non-Manufacturing Business Activity, the standard
+# ISM-Services stand-in). Kept as a 1-item tuple so a future swap is trivial; a long
+# blind-candidate list slowed every run badly (each miss waits out the pull deadline).
+SERVICES_ISM_CANDS = ("ECONOMICS:USNMBA",)
 
 BARS = 400   # monthly: ~33y; quarterly: capped by available history. The frontend windows it.
 
