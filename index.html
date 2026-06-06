@@ -463,7 +463,7 @@
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Nonresidential fixed investment, YoY % (RHS)</span></div>
       <div class="chartbox"><canvas id="cycCapexGC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
-      <div class="src">US nonresidential fixed investment, year-on-year growth &middot; ISM leads by ~3 quarters &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
+      <div class="src">US nonresidential fixed investment, year-on-year growth &middot; ISM leads by ~2 quarters (peak r&asymp;0.64 at +6 mo) &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
     </div>
 
     <div class="chead"><span class="cnum">12</span><h2>Services vs US capex growth</h2><span class="ccap" id="cycSvcCapexG">&mdash;</span></div>
@@ -1066,6 +1066,10 @@ const US = (function(){
     {data:m2ys,borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
     {data:m2y,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
   ]},options:opts(PINK, fmtPCT),plugins:[zeroLine]}));
+  { const lv=m2arr.length?m2arr[m2arr.length-1].v:null;
+    const s3=m2arr.slice(-3), a3=s3.length?s3.reduce((p,c)=>p+c.v,0)/s3.length:null;
+    const el=document.getElementById("cap-us-m2");
+    if(el&&lv!=null) el.textContent="12-month % change · "+sgn(+lv.toFixed(2))+"% (3m avg "+a3.toFixed(2)+"%)"; }
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
   charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
@@ -1242,7 +1246,7 @@ const CYCLE = (function(){
   // 07 ISM vs capex/GDP — adjustable lead, default coincident (ISM tends to lead the capex cycle)
   controlsFwd(capexC,{asset:C.capex, pairLbl:"ISM vs US capex (% of GDP)", leadEl:document.getElementById("cycCapex"), def:0});
   // 08 ISM vs capex growth — default shift puts capex ~3 quarters behind ISM (ISM leads)
-  controlsFwd(capexGC,{asset:C.capex_g, pairLbl:"ISM vs US capex growth", leadEl:document.getElementById("cycCapexG"), def:-273});
+  controlsFwd(capexGC,{asset:C.capex_g, pairLbl:"ISM vs US capex growth", leadEl:document.getElementById("cycCapexG"), def:-180});
   // 09 Taiwan exports lead US capex — exports shifted forward (default ~9 months)
   controlsFwd(semiCapexC,{asset:(DATA.exp&&DATA.exp.twexp_yy)||[], pairLbl:"Taiwan exports lead US capex", leadEl:document.getElementById("cycSemiCapex"), def:270});
   // 10 ISM vs Services ISM — coincident, adjustable lead
@@ -1255,7 +1259,7 @@ const CYCLE = (function(){
   // 08 Services vs FCI ex-oil — forward lead on the FCI line (default 9 months, the base case)
   controlsFwd(svcFciExC,{asset:C.fci_exoil, pairLbl:"GMI FCI ex-oil leads Services ISM", leadEl:document.getElementById("cycSvcFciEx"), def:270});
   // 12 Services vs capex growth — capex shifted ~3 quarters behind services (services leads)
-  controlsFwd(svcCapexGC,{asset:C.capex_g, pairLbl:"Services ISM vs US capex growth", leadEl:document.getElementById("cycSvcCapexG"), def:-273});
+  controlsFwd(svcCapexGC,{asset:C.capex_g, pairLbl:"Services ISM vs US capex growth", leadEl:document.getElementById("cycSvcCapexG"), def:-180});
   // 09 dominoes — controls kept for revisit (chart currently removed from the page)
   /*
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
