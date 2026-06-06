@@ -1136,8 +1136,12 @@ const CYCLE = (function(){
     {label:"Taiwan exports YoY",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsLin(fmtCapexG,false,fmtPctS)});
   charts.push(semiCapexC);
-  // 10 ISM (left) vs ISM Services PMI (same axis) — both diffusion indices ~40-65
-  const svc = (C.services_ism) ? P(C.services_ism) : [];
+  // 10 ISM (left) vs ISM Services PMI (same axis) — both diffusion indices ~40-65.
+  // Guard: only treat services_ism as present if it's actually PMI-range (a bad
+  // source symbol can resolve to a mis-scaled series); otherwise the two panels hide.
+  const svcArr=(C.services_ism)||[];
+  const svcValid = svcArr.length>0 && svcArr[svcArr.length-1].v>=20 && svcArr[svcArr.length-1].v<=80;
+  const svc = svcValid ? P(C.services_ism) : [];
   const ismSvcC=overlaySame(cycIsmSvcC, ism, [], fmtIsm);
   charts.push(ismSvcC);
   // 11 ISM Services (left axis) vs GDP QoQ annualised (right axis)
@@ -1174,7 +1178,7 @@ const CYCLE = (function(){
   // 09 Taiwan exports lead US capex — exports shifted forward (default ~9 months)
   controlsFwd(semiCapexC,{asset:(DATA.exp&&DATA.exp.twexp_yy)||[], pairLbl:"Taiwan exports lead US capex", leadEl:document.getElementById("cycSemiCapex"), def:270});
   // 10 ISM vs Services ISM — coincident, adjustable lead
-  controlsFwd(ismSvcC,{asset:(C.services_ism)||[], pairLbl:"ISM vs Services ISM", leadEl:document.getElementById("cycIsmSvc"), def:0});
+  controlsFwd(ismSvcC,{asset:svcValid?C.services_ism:[], pairLbl:"ISM vs Services ISM", leadEl:document.getElementById("cycIsmSvc"), def:0});
   // 11 Services ISM vs GDP QoQ annualised — coincident, adjustable lead
   controlsFwd(svcGdpC,{asset:(C.gdp)||[], pairLbl:"Services ISM vs US GDP (QoQ ann.)", leadEl:document.getElementById("cycSvcGdp"), def:0});
   // 09 dominoes — controls kept for revisit (chart currently removed from the page)
@@ -1197,6 +1201,10 @@ const CYCLE = (function(){
   cycStart(charts[7],"2005-01-01");   // Taiwan exports vs US capex
   cycStart(charts[8],"2000-01-01");   // ISM vs Services ISM
   cycStart(charts[9],"2000-01-01");   // Services ISM vs GDP
+  // Hide both Services-ISM panels until a valid PMI-range source is wired up.
+  if(!svcValid){ [cycIsmSvcC,cycSvcGdpC].forEach(cv=>{ const p=cv.closest(".panel");
+    if(p){ p.style.display="none"; const h=p.previousElementSibling;
+      if(h&&h.classList.contains("chead")) h.style.display="none"; } }); }
   return {charts};
 })();
 

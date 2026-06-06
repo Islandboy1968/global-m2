@@ -35,7 +35,8 @@ CYCLE_SERIES = {
 # TradingView's ECONOMICS symbol for it varies, so try a few and use the first
 # that returns data (logged so we know which one TradingView served).
 SERVICES_ISM_CANDS = ("ECONOMICS:USNMPMI", "ECONOMICS:USSPMI", "ECONOMICS:USNMI",
-                      "ECONOMICS:USSP", "ECONOMICS:USNMIPM")
+                      "ECONOMICS:USNPMI", "ECONOMICS:USISMNM", "ECONOMICS:USSERV",
+                      "ECONOMICS:USSP")
 
 BARS = 400   # monthly: ~33y; quarterly: capped by available history. The frontend windows it.
 
@@ -57,13 +58,31 @@ def _pull_first(cands, res, bars):
     return None, []
 
 
+def _looks_like_pmi(pts):
+    """A diffusion index (PMI) sits ~30-75. Guards against a candidate symbol that
+    resolves to an unrelated, mis-scaled series (e.g. a millions-level instrument)."""
+    vals = sorted(v for _, v in pts)
+    if not vals:
+        return False
+    med = vals[len(vals) // 2]
+    return 20.0 <= med <= 80.0
+
+
 def build_services_ism(bars=BARS):
-    """ISM Services PMI, monthly, via TradingView ECONOMICS (first working symbol)."""
-    sym, pts = _pull_first(SERVICES_ISM_CANDS, "1M", bars)
-    if not pts:
-        raise RuntimeError("no Services ISM symbol returned data")
-    print(f"  services_ism via {sym} ({len(pts)} pts)")
-    return [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
+    """ISM Services PMI, monthly, via TradingView ECONOMICS — first candidate that
+    returns PMI-range data (a symbol that resolves to a non-PMI series is rejected)."""
+    for sym in SERVICES_ISM_CANDS:
+        try:
+            pts = pull_series(sym, "1M", bars)
+        except Exception as e:
+            print(f"  {sym}: {str(e)[:60]}")
+            continue
+        if pts and _looks_like_pmi(pts):
+            print(f"  services_ism via {sym} ({len(pts)} pts)")
+            return [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
+        if pts:
+            print(f"  {sym}: resolved but not PMI-range (median off) — skipping")
+    raise RuntimeError("no Services ISM symbol returned PMI-range data")
 
 
 def build_m2_yoy(bars=BARS):
