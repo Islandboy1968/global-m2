@@ -22,6 +22,7 @@ Output values are in $ trillions to match the global series.
 BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
+import bisect, json, os
 import datetime as dt
 from fred import fred_series
 from tv_pull import pull_series
@@ -142,11 +143,56 @@ def _trailing_avg(arr, n):
 
 
 # Inputs required for the headline Broad measure. SBCACBW027NBOG feeds ONLY the
-# Narrow measure and is allowed to be missing: it is unavailable on TradingView and
-# times out intermittently on FRED's CSV, and one optional input must never blank the
-# whole tab. When it's missing the Broad series still ships and the Narrow leg is
-# emitted as null (update_data.py carries the last good Narrow values forward per-series).
+# Narrow measure. It has no TradingView fallback and its FRED CSV times out on most
+# runs, so the Narrow can't reliably be computed from it directly. Instead, when it's
+# unavailable, the Narrow is derived from the (well-behaved) Broad minus the committed
+# Broad-Narrow spread seed below — see _narrow_seed / build_us.
 CORE = ("WALCL", "WTREGEN", "RRPONTSYD", "TOTBKCR")
+
+# Broad-Narrow spread = (bank credit - bank-held securities)/1e3 ($tn). It moves only
+# glacially (driven by slow-changing H.8 balances), so a seeded history + last-value
+# carry-forward reconstructs the Narrow to within a rounding error when the securities
+# series can't be fetched. Seed is committed and refreshed whenever SBCACBW does load.
+_SEED_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "data", "us_narrow_seed.json")
+
+
+def _load_spread_seed():
+    """Committed Broad-Narrow spread history as (sorted dates, spreads). ([], []) if
+    unreadable so the Narrow simply degrades to null rather than blowing up the build."""
+    try:
+        with open(_SEED_JSON) as fh:
+            sp = (json.load(fh) or {}).get("spread") or {}
+    except Exception:
+        return [], []
+    items = sorted((d, v) for d, v in sp.items() if v is not None)
+    return [d for d, _ in items], [v for _, v in items]
+
+
+def _spread_at(dates, vals, ds):
+    """Spread for the latest seed date <= ds, carried forward indefinitely past the end
+    (and the earliest spread for dates before the seed begins). None if the seed empty."""
+    if not dates:
+        return None
+    i = bisect.bisect_right(dates, ds) - 1
+    return vals[i] if i >= 0 else vals[0]
+
+
+def _save_spread_seed(rows, as_of):
+    """Refresh the committed seed from a build where SBCACBW loaded live (vo present)."""
+    spread = {x["d"]: round(x["vn"] - x["vo"], 4)
+              for x in rows if x["vo"] is not None}
+    if not spread:
+        return
+    try:
+        with open(_SEED_JSON, "w") as fh:
+            json.dump({"_note": "US Liquidity Narrow fallback: Broad-Narrow spread "
+                       "($tn). When SBCACBW027NBOG is unavailable, Narrow = Broad - "
+                       "spread (last value carried forward). Auto-refreshed when "
+                       "SBCACBW loads live.", "as_of": as_of, "spread": spread},
+                      fh, separators=(",", ":"))
+    except Exception as e:
+        print(f"  US: could not refresh Narrow spread seed ({str(e)[:50]})")
 
 
 def build_us():
@@ -175,6 +221,17 @@ def build_us():
     tga, rrp = raw["WTREGEN"], raw["RRPONTSYD"]     # TGA = the Fed's weekly figure
     credit, secs = raw["TOTBKCR"], raw["SBCACBW027NBOG"]
 
+    # Narrow source: live SBCACBW when it loads, else the Broad - spread-seed fallback.
+    secs_live = bool(secs)
+    sd, sv = ([], []) if secs_live else _load_spread_seed()
+    if secs_live:
+        print(f"  US: Narrow from live SBCACBW ({len(secs)} pts)")
+    elif sd:
+        print(f"  US: SBCACBW unavailable — Narrow = Broad - spread seed "
+              f"({len(sd)} pts through {sd[-1]})")
+    else:
+        print("  US: SBCACBW unavailable and no spread seed — Narrow leg will be null")
+
     dates = sorted(walcl)  # WALCL weekly (Wednesday) grid is the master calendar
     rows = []
     for d in dates:
@@ -182,13 +239,16 @@ def build_us():
         t = _closest_before(tga, d)
         r = _closest_before(rrp, d)
         c = _closest_before(credit, d)   # bank credit forward-filled onto the weekly grid
-        s = _closest_before(secs, d)     # narrow-only input; may be None when SBCACBW is unavailable
         if None in (t, r, c):            # Broad essentials only
             continue
         base = w - t - r * SERIES["RRPONTSYD"]
         new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
-        old_liq = ((base + s * SERIES["SBCACBW027NBOG"]) / 1e6
-                   if s is not None else None)            # Narrow, $tn (optional)
+        if secs_live:
+            s = _closest_before(secs, d)                  # bank-held securities, $B
+            old_liq = (base + s * SERIES["SBCACBW027NBOG"]) / 1e6 if s is not None else None
+        else:
+            sp = _spread_at(sd, sv, d)                    # Broad - Narrow spread, $tn
+            old_liq = new_liq - sp if sp is not None else None
         # Per-row plausibility backstop: drop any week whose Broad is implausible (a
         # stray garbage input) so it can never render; null an implausible Narrow.
         if not (0.0 < new_liq < 100.0):
@@ -199,6 +259,9 @@ def build_us():
 
     if not rows:
         raise RuntimeError("US: no rows (core inputs produced no overlapping dates)")
+
+    if secs_live:                        # keep the committed seed current for lean runs
+        _save_spread_seed(rows, rows[-1]["d"])
 
     # Value sanity guard: US Total Liquidity (Broad) is ~$20-30tn. A value outside a
     # wide plausibility band means a unit/source mismatch slipped through — raise so

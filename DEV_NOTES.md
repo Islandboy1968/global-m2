@@ -295,6 +295,17 @@ published observation, and compares it to what we shipped.
   drifts), which shifted the whole Broad/Narrow curve up by that amount. Weekly is
   also the genuine publication frequency of these H.4.1/H.8 inputs. YoY is 52-week
   with a 13-week (~3mo) trailing average.
+- **Narrow spread seed** (`us_liquidity._load_spread_seed` + `data/us_narrow_seed.json`):
+  the Narrow leg's securities input (`SBCACBW027NBOG`) has no TradingView fallback and
+  its FRED CSV times out on most runs, so it cannot be relied on. When it's unavailable
+  the Narrow is reconstructed as `Broad − spread`, where the Broad−Narrow spread
+  (`= (bank credit − bank-held securities)/1e3`, $tn) comes from a committed seed of the
+  last known-good weekly history (last value carried forward for newer weeks — the
+  spread moves only glacially). This reproduces the historical Narrow to a rounding
+  error and keeps it advancing every week. When `SBCACBW` *does* load live, the live
+  value is used and the seed is auto-refreshed (the workflow commits the seed file).
+  This replaced the old vo carry-forward, which silently propagated whatever Narrow was
+  last shipped (e.g. the wrong daily-grid-era values across a base change).
 - **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
   magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
   passthrough returns ACTUAL DOLLARS. `_fetch` converts based on WHICH SOURCE
