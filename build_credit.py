@@ -15,6 +15,7 @@ Series (key -> candidate symbols, transform):
   ci_demand     FRED:DRSDCIS    net % stronger C&I demand       (level)
 """
 from series_util import iso, pull_first
+from tv_pull import pull_series
 
 BARS = 470   # monthly resolution over the full history (series itself is quarterly)
 MIN_PTS = 24
@@ -24,6 +25,25 @@ CREDIT_SERIES = {
     "ci_standards": ["FRED:DRTSCILM", "FRED:DRTSCIS"],
     "ci_demand":    ["FRED:DRSDCILM", "FRED:DRSDCIS", "FRED:SUBLPDCISCT"],
 }
+
+
+def build_totll_yoy(bars=1400):
+    """TOTLL — Total Loans & Leases, All Commercial Banks (FRED:TOTLL, $bn), as a
+    year-on-year %. Weekly granularity preferred (52-week change); falls back to the
+    monthly series (12-month change) if TradingView won't serve the weekly resolution."""
+    for res, lag in (("1W", 52), ("1M", 12)):
+        try:
+            pts = pull_series("FRED:TOTLL", res, bars)
+        except Exception as e:
+            print(f"  TOTLL @{res}: {str(e)[:50]}"); pts = []
+        if pts and len(pts) > lag + 10:
+            ks = sorted(t for t, _ in pts); m = dict(pts)
+            out = [{"d": iso(ks[i]), "v": round((m[ks[i]] / m[ks[i - lag]] - 1) * 100, 2)}
+                   for i in range(lag, len(ks)) if m[ks[i - lag]]]
+            print(f"  credit/totll_yoy  : {len(out):4d} pts via FRED:TOTLL @{res} | "
+                  f"{out[0]['d']} -> {out[-1]['d']} (last {out[-1]['v']})")
+            return out
+    raise RuntimeError("FRED:TOTLL unavailable at weekly or monthly resolution")
 
 
 def build_credit(bars=BARS):
@@ -42,6 +62,11 @@ def build_credit(bars=BARS):
         except Exception as e:
             out[key] = None
             print(f"  credit/{key:12s} FAILED:", str(e)[:80])
+    try:
+        out["totll_yoy"] = build_totll_yoy() or None
+    except Exception as e:
+        out["totll_yoy"] = None
+        print("  credit/totll_yoy   FAILED:", str(e)[:80])
     return out
 
 

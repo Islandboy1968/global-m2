@@ -306,7 +306,7 @@ def build():
     # a failure here never breaks the rest of the build.
     try:
         cycle = build_cycle()
-        print("  CYCLE: " + ", ".join(f"{k} {len(v)}" for k, v in cycle.items()))
+        print("  CYCLE: " + ", ".join(f"{k} {len(v) if v else 0}" for k, v in cycle.items()))
         # GMI Financial Conditions Index (reconstruction) — leads ISM ~9 months.
         # Built from the ISM we just pulled; failure here must not break the cycle block.
         try:

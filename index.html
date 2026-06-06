@@ -591,9 +591,13 @@
 
   <section id="tab-credit" class="pane" hidden>
     <div id="credit-missing" class="note" hidden>Credit series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
-    <div class="chead"><span class="cnum">01</span><h2>ISM vs bank lending standards</h2><span class="ccap" id="crStd">&mdash;</span></div>
+    <div class="chead"><span class="cnum">01</span><h2>Total loans &amp; leases &mdash; Year-on-year</h2><span class="ccap" id="crTotll">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg pink"><i class="sw pnk"></i>TOTLL (all commercial banks) YoY %</span></div><div class="chartbox"><canvas id="crTotllC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Total bank loans &amp; leases, weekly, year-on-year &mdash; the core bank-credit impulse &middot; FRED (TOTLL) &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">02</span><h2>GMI FCI vs total loans &amp; leases YoY</h2><span class="ccap" id="crTotllFci">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>GMI FCI</span><span class="lg pink"><i class="sw pnk"></i>TOTLL YoY % (RHS)</span></div><div class="chartbox"><canvas id="crTotllFciC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Bank-credit growth vs financial conditions &mdash; adjust the lead to test whether TOTLL leads or lags the FCI &middot; FRED, GMI &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">03</span><h2>ISM vs bank lending standards</h2><span class="ccap" id="crStd">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>C&amp;I lending standards, net % tightening (RHS, inverted)</span></div><div class="chartbox"><canvas id="crStdC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Senior Loan Officer Survey &mdash; easing standards (inverted) lead growth by ~9 months &middot; FRED (Fed SLOOS) &middot; Global Macro Investor</div></div>
-    <div class="chead"><span class="cnum">02</span><h2>ISM vs C&amp;I loan demand</h2><span class="ccap" id="crDem">&mdash;</span></div>
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs C&amp;I loan demand</h2><span class="ccap" id="crDem">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>C&amp;I loan demand, net % stronger (RHS)</span></div><div class="chartbox"><canvas id="crDemC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Loan demand turning up confirms the credit channel is open &middot; FRED (Fed SLOOS) &middot; Global Macro Investor</div></div>
   </section>
 
@@ -654,9 +658,14 @@ const MONTHS=["January","February","March","April","May","June","July","August",
 function xtick(v,index,ticks){
   let span=(this&&this.max!=null&&this.min!=null)?(this.max-this.min):0;
   if(!span && ticks && ticks.length>1) span=Math.abs(ticks[ticks.length-1].value-ticks[0].value);
-  const d=new Date(v), mo=MONTHS[d.getUTCMonth()].slice(0,3), y=d.getUTCFullYear();
-  if(span>0 && span < 1100*DAY) return mo+" '"+String(y).slice(2);   // < ~3y zoomed
-  return y;
+  const monthly = span>0 && span < 1100*DAY;   // < ~3y → "Mon 'YY", wider → year only
+  const lbl=t=>{const d=new Date(t), y=d.getUTCFullYear();
+    return monthly ? MONTHS[d.getUTCMonth()].slice(0,3)+" '"+String(y).slice(2) : String(y);};
+  const cur=lbl(v);
+  // A linear time axis lands several ticks inside the same year/month; show each
+  // label only once (blank the repeats) so a year never prints twice in a row.
+  if(ticks && index>0 && lbl(ticks[index-1].value)===cur) return "";
+  return cur;
 }
 function monthYear(s){const m=(s||"").match(/(\d{4})-(\d{2})/); return m?MONTHS[+m[2]-1]+" "+m[1]:"";}
 function dayDate(s){const m=(s||"").match(/(\d{4})-(\d{2})-(\d{2})/); return m?(+m[3])+" "+MONTHS[+m[2]-1].slice(0,3)+" "+m[1]:monthYear(s);}
@@ -1305,7 +1314,9 @@ function buildSimpleTab(missingId, specs){
     chart.$auto=false; charts.push(chart); built.push({s, chart});
   });
   built.forEach(({s,chart})=>{ attach(s.cv, chart);
-    controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def}); });
+    controlsFwd(chart, {asset:s.right, pairLbl:s.pairLbl, leadEl:document.getElementById(s.capId), def:s.def});
+    // single-series panel (no right asset): drop the empty right axis so it reads clean
+    if(!chart.data.datasets[1].data.length){ chart.options.scales.y1.display=false; chart.update("none"); } });
   built.forEach(({s,chart})=>{ const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(s.start)); chart.options.scales.x.max=hi; chart.update("none"); fitY(chart);
     [...chart.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on")); });
@@ -1372,8 +1383,10 @@ const HOUSING = (function(){
 const CREDIT = (function(){
   const C=DATA&&DATA.cycle, K=DATA&&DATA.credit;
   if(!K){ const n=document.getElementById("credit-missing"); if(n) n.hidden=false; return null; }
-  const ism=C&&C.ism;
+  const ism=C&&C.ism, fci=C&&C.fci;
   return buildSimpleTab("credit-missing", [
+    {cv:crTotllC,    left:K.totll_yoy, right:[],         lf:F1, rf:F1,                pairLbl:"Total loans & leases YoY",           capId:"crTotll",    def:0,   start:"2000-01-01"},
+    {cv:crTotllFciC, left:fci,         right:K.totll_yoy, lf:FI, rf:F1,               pairLbl:"GMI FCI vs TOTLL YoY (lead/lag)",     capId:"crTotllFci", def:0,   start:"2005-01-01"},
     {cv:crStdC, left:ism, right:K.ci_standards, lf:FI, rf:FNUM, reverse:true, pairLbl:"C&I lending standards (inv.) lead ISM", capId:"crStd", def:270, start:"1995-01-01"},
     {cv:crDemC, left:ism, right:K.ci_demand,    lf:FI, rf:FNUM,               pairLbl:"ISM vs C&I loan demand",              capId:"crDem", def:0,   start:"1995-01-01"}
   ]);
