@@ -386,7 +386,23 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">02</span><h2>ISM vs Global Total Liquidity</h2><span class="ccap" id="cycIsmLiq">&mdash;</span></div>
+    <div class="chead"><span class="cnum">02</span><h2>Business-cycle composite (GDP-weighted)</h2><span class="ccap" id="cycBcComp">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>BC composite &mdash; 90% Services + 10% Manufacturing</span><span class="lg pink"><i class="sw pnk"></i>GDP QoQ annualised % (RHS)</span></div>
+      <div class="chartbox"><canvas id="cycBcCompC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">The services-led source of truth &mdash; the US economy is ~90% services, ~10% manufacturing by GDP weight, so this tracks real GDP better than manufacturing PMI alone &middot; ISM (via TradingView), BEA &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">03</span><h2>Cyclical impulse vs the broad composite</h2><span class="ccap" id="cycImpulse">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>BC composite (broad economy)</span><span class="lg pink"><i class="sw pnk"></i>Cyclical impulse &mdash; 50% Mfg New Orders + 30% Svc New Orders + 20% Mfg PMI</span></div>
+      <div class="chartbox"><canvas id="cycImpulseC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Manufacturing is small in GDP but high-beta and turns first &mdash; the marginal cyclical signal that leads the broad cycle. Slide the lead to test the offset &middot; ISM (via TradingView) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs Global Total Liquidity</h2><span class="ccap" id="cycIsmLiq">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity Index YoY% (RHS)</span></div>
       <div class="chartbox"><canvas id="cycIsmLiqC"></canvas></div>
@@ -394,7 +410,7 @@
       <div class="src">Source: ISM (via TradingView) &middot; GMI Total Liquidity Index &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">03</span><h2>ISM vs ISM New Orders</h2><span class="ccap" id="cycIsmNo">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>ISM vs ISM New Orders</h2><span class="ccap" id="cycIsmNo">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>ISM Manufacturing New Orders</span></div>
       <div class="chartbox"><canvas id="cycIsmNoC"></canvas></div>
@@ -402,7 +418,7 @@
       <div class="src">Source: ISM (via TradingView) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">04</span><h2>ISM vs GMI Financial Conditions Index</h2><span class="ccap" id="cycFci">&mdash;</span></div>
+    <div class="chead"><span class="cnum">06</span><h2>ISM vs GMI Financial Conditions Index</h2><span class="ccap" id="cycFci">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Financial Conditions Index (RHS)</span></div>
       <div class="chartbox"><canvas id="cycFciC"></canvas></div>
@@ -410,7 +426,7 @@
       <div class="src">FCI reconstruction: 5y yield, dollar &amp; oil (50% weight), inverted, scaled to ISM &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>ISM vs FCI ex-oil</h2><span class="ccap" id="cycFciEx">&mdash;</span></div>
+    <div class="chead"><span class="cnum">07</span><h2>ISM vs FCI ex-oil</h2><span class="ccap" id="cycFciEx">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI FCI ex-oil, rates + dollar (RHS)</span></div>
       <div class="chartbox"><canvas id="cycFciExC"></canvas></div>
@@ -418,7 +434,7 @@
       <div class="src">FCI ex-oil: rates + dollar only, inverted &amp; scaled to ISM &middot; the cleaner base-case lead &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">06</span><h2>ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycGdp">&mdash;</span></div>
+    <div class="chead"><span class="cnum">08</span><h2>ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycGdp">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>US Real GDP, QoQ annualised % (RHS)</span></div>
       <div class="chartbox"><canvas id="cycGdpC"></canvas></div>
@@ -426,7 +442,7 @@
       <div class="src">Source: ISM (via TradingView) &middot; US BEA real GDP, seasonally-adjusted annual rate &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">07</span><h2>ISM vs US capex, % of GDP</h2><span class="ccap" id="cycCapex">&mdash;</span></div>
+    <div class="chead"><span class="cnum">09</span><h2>ISM vs US capex, % of GDP</h2><span class="ccap" id="cycCapex">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Nonresidential fixed investment, % of GDP (RHS)</span></div>
       <div class="chartbox"><canvas id="cycCapexC"></canvas></div>
@@ -434,7 +450,7 @@
       <div class="src">US private nonresidential fixed investment as a share of GDP &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">08</span><h2>ISM vs US capex growth</h2><span class="ccap" id="cycCapexG">&mdash;</span></div>
+    <div class="chead"><span class="cnum">10</span><h2>ISM vs US capex growth</h2><span class="ccap" id="cycCapexG">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Nonresidential fixed investment, YoY % (RHS)</span></div>
       <div class="chartbox"><canvas id="cycCapexGC"></canvas></div>
@@ -442,7 +458,7 @@
       <div class="src">US nonresidential fixed investment, year-on-year growth &middot; ISM leads by ~3 quarters &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">09</span><h2>Taiwan exports vs US capex</h2><span class="ccap" id="cycSemiCapex">&mdash;</span></div>
+    <div class="chead"><span class="cnum">11</span><h2>Taiwan exports vs US capex</h2><span class="ccap" id="cycSemiCapex">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>US capex growth, YoY %</span><span class="lg pink"><i class="sw pnk"></i>Taiwan exports YoY % (semis proxy, lead, RHS)</span></div>
       <div class="chartbox"><canvas id="cycSemiCapexC"></canvas></div>
@@ -450,7 +466,7 @@
       <div class="src">Taiwan exports (a global semis/tech-demand proxy) lead the US capex cycle &middot; TradingView, FRED (BEA) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">10</span><h2>ISM vs Services ISM</h2><span class="ccap" id="cycIsmSvc">&mdash;</span></div>
+    <div class="chead"><span class="cnum">12</span><h2>ISM vs Services ISM</h2><span class="ccap" id="cycIsmSvc">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>ISM Services PMI</span></div>
       <div class="chartbox"><canvas id="cycIsmSvcC"></canvas></div>
@@ -458,7 +474,7 @@
       <div class="src">Manufacturing vs the services side of the economy &middot; TradingView (ISM) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">11</span><h2>Services ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycSvcGdp">&mdash;</span></div>
+    <div class="chead"><span class="cnum">13</span><h2>Services ISM vs GDP, QoQ annualised</h2><span class="ccap" id="cycSvcGdp">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Services PMI</span><span class="lg pink"><i class="sw pnk"></i>GDP QoQ annualised % (RHS)</span></div>
       <div class="chartbox"><canvas id="cycSvcGdpC"></canvas></div>
@@ -843,7 +859,7 @@ function controls(chart, lag){
 
 const DATA = window.TGL_DATA || null;
 let descrGlobal="—", descrUS="", descrBig="US structural macro — labour, demographics, debt and liquidity · FRED · monthly to quarterly";
-let descrCycle="The order in which the cycle falls — the ISM as the pivot, liquidity leading it by months, new orders leading the ISM itself · ISM, GMI · monthly";
+let descrCycle="The US cycle is now best read services-first: a GDP-weighted composite (90% Services / 10% Manufacturing) as the source of truth, with manufacturing, new orders and liquidity as the high-beta inflection signal · ISM, GMI · monthly";
 
 // ----- linear dual-axis overlay (for The Big Picture); right axis can be reversed -----
 function optsLin(leftFmt, rightReverse, rightFmt){
@@ -1159,6 +1175,17 @@ const CYCLE = (function(){
     {label:"GDP QoQ ann.",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsLin(fmtIsm,false,fmtGdp)});
   charts.push(svcGdpC);
+  // 02 GDP-weighted BC composite (left, ~PMI scale) vs GDP QoQ annualised (right axis)
+  const bcComp=C.bc_composite||[], imp=C.cyclical_impulse||[];
+  const bcValid=bcComp.length>0, impValid=imp.length>0;
+  const bcCompC=new Chart(cycBcCompC,{type:"line",data:{datasets:[
+    {label:"BC composite",data:P(bcComp),borderColor:BLACK,borderWidth:1.25,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"GDP QoQ ann.",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtGdp)});
+  charts.push(bcCompC);
+  // 03 cyclical impulse (right, same PMI scale) vs the broad composite (left)
+  const impC=overlaySame(cycImpulseC, P(bcComp), [], fmtIsm);
+  charts.push(impC);
   // dominoes — REMOVED from the page for now (too complex). Code kept for revisit.
   // To restore: un-comment this block + charts.push(domC); re-add cycDomC to the attach
   // array, the controls block and cycStart below, and un-comment the HTML panel (06).
@@ -1171,7 +1198,7 @@ const CYCLE = (function(){
   charts.push(domC);
   */
   charts.forEach(c=>c.$auto=false);
-  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC,cycIsmSvcC,cycSvcGdpC].forEach((cv,i)=>attach(cv,charts[i]));
+  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC,cycIsmSvcC,cycSvcGdpC,cycBcCompC,cycImpulseC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
   controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
   // 04 lead control — forward lead on the FCI blend line (default 12 months)
@@ -1190,6 +1217,9 @@ const CYCLE = (function(){
   controlsFwd(ismSvcC,{asset:svcValid?C.services_ism:[], pairLbl:"ISM vs Services ISM", leadEl:document.getElementById("cycIsmSvc"), def:0});
   // 11 Services ISM vs GDP QoQ annualised — coincident, adjustable lead
   controlsFwd(svcGdpC,{asset:(C.gdp)||[], pairLbl:"Services ISM vs US GDP (QoQ ann.)", leadEl:document.getElementById("cycSvcGdp"), def:0});
+  // 02 BC composite vs GDP — coincident; 03 cyclical impulse vs composite — adjustable lead
+  controlsFwd(bcCompC,{asset:(C.gdp)||[], pairLbl:"BC composite vs US GDP (QoQ ann.)", leadEl:document.getElementById("cycBcComp"), def:0});
+  controlsFwd(impC,{asset:impValid?C.cyclical_impulse:[], pairLbl:"Cyclical impulse vs broad composite", leadEl:document.getElementById("cycImpulse"), def:0});
   // 09 dominoes — controls kept for revisit (chart currently removed from the page)
   /*
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
@@ -1210,10 +1240,15 @@ const CYCLE = (function(){
   cycStart(charts[7],"2005-01-01");   // Taiwan exports vs US capex
   cycStart(charts[8],"2000-01-01");   // ISM vs Services ISM
   cycStart(charts[9],"2000-01-01");   // Services ISM vs GDP
-  // Hide both Services-ISM panels until a valid PMI-range source is wired up.
-  if(!svcValid){ [cycIsmSvcC,cycSvcGdpC].forEach(cv=>{ const p=cv.closest(".panel");
-    if(p){ p.style.display="none"; const h=p.previousElementSibling;
-      if(h&&h.classList.contains("chead")) h.style.display="none"; } }); }
+  cycStart(charts[10],"1998-01-01");  // BC composite vs GDP
+  cycStart(charts[11],"1998-01-01");  // cyclical impulse vs composite
+  // Hide panels whose source series aren't available yet.
+  const hideCyc=cv=>{ const p=cv&&cv.closest(".panel"); if(!p) return;
+    p.style.display="none"; const h=p.previousElementSibling;
+    if(h&&h.classList.contains("chead")) h.style.display="none"; };
+  if(!svcValid){ [cycIsmSvcC,cycSvcGdpC].forEach(hideCyc); }
+  if(!bcValid){ hideCyc(cycBcCompC); }
+  if(!bcValid || !impValid){ hideCyc(cycImpulseC); }
   return {charts};
 })();
 

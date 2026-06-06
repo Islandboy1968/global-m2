@@ -41,6 +41,8 @@ CYCLE_SERIES = {
 # ISM-Services stand-in). Kept as a 1-item tuple so a future swap is trivial; a long
 # blind-candidate list slowed every run badly (each miss waits out the pull deadline).
 SERVICES_ISM_CANDS = ("ECONOMICS:USNMBA",)
+# ISM Non-Manufacturing New Orders (services side) — the cyclical-impulse input.
+SERVICES_NO_CANDS = ("ECONOMICS:USNMNO",)
 
 BARS = 400   # monthly: ~33y; quarterly: capped by available history. The frontend windows it.
 
@@ -72,21 +74,45 @@ def _looks_like_pmi(pts):
     return 20.0 <= med <= 80.0
 
 
-def build_services_ism(bars=BARS):
-    """ISM Services PMI, monthly, via TradingView ECONOMICS — first candidate that
-    returns PMI-range data (a symbol that resolves to a non-PMI series is rejected)."""
-    for sym in SERVICES_ISM_CANDS:
+def _build_pmi(cands, label, bars=BARS):
+    """First candidate symbol that returns PMI-range monthly data, as [{d, v}].
+    A symbol that resolves to a non-PMI (mis-scaled) series is rejected."""
+    for sym in cands:
         try:
             pts = pull_series(sym, "1M", bars)
         except Exception as e:
             print(f"  {sym}: {str(e)[:60]}")
             continue
         if pts and _looks_like_pmi(pts):
-            print(f"  services_ism via {sym} ({len(pts)} pts)")
+            print(f"  {label} via {sym} ({len(pts)} pts)")
             return [{"d": _iso(t), "v": round(v, 2)} for t, v in sorted(pts)]
         if pts:
             print(f"  {sym}: resolved but not PMI-range (median off) — skipping")
-    raise RuntimeError("no Services ISM symbol returned PMI-range data")
+    raise RuntimeError(f"no {label} symbol returned PMI-range data")
+
+
+def build_services_ism(bars=BARS):
+    """ISM Services / Non-Manufacturing Business Activity, monthly, via TradingView."""
+    return _build_pmi(SERVICES_ISM_CANDS, "services_ism", bars)
+
+
+def build_services_neworders(bars=BARS):
+    """ISM Non-Manufacturing New Orders (services side), monthly, via TradingView."""
+    return _build_pmi(SERVICES_NO_CANDS, "services_neworders", bars)
+
+
+def _composite(parts):
+    """Weighted composite of monthly diffusion series. parts: [(arr, weight), ...]
+    where arr is [{d, v}]. Aligns on the year-months common to every input so the
+    blend is never distorted by a missing month; returns [{d: 'YYYY-MM-01', v}]."""
+    maps = [({r["d"][:7]: r["v"] for r in (arr or [])}, w) for arr, w in parts]
+    if any(not m for m, _ in maps):
+        return None
+    common = set(maps[0][0])
+    for m, _ in maps[1:]:
+        common &= set(m)
+    return [{"d": ym + "-01", "v": round(sum(m[ym] * w for m, w in maps), 2)}
+            for ym in sorted(common)]
 
 
 def build_m2_yoy(bars=BARS):
@@ -147,6 +173,25 @@ def build_cycle(bars=BARS):
     except Exception as e:
         out["m2_yoy"] = None
         print("  m2_yoy build FAILED:", str(e)[:100])
+    try:
+        out["services_neworders"] = build_services_neworders(bars)
+    except Exception as e:
+        out["services_neworders"] = None
+        print("  services_neworders build FAILED:", str(e)[:100])
+
+    # GDP-weighted Business-Cycle Composite — the services-led "source of truth"
+    # (the US economy is ~90% services, ~10% manufacturing by GDP weight).
+    out["bc_composite"] = _composite([(out.get("services_ism"), 0.9),
+                                       (out.get("ism"), 0.1)])
+    if out["bc_composite"]:
+        print(f"  bc_composite: {len(out['bc_composite'])} pts (last {out['bc_composite'][-1]['v']})")
+    # Cyclical Impulse — manufacturing is small in GDP but high-beta and turns first:
+    # 50% Mfg New Orders + 30% Services New Orders + 20% Mfg PMI.
+    out["cyclical_impulse"] = _composite([(out.get("neworders"), 0.5),
+                                          (out.get("services_neworders"), 0.3),
+                                          (out.get("ism"), 0.2)])
+    if out["cyclical_impulse"]:
+        print(f"  cyclical_impulse: {len(out['cyclical_impulse'])} pts (last {out['cyclical_impulse'][-1]['v']})")
     return out
 
 
