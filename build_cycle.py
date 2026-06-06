@@ -34,9 +34,11 @@ CYCLE_SERIES = {
 # ISM Services / Non-Manufacturing PMI. FRED can't carry ISM (copyright), and
 # TradingView's ECONOMICS symbol for it varies, so try a few and use the first
 # that returns data (logged so we know which one TradingView served).
-SERVICES_ISM_CANDS = ("ECONOMICS:USNMPMI", "ECONOMICS:USSPMI", "ECONOMICS:USNMI",
-                      "ECONOMICS:USNPMI", "ECONOMICS:USISMNM", "ECONOMICS:USSERV",
-                      "ECONOMICS:USSP")
+# USMNBA = US ISM Non-Manufacturing Business Activity (TradingView ECONOMICS), the
+# usual public stand-in for the ISM Services headline. Tried first; the rest are
+# fallbacks. A PMI-range guard (build_services_ism) rejects any that mis-resolve.
+SERVICES_ISM_CANDS = ("ECONOMICS:USMNBA", "ECONOMICS:USNMPMI", "ECONOMICS:USSPMI",
+                      "ECONOMICS:USNMI", "ECONOMICS:USNPMI", "ECONOMICS:USISMNM")
 
 BARS = 400   # monthly: ~33y; quarterly: capped by available history. The frontend windows it.
 
