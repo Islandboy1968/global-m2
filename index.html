@@ -288,7 +288,15 @@
       <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">05</span><h2>Labour force participation and the 5-year yield</h2><span class="ccap" id="bigLfprY5">&mdash;</span></div>
+    <div class="chead"><span class="cnum">05</span><h2>Interest payments and US liquidity (Narrow)</h2><span class="ccap" id="bigLiqIntrNarrow">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US Total Liquidity, Narrow ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Federal interest payments ($BN, RHS)</span></div>
+      <div class="chartbox"><canvas id="bigLiqIntrNarrowC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Source: FRED (Federal Reserve, BEA) &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">06</span><h2>Labour force participation and the 5-year yield</h2><span class="ccap" id="bigLfprY5">&mdash;</span></div>
     <div class="panel">
       <div class="legend"><span class="lg"><i class="sw blk"></i>US Labor Force Participation Rate (5-month lead)</span><span class="lg pink"><i class="sw pnk"></i>US 5-Year Bond Yield (RHS)</span></div>
       <div class="chartbox"><canvas id="bigLfprY5C"></canvas></div>
@@ -426,6 +434,14 @@
       <div class="src">US nonresidential fixed investment, year-on-year growth &middot; ISM leads by ~3 quarters &middot; FRED (BEA) via TradingView &middot; Global Macro Investor</div>
     </div>
 
+    <div class="chead"><span class="cnum">09</span><h2>Taiwan exports vs US capex</h2><span class="ccap" id="cycSemiCapex">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US capex growth, YoY %</span><span class="lg pink"><i class="sw pnk"></i>Taiwan exports YoY % (semis proxy, lead, RHS)</span></div>
+      <div class="chartbox"><canvas id="cycSemiCapexC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Taiwan exports (a global semis/tech-demand proxy) lead the US capex cycle &middot; TradingView, FRED (BEA) &middot; Global Macro Investor</div>
+    </div>
+
     <!-- 09 dominoes — removed from the page for now (too complex). Kept here to revisit later.
     <div class="chead"><span class="cnum">06</span><h2>The dominoes: ISM, liquidity and financial conditions</h2><span class="ccap" id="cycDom">&mdash;</span></div>
     <div class="panel">
@@ -535,12 +551,14 @@
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>WTI crude oil YoY% (RHS)</span></div><div class="chartbox"><canvas id="rtOilC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Oil YoY &mdash; the late-cycle inflation/recession trigger to watch &middot; TradingView &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">03</span><h2>US net liquidity vs the dollar</h2><span class="ccap" id="rtDxy">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>US net liquidity ($T)</span><span class="lg pink"><i class="sw pnk"></i>US Dollar Index, DXY (RHS, inverted)</span></div><div class="chartbox"><canvas id="rtDxyC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Rising dollar liquidity caps the dollar &middot; FRED, TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs DXY year-on-year</h2><span class="ccap" id="rtDxyYoy">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>US Dollar Index YoY % (RHS, inverted)</span></div><div class="chartbox"><canvas id="rtDxyYoyC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">A stronger dollar (YoY) tightens global conditions and leads the ISM lower &middot; TradingView &middot; Global Macro Investor</div></div>
   </section>
 
   <section id="tab-housing" class="pane" hidden>
     <div id="housing-missing" class="note" hidden>Housing series unavailable &mdash; pipeline hasn't run or feeds were missing. Other tabs are unaffected.</div>
-    <div class="chead"><span class="cnum">01</span><h2>Homebuilders vs mortgage rate</h2><span class="ccap" id="hsXhb">&mdash;</span></div>
-    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>Homebuilders ETF (XHB)</span><span class="lg pink"><i class="sw pnk"></i>30y mortgage rate % (RHS, inverted)</span></div><div class="chartbox"><canvas id="hsXhbC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Housing reacts directly to rates &mdash; mortgage rate-of-change leads builders by ~3 months &middot; FRED, TradingView &middot; Global Macro Investor</div></div>
+    <div class="chead"><span class="cnum">01</span><h2>Homebuilders YoY vs mortgage rate</h2><span class="ccap" id="hsXhb">&mdash;</span></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>Homebuilders ETF YoY % (XHB)</span><span class="lg pink"><i class="sw pnk"></i>30y mortgage rate % (RHS, inverted)</span></div><div class="chartbox"><canvas id="hsXhbC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Housing reacts directly to rates &mdash; mortgage rate-of-change leads builders by ~3 months &middot; FRED, TradingView &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">02</span><h2>ISM vs building permits</h2><span class="ccap" id="hsPerm">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Building permits YoY% (RHS)</span></div><div class="chartbox"><canvas id="hsPermC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Housing is one of the most reliable cycle leads &middot; FRED (Census) &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">03</span><h2>ISM vs new home sales</h2><span class="ccap" id="hsSales">&mdash;</span></div>
@@ -1006,15 +1024,18 @@ const BIG = (function(){
   charts.push(overlayLin(bigLiqDebtC, liqN, [], fmtNum, false, fmtPct));
   // 04 US Total Liquidity Broad ($BN) vs interest payments (+36mo forward lead)
   charts.push(overlayLin(bigLiqIntrC, liqB, [], fmtNum, false, fmtNum));
-  // 05 LFPR (5-month forward lead) vs US 5-year Treasury yield (RHS, pink)
+  // 05 US Total Liquidity Narrow ($BN) vs interest payments (+36mo forward lead)
+  charts.push(overlayLin(bigLiqIntrNarrowC, liqN, [], fmtNum, false, fmtNum));
+  // 06 LFPR (5-month forward lead) vs US 5-year Treasury yield (RHS, pink)
   charts.push(overlayLin(bigLfprY5C, lfpr, A(B.y5), fmtPct1, false, fmtPct));
   charts.forEach(c=>c.$auto=false);
-  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC,bigLfprY5C].forEach((cv,i)=>attach(cv,charts[i]));
+  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC,bigLiqIntrNarrowC,bigLfprY5C].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
   controls(charts[1]);
   controlsFwd(charts[2],{asset:B.debt, pairLbl:"US liquidity (Narrow) vs debt/GDP", leadEl:document.getElementById("bigLiqDebt"), def:0});
   controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Broad) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
-  controlsFwdLeft(charts[4],{asset:B.lfpr, pairLbl:"LFPR leads US 5-year yield", leadEl:document.getElementById("bigLfprY5"), def:152});
+  controlsFwd(charts[4],{asset:B.interest, pairLbl:"US liquidity (Narrow) vs interest payments", leadEl:document.getElementById("bigLiqIntrNarrow"), def:1095});
+  controlsFwdLeft(charts[5],{asset:B.lfpr, pairLbl:"LFPR leads US 5-year yield", leadEl:document.getElementById("bigLfprY5"), def:152});
   // default view windows matched to the official GMI charts (range buttons still override)
   const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
@@ -1022,8 +1043,9 @@ const BIG = (function(){
   bigStart(charts[0],"2004-01-01");   // LFPR vs births (+16y projection runs to ~2040)
   bigStart(charts[1],"2001-01-01");   // LFPR vs debt
   bigStart(charts[2],"2010-01-01");   // narrow liquidity (its data starts ~2010) vs debt
-  bigStart(charts[3],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
-  bigStart(charts[4],"2021-01-01");   // LFPR (5m lead) vs 5-year yield
+  bigStart(charts[3],"2019-01-01");   // broad liquidity vs interest (+36m projection)
+  bigStart(charts[4],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
+  bigStart(charts[5],"2021-01-01");   // LFPR (5m lead) vs 5-year yield
   return {charts};
 })();
 
@@ -1079,7 +1101,13 @@ const CYCLE = (function(){
     {label:"Capex YoY",data:capexg,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsLin(fmtIsm,false,fmtCapexG)});
   charts.push(capexGC);
-  // 09 dominoes — REMOVED from the page for now (too complex). Code kept for revisit.
+  // 09 Taiwan exports (semis proxy, RHS lead) vs US capex growth (left) — exports lead the capex cycle
+  const semiCapexC=new Chart(cycSemiCapexC,{type:"line",data:{datasets:[
+    {label:"US capex YoY",data:capexg,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"Taiwan exports YoY",data:[],borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtCapexG,false,fmtPctS)});
+  charts.push(semiCapexC);
+  // dominoes — REMOVED from the page for now (too complex). Code kept for revisit.
   // To restore: un-comment this block + charts.push(domC); re-add cycDomC to the attach
   // array, the controls block and cycStart below, and un-comment the HTML panel (06).
   /*
@@ -1091,7 +1119,7 @@ const CYCLE = (function(){
   charts.push(domC);
   */
   charts.forEach(c=>c.$auto=false);
-  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC].forEach((cv,i)=>attach(cv,charts[i]));
+  [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
   controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
   // 04 lead control — forward lead on the FCI blend line (default 12 months)
@@ -1104,6 +1132,8 @@ const CYCLE = (function(){
   controlsFwd(capexC,{asset:C.capex, pairLbl:"ISM vs US capex (% of GDP)", leadEl:document.getElementById("cycCapex"), def:0});
   // 08 ISM vs capex growth — default shift puts capex ~3 quarters behind ISM (ISM leads)
   controlsFwd(capexGC,{asset:C.capex_g, pairLbl:"ISM vs US capex growth", leadEl:document.getElementById("cycCapexG"), def:-273});
+  // 09 Taiwan exports lead US capex — exports shifted forward (default ~9 months)
+  controlsFwd(semiCapexC,{asset:(DATA.exp&&DATA.exp.twexp_yy)||[], pairLbl:"Taiwan exports lead US capex", leadEl:document.getElementById("cycSemiCapex"), def:270});
   // 09 dominoes — controls kept for revisit (chart currently removed from the page)
   /*
   buildRanges(domC, domC.canvas.closest(".panel").querySelector(".ranges"));
@@ -1121,6 +1151,7 @@ const CYCLE = (function(){
   cycStart(charts[4],"2000-01-01");   // ISM vs GDP (classic, recent decades)
   cycStart(charts[5],"1997-01-01");   // ISM vs capex/GDP
   cycStart(charts[6],"1997-01-01");   // ISM vs capex growth
+  cycStart(charts[7],"2005-01-01");   // Taiwan exports vs US capex
   return {charts};
 })();
 
@@ -1232,6 +1263,17 @@ const F0=v=>(v>0?"+":"")+Math.round(v)+"%", F1=v=>(v>0?"+":"")+v.toFixed(1)+"%";
 const FI=v=>Math.round(v), FZ=v=>v.toFixed(1), FNUM=v=>Math.round(v);
 const FCMP=v=>{const a=Math.abs(v);return a>=1e12?(v/1e12).toFixed(1)+"T":a>=1e9?(v/1e9).toFixed(1)+"B":a>=1e6?(v/1e6).toFixed(1)+"M":a>=1e3?(v/1e3).toFixed(0)+"k":(""+Math.round(v));};
 const FM=v=>(v/1000).toFixed(1)+"M", FK=v=>Math.round(v/1000)+"k";
+// 12-month YoY (%) from a level series [{d,v}] -> [{d,v}] (matches the nearest point ~365d back).
+function yoySeries(arr){
+  const a=(arr||[]).filter(r=>r&&r.v!=null).map(r=>({t:Date.parse(r.d),d:r.d,v:r.v})).sort((x,y)=>x.t-y.t);
+  const out=[]; let j=0;
+  for(let i=0;i<a.length;i++){
+    const target=a[i].t-365*DAY;
+    while(j+1<a.length && a[j+1].t<=target) j++;
+    if(a[j].t<=target && a[j].v) out.push({d:a[i].d, v:(a[i].v/a[j].v-1)*100});
+  }
+  return out;
+}
 
 // ===================== Labor tab =====================
 const LABOR = (function(){
@@ -1256,7 +1298,8 @@ const RATES = (function(){
   return buildSimpleTab("rates-missing", [
     {cv:rtY10C, left:ism,   right:R.y10_yoy_z, lf:FI,   rf:FZ, reverse:true, pairLbl:"10y yield YoY (z) leads ISM (inv.)", capId:"rtY10", def:456, start:"1990-01-01"},
     {cv:rtOilC, left:ism,   right:R.oil_yoy,   lf:FI,   rf:F0,               pairLbl:"ISM vs oil YoY",                    capId:"rtOil", def:0,   start:"2000-01-01"},
-    {cv:rtDxyC, left:usLiq, right:R.dxy,       lf:FNUM, rf:FNUM, reverse:true, pairLbl:"US net liquidity vs DXY (inverted)", capId:"rtDxy", def:0,  start:"2010-01-01"}
+    {cv:rtDxyC, left:usLiq, right:R.dxy,       lf:FNUM, rf:FNUM, reverse:true, pairLbl:"US net liquidity vs DXY (inverted)", capId:"rtDxy", def:0,  start:"2010-01-01"},
+    {cv:rtDxyYoyC, left:ism, right:yoySeries(R.dxy), lf:FI, rf:F0, reverse:true, pairLbl:"ISM vs DXY YoY (inverted)", capId:"rtDxyYoy", def:0, start:"2000-01-01"}
   ]);
 })();
 
@@ -1266,7 +1309,7 @@ const HOUSING = (function(){
   if(!H){ const n=document.getElementById("housing-missing"); if(n) n.hidden=false; return null; }
   const ism=C&&C.ism;
   return buildSimpleTab("housing-missing", [
-    {cv:hsXhbC,   left:H.xhb, right:H.mortgage,     lf:FNUM, rf:F1, reverse:true, pairLbl:"Homebuilders vs mortgage rate (inverted)", capId:"hsXhb",   def:0, start:"2006-01-01"},
+    {cv:hsXhbC,   left:yoySeries(H.xhb), right:H.mortgage, lf:F0, rf:F1, reverse:true, pairLbl:"Homebuilders YoY vs mortgage rate (inverted)", capId:"hsXhb",   def:0, start:"2007-01-01"},
     {cv:hsPermC,  left:ism,   right:H.permits_yoy,  lf:FI,   rf:F0,               pairLbl:"ISM vs building permits YoY",            capId:"hsPerm",  def:0, start:"2000-01-01"},
     {cv:hsSalesC, left:ism,   right:H.newsales_yoy, lf:FI,   rf:F0,               pairLbl:"ISM vs new home sales YoY",              capId:"hsSales", def:0, start:"2000-01-01"}
   ]);
