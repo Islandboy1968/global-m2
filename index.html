@@ -172,7 +172,7 @@
 
     <div class="chead"><span class="cnum">03</span><h2>Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>TGL YoY %</span><span class="lg" style="color:var(--mut2)"><i class="sw" style="background:rgba(19,19,22,.16)"></i>3m avg</span></div>
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>TGL YoY %</span><span class="lg" style="color:var(--mut2)"><i class="sw" style="background:rgba(19,19,22,.42)"></i>3m avg</span></div>
       <div class="chartbox"><canvas id="yoyChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src" style="color:var(--pink)">Base-effect distorted. Easy comps lift YoY into autumn 2026; hard Q1-2027 comps collapse it mechanically. Read Level &amp; momentum (01) for the true impulse.</div>
@@ -522,7 +522,7 @@
     <div class="chead"><span class="cnum">03</span><h2>ISM vs temp-help services</h2><span class="ccap" id="lblTmp">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Temporary-help services YoY% (RHS)</span></div><div class="chartbox"><canvas id="lblTmpC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Temp help leads payrolls &mdash; the flexible margin firms add first &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">04</span><h2>Unemployment vs JOLTS hires</h2><span class="ccap" id="lblJolts">&mdash;</span></div>
-    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>US Unemployment Rate %</span><span class="lg pink"><i class="sw pnk"></i>JOLTS hires (RHS)</span></div><div class="chartbox"><canvas id="lblJoltsC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">JOLTS hires lead the unemployment rate &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
+    <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>US Unemployment Rate %</span><span class="lg pink"><i class="sw pnk"></i>JOLTS hires (RHS, inverted)</span></div><div class="chartbox"><canvas id="lblJoltsC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">JOLTS hires lead the unemployment rate (inverted so they track) &middot; FRED (BLS) &middot; Global Macro Investor</div></div>
     <div class="chead"><span class="cnum">05</span><h2>ISM vs initial jobless claims</h2><span class="ccap" id="lblClaims">&mdash;</span></div>
     <div class="panel"><div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Initial jobless claims (RHS, inverted)</span></div><div class="chartbox"><canvas id="lblClaimsC"></canvas></div><div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div><div class="src">Claims (inverted) track the cycle &middot; FRED (DoL) &middot; Global Macro Investor</div></div>
   </section>
@@ -568,10 +568,18 @@
 </div>
 
 <script>
-const PINK="#f12a5a", BLACK="#131316", SMOOTH="rgba(19,19,22,.16)";
+const PINK="#f12a5a", BLACK="#131316", SMOOTH="rgba(19,19,22,.42)";
 const GRID="rgba(19,19,22,.07)", BORDER="rgba(19,19,22,.6)", MONO="'DM Mono', monospace";
 const ZP = window.ChartZoom || window['chartjs-plugin-zoom'] || window.chartjsPluginZoom;
 if (ZP) Chart.register(ZP.default || ZP);
+// Dashed horizontal zero reference line (per-chart opt-in via plugins:[zeroLine]).
+const zeroLine={id:"zeroLine",afterDatasetsDraw(chart){
+  const y=chart.scales.y, a=chart.chartArea; if(!y) return;
+  const yp=y.getPixelForValue(0); if(yp<a.top||yp>a.bottom) return;
+  const ctx=chart.ctx; ctx.save();
+  ctx.strokeStyle="rgba(19,19,22,.38)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(a.left,yp); ctx.lineTo(a.right,yp); ctx.stroke(); ctx.restore();
+}};
 if (window.Chart) Chart.defaults.font.family = "'AT Aero', sans-serif";
 
 // --- interaction sensitivity (lower = calmer) ---
@@ -599,6 +607,15 @@ const LOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 const UNLOCK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.5"/></svg>';
 const yr=v=>new Date(v).getUTCFullYear();
 const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+// Adaptive x-axis tick: years when zoomed out, month (+short year) once the visible
+// window is short enough that bare years would be uninformative. `this` is the scale.
+function xtick(v,index,ticks){
+  let span=(this&&this.max!=null&&this.min!=null)?(this.max-this.min):0;
+  if(!span && ticks && ticks.length>1) span=Math.abs(ticks[ticks.length-1].value-ticks[0].value);
+  const d=new Date(v), mo=MONTHS[d.getUTCMonth()].slice(0,3), y=d.getUTCFullYear();
+  if(span>0 && span < 1100*DAY) return mo+" '"+String(y).slice(2);   // < ~3y zoomed
+  return y;
+}
 function monthYear(s){const m=(s||"").match(/(\d{4})-(\d{2})/); return m?MONTHS[+m[2]-1]+" "+m[1]:"";}
 function dayDate(s){const m=(s||"").match(/(\d{4})-(\d{2})-(\d{2})/); return m?(+m[3])+" "+MONTHS[+m[2]-1].slice(0,3)+" "+m[1]:monthYear(s);}
 const fmtBN=v=>Math.round(v).toLocaleString("en-US");
@@ -612,7 +629,7 @@ function opts(yTickColor, yfmt){return{responsive:true,maintainAspectRatio:false
     tooltip:{filter:(it,i,a)=>a.findIndex(o=>o.datasetIndex===it.datasetIndex)===i,
              callbacks:{title:i=>new Date(i[0].parsed.x).toISOString().slice(0,10)}}},
   scales:{x:{type:"linear",grid:{color:GRID},border:{color:BORDER},
-             ticks:{color:BORDER,font:{size:11,family:MONO},maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:v=>yr(v)}},
+             ticks:{color:BORDER,font:{size:11,family:MONO},maxRotation:0,autoSkip:true,maxTicksLimit:11,callback:xtick}},
           y:{grid:{color:GRID},border:{display:false},
              ticks:{color:yTickColor,font:{size:11,family:MONO},callback:yfmt}}}};}
 
@@ -956,7 +973,7 @@ const US = (function(){
   charts.push(new Chart(usYoyOld,{type:"line",data:{datasets:[
     {data:P("yos"),borderColor:SMOOTH,borderWidth:0.75,pointRadius:0,tension:.05},
     {data:P("yo"),borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05}
-  ]},options:opts(PINK, fmtPCT)}));
+  ]},options:opts(PINK, fmtPCT),plugins:[zeroLine]}));
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
   charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
@@ -1225,7 +1242,7 @@ const LABOR = (function(){
     {cv:lblUnrC,    left:ism,      right:L.unrate,   lf:FI, rf:F1, reverse:true, pairLbl:"ISM vs unemployment (inverted)", capId:"lblUnr",    def:0, start:"2000-01-01"},
     {cv:lblOtC,     left:ism,      right:L.ot_yoy,   lf:FI, rf:F0,               pairLbl:"ISM vs overtime hours YoY",      capId:"lblOt",     def:0, start:"2000-01-01"},
     {cv:lblTmpC,    left:ism,      right:L.temp_yoy, lf:FI, rf:F0,               pairLbl:"ISM vs temp-help YoY",           capId:"lblTmp",    def:0, start:"2000-01-01"},
-    {cv:lblJoltsC,  left:L.unrate, right:L.jolts,    lf:F1, rf:FM,               pairLbl:"Unemployment vs JOLTS hires",    capId:"lblJolts",  def:0, start:"2002-01-01"},
+    {cv:lblJoltsC,  left:L.unrate, right:L.jolts,    lf:F1, rf:FM, reverse:true, pairLbl:"Unemployment vs JOLTS hires (inverted)", capId:"lblJolts",  def:0, start:"2002-01-01"},
     {cv:lblClaimsC, left:ism,      right:L.claims,   lf:FI, rf:FK, reverse:true, pairLbl:"ISM vs initial claims (inverted)", capId:"lblClaims", def:0, start:"2000-01-01"}
   ]);
 })();
