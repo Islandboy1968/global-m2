@@ -10,13 +10,11 @@ All series come from FRED's KEYLESS csv endpoint (fredgraph.csv) so there is no
 API key in the repo and no browser CORS problem — the GitHub Action fetches the
 numbers and bakes them into data.js. The browser only ever reads static data.
 
-The series is built on a DAILY calendar grid: the Fed balance sheet (WALCL, weekly)
-and bank-credit series (weekly) are forward-filled, while the two volatile swing
-factors are taken at DAILY frequency — TGA from the U.S. Treasury's Daily Treasury
-Statement (api.fiscaldata.treasury.gov, public/no key) and RRP from FRED (daily).
-So the US line moves day-to-day and runs through the latest published day, instead
-of stepping only on WALCL's weekly Wednesday grid. If the Treasury DTS is
-unreachable, TGA falls back to FRED's weekly WTREGEN and the series still builds.
+The series is built on WALCL's weekly (Wednesday) grid — every input is a FRED
+H.4.1 / H.8 series and TGA is the Fed's weekly figure (WTREGEN), so the levels match
+the established GMI "US Total Liquidity" methodology. (An earlier daily-grid variant
+using the U.S. Treasury's daily TGA was reverted: the Treasury's daily closing
+balance reads ~$0.5-0.6tn off the Fed's weekly figure and shifted the whole curve.)
 
 Units: WALCL & TGA are $millions; RRP, TOTBKCR, SBCACBW are $billions (x1000 -> $M).
 Output values are in $ trillions to match the global series.
@@ -24,8 +22,8 @@ Output values are in $ trillions to match the global series.
 BTC/NDX for the US overlay charts are NOT fetched here — the dashboard reuses
 TGL_DATA["btc"] and TGL_DATA["ndx"] already produced by the global pipeline.
 """
+import bisect, json, os
 import datetime as dt
-import json, os, time, urllib.request
 from fred import fred_series
 from tv_pull import pull_series
 
@@ -144,121 +142,57 @@ def _trailing_avg(arr, n):
     return out
 
 
-# SBCACBW027NBOG feeds ONLY the Narrow measure and is allowed to be missing: it is
-# unavailable on TradingView and times out intermittently on FRED's CSV, and one
-# optional input must never blank the whole tab. When it's missing the Broad series
-# still ships and the Narrow leg is emitted as null (update_data.py carries the last
-# good Narrow values forward per-series).
+# Inputs required for the headline Broad measure. SBCACBW027NBOG feeds ONLY the
+# Narrow measure. It has no TradingView fallback and its FRED CSV times out on most
+# runs, so the Narrow can't reliably be computed from it directly. Instead, when it's
+# unavailable, the Narrow is derived from the (well-behaved) Broad minus the committed
+# Broad-Narrow spread seed below — see _narrow_seed / build_us.
+CORE = ("WALCL", "WTREGEN", "RRPONTSYD", "TOTBKCR")
 
-# ---- Daily TGA from the U.S. Treasury Daily Treasury Statement (public, no key) --
-_DTS_URL = ("https://api.fiscaldata.treasury.gov/services/api/fiscal_service"
-            "/v1/accounting/dts/operating_cash_balance")
-# DTS account_type for the TGA closing balance. The modern label has been used
-# since Apr-2022; the older "Federal Reserve Account" label covers prior history,
-# so honouring both gives a continuous daily series.
-_TGA_LABEL = "Treasury General Account (TGA) Closing Balance"
-_TGA_LABELS = (_TGA_LABEL, "Federal Reserve Account")
-
-
-def _fetch_tga_daily(start=START, retries=3):
-    """Daily TGA closing balance ($millions) from the Treasury DTS, as
-    {YYYY-MM-DD: $M}. Returns {} on failure so the caller falls back to WTREGEN."""
-    out, page = {}, 1
-    while True:
-        q = (f"?fields=record_date,account_type,close_today_bal"
-             f"&filter=record_date:gte:{start}"
-             f"&sort=-record_date&page[size]=10000&page[number]={page}")
-        body = None
-        for attempt in range(retries):
-            try:
-                req = urllib.request.Request(
-                    _DTS_URL + q, headers={"User-Agent": "tgl-dashboard/1.0"})
-                with urllib.request.urlopen(req, timeout=30) as r:
-                    body = json.loads(r.read().decode())
-                break
-            except Exception as e:
-                if attempt == retries - 1:
-                    print(f"  US: DTS TGA page {page} failed: {str(e)[:70]}")
-                    return out
-                time.sleep(1.5 * (attempt + 1))
-        rows = (body or {}).get("data", [])
-        if not rows:
-            break
-        for row in rows:
-            at = row.get("account_type")
-            if at not in _TGA_LABELS:
-                continue
-            d, v = row.get("record_date"), row.get("close_today_bal")
-            if not d or v in (None, "", "null"):
-                continue
-            try:
-                val = float(v)
-            except (TypeError, ValueError):
-                continue
-            # prefer the modern TGA label where both labels exist for a date
-            if at == _TGA_LABEL or d not in out:
-                out[d] = val
-        meta = (body or {}).get("meta", {})
-        if page >= int(meta.get("total-pages", page) or page):
-            break
-        page += 1
-    return out
+# Broad-Narrow spread = (bank credit - bank-held securities)/1e3 ($tn). It moves only
+# glacially (driven by slow-changing H.8 balances), so a seeded history + last-value
+# carry-forward reconstructs the Narrow to within a rounding error when the securities
+# series can't be fetched. Seed is committed and refreshed whenever SBCACBW does load.
+_SEED_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                          "data", "us_narrow_seed.json")
 
 
-def _tga_plausible(m):
-    """True if the latest TGA value is a sane balance ($10B–$10T, in $millions)."""
-    if not m:
-        return False
-    latest = m[max(m)]
-    return 1e4 <= latest <= 1e7
-
-
-def _ffill_onto(grid, m):
-    """Forward-fill a {date: value} map onto a sorted list of ISO date strings."""
-    if not m:
-        return [None] * len(grid)
-    items = sorted(m.items())
-    out = [None] * len(grid)
-    j, cur, n = 0, None, len(items)
-    for i, day in enumerate(grid):
-        while j < n and items[j][0] <= day:
-            cur = items[j][1]; j += 1
-        out[i] = cur
-    return out
-
-
-_DATA_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "data.json")
-
-
-def _fallback_secs(walcl, tga, rrp):
-    """Securities series ($B) for the Narrow leg when SBCACBW's live fetch fails
-    (it is unavailable on TradingView and times out intermittently on FRED's CSV).
-    Returns the series persisted on the last good run, else reconstructs the full
-    series from the previously shipped Narrow values and the current
-    WALCL/TGA/RRP (securities = Narrow·1e6 − base). Either way the daily base keeps
-    the Narrow leg advancing every day through a SBCACBW outage. ({date: $B}, src)."""
+def _load_spread_seed():
+    """Committed Broad-Narrow spread history as (sorted dates, spreads). ([], []) if
+    unreadable so the Narrow simply degrades to null rather than blowing up the build."""
     try:
-        with open(_DATA_JSON) as fh:
-            prev = json.load(fh)
+        with open(_SEED_JSON) as fh:
+            sp = (json.load(fh) or {}).get("spread") or {}
     except Exception:
-        return {}, "none"
-    us = prev.get("us") or {}
-    persisted = {r["d"]: r["v"] for r in (us.get("secs_raw") or [])
-                 if r.get("d") and r.get("v") is not None}
-    if persisted:
-        return persisted, "persisted"
-    out = {}
-    for r in (us.get("series") or []):
-        vo, d = r.get("vo"), r.get("d")
-        if vo is None or not d:
-            continue
-        w, t, rr = _closest_before(walcl, d), _closest_before(tga, d), _closest_before(rrp, d)
-        if None in (w, t, rr):
-            continue
-        sb = (vo * 1e6 - (w - t - rr * SERIES["RRPONTSYD"])) / SERIES["SBCACBW027NBOG"]
-        if sb > 0:
-            out[d] = sb
-    return out, ("reconstructed" if out else "none")
+        return [], []
+    items = sorted((d, v) for d, v in sp.items() if v is not None)
+    return [d for d, _ in items], [v for _, v in items]
+
+
+def _spread_at(dates, vals, ds):
+    """Spread for the latest seed date <= ds, carried forward indefinitely past the end
+    (and the earliest spread for dates before the seed begins). None if the seed empty."""
+    if not dates:
+        return None
+    i = bisect.bisect_right(dates, ds) - 1
+    return vals[i] if i >= 0 else vals[0]
+
+
+def _save_spread_seed(rows, as_of):
+    """Refresh the committed seed from a build where SBCACBW loaded live (vo present)."""
+    spread = {x["d"]: round(x["vn"] - x["vo"], 4)
+              for x in rows if x["vo"] is not None}
+    if not spread:
+        return
+    try:
+        with open(_SEED_JSON, "w") as fh:
+            json.dump({"_note": "US Liquidity Narrow fallback: Broad-Narrow spread "
+                       "($tn). When SBCACBW027NBOG is unavailable, Narrow = Broad - "
+                       "spread (last value carried forward). Auto-refreshed when "
+                       "SBCACBW loads live.", "as_of": as_of, "spread": spread},
+                      fh, separators=(",", ":"))
+    except Exception as e:
+        print(f"  US: could not refresh Narrow spread seed ({str(e)[:50]})")
 
 
 def build_us():
@@ -270,64 +204,53 @@ def build_us():
     raw = {}
     for s in SERIES:
         try:
-            raw[s] = _fetch(s)
+            # SBCACBW027NBOG (Narrow-only securities) has no TradingView fallback and
+            # its FRED CSV intermittently times out — give it a longer timeout and more
+            # retries so the Narrow leg recomputes rather than being carried forward.
+            kw = {"timeout": 90, "retries": 4} if s == "SBCACBW027NBOG" else {}
+            raw[s] = _fetch(s, **kw)
         except Exception as e:
             print(f"  US: {s} unavailable from all sources ({str(e)[:60]})")
             raw[s] = {}
 
-    # Daily TGA from the Treasury DTS (so the line moves day-to-day); fall back to
-    # FRED's weekly WTREGEN if the DTS is unreachable or returns an implausible value.
-    tga = _fetch_tga_daily()
-    if _tga_plausible(tga):
-        print(f"  US: TGA daily from Treasury DTS — {len(tga)} days, latest {max(tga)}")
-    else:
-        tga = raw.get("WTREGEN", {})
-        print("  US: DTS TGA unavailable/implausible — using weekly WTREGEN")
+    missing_core = [s for s in CORE if not raw[s]]
+    if missing_core:
+        raise RuntimeError(f"US core series unavailable: {', '.join(missing_core)}")
 
-    walcl, rrp = raw["WALCL"], raw["RRPONTSYD"]
+    walcl = raw["WALCL"]
+    tga, rrp = raw["WTREGEN"], raw["RRPONTSYD"]     # TGA = the Fed's weekly figure
     credit, secs = raw["TOTBKCR"], raw["SBCACBW027NBOG"]
 
-    # SBCACBW (Narrow-only) is chronically flaky. When its live fetch fails, keep the
-    # Narrow leg advancing daily off the persisted / reconstructed securities series
-    # rather than letting it stall (the daily base — Fed BS − TGA − RRP — still moves).
-    if not secs:
-        secs, _src = _fallback_secs(walcl, tga, rrp)
-        if secs:
-            print(f"  US: SBCACBW unavailable — Narrow uses {_src} securities "
-                  f"({len(secs)} pts, latest {max(secs)})")
-        else:
-            print("  US: SBCACBW unavailable and no fallback — Narrow leg will be null")
+    # Narrow source: live SBCACBW when it loads, else the Broad - spread-seed fallback.
+    secs_live = bool(secs)
+    sd, sv = ([], []) if secs_live else _load_spread_seed()
+    if secs_live:
+        print(f"  US: Narrow from live SBCACBW ({len(secs)} pts)")
+    elif sd:
+        print(f"  US: SBCACBW unavailable — Narrow = Broad - spread seed "
+              f"({len(sd)} pts through {sd[-1]})")
+    else:
+        print("  US: SBCACBW unavailable and no spread seed — Narrow leg will be null")
 
-    need = {"WALCL": walcl, "RRPONTSYD": rrp, "TOTBKCR": credit, "TGA": tga}
-    missing = [k for k, v in need.items() if not v]
-    if missing:
-        raise RuntimeError(f"US core inputs unavailable: {', '.join(missing)}")
-
-    # Daily calendar grid from WALCL's start to the freshest daily input (capped at
-    # today). Weekly series (WALCL, bank credit, securities) are forward-filled; TGA
-    # and RRP carry their daily movement so the series advances every day.
-    today = dt.date.today().isoformat()
-    end_d = min(max(max(walcl), max(tga), max(rrp)), today)
-    start_d = min(walcl)
-    grid, cur, last = [], dt.date.fromisoformat(start_d), dt.date.fromisoformat(end_d)
-    while cur <= last:
-        grid.append(cur.isoformat()); cur += dt.timedelta(days=1)
-
-    W, T, R = _ffill_onto(grid, walcl), _ffill_onto(grid, tga), _ffill_onto(grid, rrp)
-    C, S = _ffill_onto(grid, credit), _ffill_onto(grid, secs)
-
+    dates = sorted(walcl)  # WALCL weekly (Wednesday) grid is the master calendar
     rows = []
-    for i, d in enumerate(grid):
-        w, t, r, c, s = W[i], T[i], R[i], C[i], S[i]
-        if None in (w, t, r, c):          # Broad essentials must all be present
+    for d in dates:
+        w = walcl[d]
+        t = _closest_before(tga, d)
+        r = _closest_before(rrp, d)
+        c = _closest_before(credit, d)   # bank credit forward-filled onto the weekly grid
+        if None in (t, r, c):            # Broad essentials only
             continue
         base = w - t - r * SERIES["RRPONTSYD"]
         new_liq = (base + c * SERIES["TOTBKCR"]) / 1e6   # Broad, $tn
-        old_liq = ((base + s * SERIES["SBCACBW027NBOG"]) / 1e6
-                   if s is not None else None)            # Narrow, $tn (optional)
-        # Per-row plausibility backstop: US liquidity is ~$10-30tn. Drop any day whose
-        # Broad is implausible (a stray garbage input value) so it can never render;
-        # null an implausible Narrow but keep the Broad day.
+        if secs_live:
+            s = _closest_before(secs, d)                  # bank-held securities, $B
+            old_liq = (base + s * SERIES["SBCACBW027NBOG"]) / 1e6 if s is not None else None
+        else:
+            sp = _spread_at(sd, sv, d)                    # Broad - Narrow spread, $tn
+            old_liq = new_liq - sp if sp is not None else None
+        # Per-row plausibility backstop: drop any week whose Broad is implausible (a
+        # stray garbage input) so it can never render; null an implausible Narrow.
         if not (0.0 < new_liq < 100.0):
             continue
         if old_liq is not None and not (0.0 < old_liq < 100.0):
@@ -337,29 +260,30 @@ def build_us():
     if not rows:
         raise RuntimeError("US: no rows (core inputs produced no overlapping dates)")
 
-    # Value sanity guard: US Total Liquidity (Broad) is ~$20-30tn. A value outside
-    # a wide plausibility band means a unit/source mismatch slipped through — raise
-    # so update_data carries forward the last good block rather than shipping a
-    # corrupt number (a wrong value is worse than a stale one).
+    if secs_live:                        # keep the committed seed current for lean runs
+        _save_spread_seed(rows, rows[-1]["d"])
+
+    # Value sanity guard: US Total Liquidity (Broad) is ~$20-30tn. A value outside a
+    # wide plausibility band means a unit/source mismatch slipped through — raise so
+    # update_data carries forward the last good block rather than ship a corrupt number.
     _vn_latest = rows[-1]["vn"]
     if not (5.0 <= _vn_latest <= 80.0):
         raise RuntimeError(f"US Broad implausible (${_vn_latest:.3g}tn) — likely a "
                            f"source unit mismatch; refusing to ship")
 
-    # YoY vs ~365 days earlier on the daily grid (rows are contiguous days once the
-    # leading warm-up is skipped), with a ~91-day trailing average for the smoothed line.
+    # 52-week YoY on the weekly grid, with a 13-week (~3mo) trailing average.
     vn = [x["vn"] for x in rows]
     vo = [x["vo"] for x in rows]
     yn = [None] * len(rows)
     yo = [None] * len(rows)
     for i in range(len(rows)):
-        j = i - 365
+        j = i - 52
         if j >= 0 and vn[j]:
             yn[i] = (vn[i] / vn[j] - 1) * 100
         if j >= 0 and vo[i] is not None and vo[j]:
             yo[i] = (vo[i] / vo[j] - 1) * 100
-    yns = _trailing_avg(yn, 91)   # ~3-month trailing average of YoY
-    yos = _trailing_avg(yo, 91)
+    yns = _trailing_avg(yn, 13)
+    yos = _trailing_avg(yo, 13)
 
     series = []
     for i, x in enumerate(rows):
@@ -384,14 +308,7 @@ def build_us():
         "yoy_old_s": (last_vo["yos"] if last_vo else None),
         "narrow_as_of": (last_vo["d"] if last_vo else None),
     }
-    # Persist the securities series (change-points only — forward-fill reconstructs
-    # the rest) so a future SBCACBW outage can reuse it via _fallback_secs.
-    secs_raw, _prev = [], None
-    for d, v in sorted(secs.items()):
-        rv = round(v, 4)
-        if rv != _prev:
-            secs_raw.append({"d": d, "v": rv}); _prev = rv
-    return {"lag_days": 90, "summary": summary, "series": series, "secs_raw": secs_raw}
+    return {"lag_days": 90, "summary": summary, "series": series}
 
 
 if __name__ == "__main__":

@@ -286,20 +286,26 @@ published observation, and compares it to what we shipped.
   SBCACBW027NBOG (Narrow-only, absent on TradingView + flaky on FRED CSV) may be
   missing — the Broad series still ships and update_data carries the Narrow leg
   forward per-series. One missing input can no longer blank the whole US tab.
-- **Daily grid** (`us_liquidity.build_us`): the US series is built on a DAILY calendar,
-  not WALCL's weekly Wednesdays. The two volatile swing factors are taken daily — TGA
-  from the U.S. Treasury Daily Treasury Statement (`api.fiscaldata.treasury.gov`,
-  `operating_cash_balance`, `close_today_bal`, honouring both the modern "Treasury
-  General Account (TGA) Closing Balance" and legacy "Federal Reserve Account" labels)
-  and RRP from FRED — while WALCL / bank credit / securities are forward-filled. So the
-  line advances every day and runs through the latest published day. If the DTS is
-  unreachable/implausible, TGA falls back to weekly WTREGEN and the series still builds.
-  YoY is 365-day with a 91-day smoothing. The Narrow leg's securities input
-  (SBCACBW027NBOG) is chronically flaky; when its live fetch fails, `_fallback_secs`
-  keeps Narrow advancing daily off the securities series persisted in `us.secs_raw`
-  (change-points only), or — if none is persisted yet — reconstructs it from the
-  previously shipped Narrow values and the current WALCL/TGA/RRP. So both Broad and
-  Narrow run through the latest day even across a SBCACBW outage.
+- **Weekly grid / TGA source** (`us_liquidity.build_us`): the US series is built on
+  WALCL's weekly (Wednesday) grid with TGA = the Fed's weekly `WTREGEN`, so the levels
+  match the established GMI "US Total Liquidity" methodology (~$25.4tn Broad / ~$11.6tn
+  Narrow). A daily-grid variant using the U.S. Treasury's daily TGA (DTS
+  `operating_cash_balance.close_today_bal`) was tried and REVERTED: the Treasury's
+  daily closing balance reads ~$0.5-0.6tn off the Fed's weekly figure (and the gap
+  drifts), which shifted the whole Broad/Narrow curve up by that amount. Weekly is
+  also the genuine publication frequency of these H.4.1/H.8 inputs. YoY is 52-week
+  with a 13-week (~3mo) trailing average.
+- **Narrow spread seed** (`us_liquidity._load_spread_seed` + `data/us_narrow_seed.json`):
+  the Narrow leg's securities input (`SBCACBW027NBOG`) has no TradingView fallback and
+  its FRED CSV times out on most runs, so it cannot be relied on. When it's unavailable
+  the Narrow is reconstructed as `Broad − spread`, where the Broad−Narrow spread
+  (`= (bank credit − bank-held securities)/1e3`, $tn) comes from a committed seed of the
+  last known-good weekly history (last value carried forward for newer weeks — the
+  spread moves only glacially). This reproduces the historical Narrow to a rounding
+  error and keeps it advancing every week. When `SBCACBW` *does* load live, the live
+  value is used and the seed is auto-refreshed (the workflow commits the seed file).
+  This replaced the old vo carry-forward, which silently propagated whatever Narrow was
+  last shipped (e.g. the wrong daily-grid-era values across a base change).
 - **Unit normalization** (`us_liquidity._to_canonical`): FRED's CSV returns the US
   magnitude series in FRED's canonical unit ($M/$B) but FRED's TradingView
   passthrough returns ACTUAL DOLLARS. `_fetch` converts based on WHICH SOURCE
