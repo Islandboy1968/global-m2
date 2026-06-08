@@ -146,3 +146,13 @@ construction metadata, adopt EA's §5 panel-manifest shape. Tracked, not built.
 - **Proposed / not yet locked:** panel manifests + relationship checks for TEC's
   overlay charts. Change freely while v1.0 is young; bump to 1.1 once a consuming
   agent depends on the added shape.
+
+## 6. Licensing / redistribution
+
+If the dashboard moves to a commercial data vendor (Refinitiv/LSEG is the likely
+candidate) and ships as a paywalled, GMI-branded product, the **derived-vs-raw**
+publish boundary matters: the `summary.json` digest and the index/composites are
+derived works (safe), while full raw series in `data.json` may need a
+granularity/entitlement boundary. This is a **direction under consideration, not a
+decision** — see `LICENSING_NOTES.md`. Do not redesign the data layer for it yet;
+just keep the derived-works surface (`summary.json`) the primary one.
