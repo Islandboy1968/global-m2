@@ -330,8 +330,23 @@ published observation, and compares it to what we shipped.
 local reruns. The Action runs without them (full pull each time), which is fine.
 
 ## Notes / parked ideas
-- China M2 lags ~1 month on TradingView; `CHINA_M2_OVERRIDE` in update_data.py carries the
-  latest official PBoC print. Update one line each month.
+- China M2 is **feed-first** (was: hand-updated monthly). `reconcile_china_override`
+  in update_data.py compares `CHINA_M2_OVERRIDE` against the live `ECONOMICS:CNM2`
+  feed each run: the feed is source-of-truth for months it already serves, the
+  override only bridges genuinely newer/corrected months. The run logs which
+  override months are now redundant (feed caught up → safe to delete) and
+  `data["china_override"]` carries `feed_latest` / `override_latest` / `source` /
+  `redundant_override_months`. No standing monthly task; add an override line only
+  when the feed actually lags.
+  - Deferred: add the CN M2 index leg to `verify_data.build_registry()` for a
+    formal `BEHIND/MISSING` source gate. Awkward today because the CN leg isn't a
+    standalone shipped series (only the summed global `series` is); the feed-aware
+    `china_override.stale` banner covers the practical case. Revisit if the leg is
+    ever emitted as its own diagnostic series.
+- Machine-readable AI surfaces: `summarize.py` emits `data/summary.json` (AI-first
+  digest) and `data/index.json` is the agent entry point; `indicators_meta.py` is
+  the self-describing meta registry. Shape in `DATA_CONTRACT.md` (shared with EA).
+  `schema_version` + `dashboard:"tec"` stamped on data.json and summary.json.
 - Done (was pending): GMI design-system restyle — light report-chart theme applied (see Styling).
   Optional follow-up: embed the real licensed Tungsten/AT Aero webfonts for a pixel-exact match.
 - Parked: more overlay assets (gold, S&P); a money-vs-FX decomposition panel; more TEC tabs.
