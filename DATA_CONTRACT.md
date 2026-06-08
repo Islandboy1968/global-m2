@@ -54,7 +54,9 @@ keeps the data trustworthy and the insight layer swappable.
   "us":   { summary, series:[ {d, v, y, ys, vo, yo, yos} … ] },
   "big" | "cycle" | "exp" | "infl" | "labor" | "rates"
       | "housing" | "credit" | "china":  { <leaf>: [ {d, v} … ] | null },
-  "china_override": { latest, next_release_iso, stale, days_until },
+  "china_override": { latest, feed_latest, override_latest, source,
+                      redundant_override_months, active_override_months,
+                      next_release_iso, stale, days_until },
   "freshness": { <block>: { status, checked, stale, series:{ <leaf>: {as_of, source, source_latest, status} } } }
 }
 ```
@@ -109,7 +111,15 @@ source, compares the latest complete month to what shipped, and stamps
   "build": {
      "blocks_total","blocks_ok",
      "stale":[…], "behind":[…], "missing":[…],   // from source-verified freshness
-     "china_override": { latest, next_release_iso, stale, days_until }
+     "china_override": {
+        "latest",          // true CN M2 frontier month (live feed or override, whichever is newer)
+        "feed_latest",     // newest month the live ECONOMICS:CNM2 feed serves
+        "override_latest", // newest hand-entered override month (or null)
+        "source",          // "feed" | "override" — which provided the frontier
+        "redundant_override_months",  // override months the feed caught up to — safe to delete
+        "active_override_months",     // override months still doing work (bridge/correction)
+        "next_release_iso", "stale", "days_until"
+     }
   }
 }
 ```

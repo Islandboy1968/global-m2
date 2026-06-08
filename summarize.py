@@ -10,7 +10,7 @@ analysis but a poor shape for an AI asked for a *compressed read* of the cycle â
 loading 1.5 MB into a context window to answer "where is global liquidity and is
 the cycle turning?" is wasteful.
 
-data/summary.json is the dense companion (~15 KB): per indicator, the precomputed
+data/summary.json is the dense companion (~36 KB): per indicator, the precomputed
 facts an analysis agent reasons over â€” latest value, change factor, YoY, the
 recent-window trend, units, which direction is favourable, and the source-verified
 freshness TEC already computes. An AI reads THIS first and only opens data.json
