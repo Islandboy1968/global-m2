@@ -26,6 +26,11 @@ from build_housing import build_housing
 from build_credit import build_credit
 from build_china import build_china
 
+# Bump on any breaking change to the data.json / summary.json shape so a
+# downstream AI consumer can detect drift (DATA_CONTRACT.md §6). Shared scheme
+# with EA; the `dashboard` discriminator ("tec") distinguishes the two payloads.
+SCHEMA_VERSION = "1.0"
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
 FX_CACHE = os.path.join(HERE, "fx_daily_cache.json")
@@ -477,7 +482,8 @@ def build():
             "series": leaves,                   # {leaf_key: latest observation date}
         }
 
-    data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    data = {"schema_version": SCHEMA_VERSION, "dashboard": "tec",
+            "updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
             "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
@@ -488,6 +494,17 @@ def build():
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
     with open(os.path.join(HERE, "data", "data.js"), "w") as f:
         f.write("window.TGL_DATA = " + json.dumps(data, default=str) + ";")
+
+    # AI-first digest (DATA_CONTRACT.md). Emitted here so a summary.json always
+    # exists; verify_data.py re-emits it after stamping source-verified freshness
+    # so the published digest carries the live/behind/stale verdicts. Wrapped so a
+    # digest hiccup never fails the data write that just succeeded.
+    try:
+        from summarize import build_summary
+        with open(os.path.join(HERE, "data", "summary.json"), "w") as f:
+            json.dump(build_summary(data), f, default=str)
+    except Exception as e:
+        print("  SUMMARY build FAILED:", str(e)[:100])
     if series:
         print(f"WROTE {len(series)} daily points | {summary['latest']} "
               f"${summary['total_tn']}T  YoY {summary['yoy']}% (3m {summary['yoy_s']}%)")

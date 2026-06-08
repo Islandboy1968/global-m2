@@ -281,6 +281,17 @@ def main():
     except Exception as e:
         print(f"  (could not rewrite {js}: {e})")
 
+    # Re-emit the AI-first digest now that per-series source verdicts are stamped,
+    # so summary.json's freshness/build block carries IN_SYNC/BEHIND/MISSING — the
+    # same truth the dashboard badge shows. Best-effort: never fail the gate over it.
+    try:
+        from summarize import build_summary
+        sj = os.path.join(os.path.dirname(path) or ".", "summary.json")
+        with open(sj, "w") as f:
+            json.dump(build_summary(data), f, default=str)
+    except Exception as e:
+        print(f"  (could not rewrite summary.json: {e})")
+
     if gate and problems:
         print(f"\nGATE: FAIL — {len(problems)} series behind source or missing.")
         return 1

@@ -1,0 +1,41 @@
+{
+ "schema_version": "1.0",
+ "dashboard": "tec",
+ "title": "The Everything Code Dashboard",
+ "description": "Self-updating global liquidity & business-cycle dashboard. Companion to The Exponential Age (dashboard id 'ea'); the two are designed to be read together against a shared data contract.",
+ "surfaces": {
+  "digest": "data/summary.json",
+  "full_series": "data/data.json",
+  "browser_payload": "data/data.js"
+ },
+ "reading_order": [
+  "1. data/summary.json — dense per-indicator digest with units, trend, source-verified freshness (read first)",
+  "2. data/data.json — full raw series (the 6,000-point daily liquidity line + ~45 macro leaves) when you need the shape of a specific curve"
+ ],
+ "contract": "DATA_CONTRACT.md",
+ "companion": {
+  "id": "ea",
+  "title": "The Exponential Age",
+  "repo": "Islandboy1968/exponential-age"
+ },
+ "indicator_groups": [
+  "Global Liquidity",
+  "US Liquidity",
+  "Big Picture",
+  "Business Cycle",
+  "Global Leading Edge",
+  "Inflation",
+  "Labor",
+  "Rates & Dollar",
+  "Housing",
+  "Credit",
+  "China"
+ ],
+ "freshness_statuses": [
+  "IN_SYNC",
+  "BEHIND",
+  "MISSING",
+  "UNVERIFIED",
+  "DERIVED"
+ ]
+}
