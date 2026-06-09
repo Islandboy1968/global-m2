@@ -42,7 +42,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/data.json data/data.js data/us_narrow_seed.json
+          git add data/data.json data/data.js data/summary.json data/index.json data/us_narrow_seed.json
           if git diff --staged --quiet; then
             echo "No changes."
           else

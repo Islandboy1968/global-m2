@@ -26,6 +26,11 @@ from build_housing import build_housing
 from build_credit import build_credit
 from build_china import build_china
 
+# Bump on any breaking change to the data.json / summary.json shape so a
+# downstream AI consumer can detect drift (DATA_CONTRACT.md §6). Shared scheme
+# with EA; the `dashboard` discriminator ("tec") distinguishes the two payloads.
+SCHEMA_VERSION = "1.0"
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 M2_CACHE = os.path.join(HERE, "series_cache.json")
 FX_CACHE = os.path.join(HERE, "fx_daily_cache.json")
@@ -125,6 +130,47 @@ def monthly_ffill_by_day(points, grid, override=None, backfill_leading=True):
         out[i] = ff.get(day.strftime("%Y-%m"))
     return _backfill(out) if backfill_leading else out
 
+# ------------------------------------------------------------------ china m2
+def _latest_month(points):
+    """Latest 'YYYY-MM' present in a monthly (epoch, value) series, or None."""
+    months = {dt.datetime.utcfromtimestamp(int(t)).date().strftime("%Y-%m")
+              for t, _ in points} if points else set()
+    return max(months) if months else None
+
+
+def reconcile_china_override(cnm2_points, override, rtol=0.005):
+    """Feed-first reconciliation of the manual PBoC override against the live
+    TradingView CNM2 feed. The feed is source-of-truth for every month it already
+    serves correctly; the override only bridges months the feed genuinely lacks or
+    gets wrong. Returns (effective_override, redundant, active, feed_latest):
+
+      redundant  override months the feed has caught up to (value within `rtol`)
+                 — SAFE TO DELETE from CHINA_M2_OVERRIDE; the feed now carries them.
+      active     override months that still add signal — newer than the feed's
+                 latest month (a timeliness bridge), or a materially different
+                 value (a correction to a wrong/stale feed print).
+      effective_override  {month: value} for the active months only, so a month the
+                 feed already serves correctly is NOT overwritten by a stale hand entry.
+
+    Advisory by design: it never edits source — it surfaces `redundant` so removing
+    caught-up months stays a human-reviewed diff (the standing monthly chore goes
+    away because in the common case the feed is fresh and `active` is empty)."""
+    if not override:
+        return {}, [], [], _latest_month(cnm2_points)
+    feed = {dt.datetime.utcfromtimestamp(int(t)).date().strftime("%Y-%m"): v
+            for t, v in (cnm2_points or [])}
+    feed_latest = max(feed) if feed else None
+    redundant, active, eff = [], [], {}
+    for m in sorted(override):
+        ov = override[m]
+        fv = feed.get(m)
+        if fv is not None and abs(fv - ov) <= rtol * abs(ov):
+            redundant.append(m)                 # feed agrees -> override redundant
+        else:
+            active.append(m); eff[m] = ov       # newer than feed, or a correction
+    return eff, redundant, active, feed_latest
+
+
 # ------------------------------------------------------------------ self-heal
 def _rebuild_cycle():
     """Rebuild the Business Cycle block including its FCI reconstruction (the heal
@@ -191,6 +237,20 @@ def build():
     today = dt.datetime.utcnow().date()
     grid = [START + dt.timedelta(days=k) for k in range((today-START).days + 1)]
 
+    # Feed-first China M2. Reconcile the manual PBoC override against the live
+    # CNM2 feed so the feed is source-of-truth for every month it already serves
+    # and the override only bridges genuinely newer/corrected months. In the
+    # common case (feed fresh) this empties the override of work — no monthly chore.
+    cn_m2t = ECON["CN"][0]
+    cn_eff_override, cn_redundant, cn_active, cn_feed_latest = \
+        reconcile_china_override(m2c.get(cn_m2t, []), CHINA_M2_OVERRIDE)
+    if cn_redundant:
+        print(f"  CN override: feed caught up on {', '.join(cn_redundant)} — safe to "
+              f"delete from CHINA_M2_OVERRIDE (the live feed now carries them)")
+    if cn_active:
+        print(f"  CN override: {', '.join(cn_active)} still active "
+              f"(newer than feed {cn_feed_latest} / correction)")
+
     # Global liquidity index — wrapped fail-safe like the other sub-builds.
     # A US/CN pull failure no longer crashes the whole pipeline; us/big/cycle/fci
     # still ship below and the dashboard's global tab shows a "missing" notice
@@ -205,21 +265,21 @@ def build():
             # harmless. The exception is China: if its TV print is missing
             # we still try to honour the manual PBoC override.
             if m2t not in m2c:
-                if code == "CN" and CHINA_M2_OVERRIDE:
+                if code == "CN" and cn_eff_override:
                     # CNM2 pull missing — synthesise the CN M2 leg from the
                     # manual override months only. backfill_leading=False so
                     # days before the override's earliest month stay None and
                     # don't produce a spurious global value from a constant
                     # current-day yuan number applied to 2010-era dates.
-                    m2_arr = monthly_ffill_by_day([], grid, CHINA_M2_OVERRIDE,
+                    m2_arr = monthly_ffill_by_day([], grid, cn_eff_override,
                                                   backfill_leading=False)
-                    print(f"  CN: using {len(CHINA_M2_OVERRIDE)} override months only "
+                    print(f"  CN: using {len(cn_eff_override)} override months only "
                           f"(CNM2 pull missing)")
                 else:
                     print("  SKIP", code, "missing M2", m2t); continue
             else:
                 m2_arr = monthly_ffill_by_day(m2c[m2t], grid,
-                                              CHINA_M2_OVERRIDE if code == "CN" else None)
+                                              cn_eff_override if code == "CN" else None)
             if fxs is None:
                 fx_arr = [1.0]*len(grid)
             elif fxs in fxc:
@@ -353,25 +413,35 @@ def build():
     credit  = _safe("CREDIT",  build_credit)
     china   = _safe("CHINA",   build_china)
 
-    # China M2 override staleness — surfaces in the dashboard banner so Raoul
-    # never has to remember the monthly update. PBoC publishes month N's M2
-    # around the 13th of month N+1, so if our latest manual override is month
-    # N, the next print to add will be for N+1, released around the 13th of
-    # N+2. The override is "stale" once today is past that expected date.
-    override_months = sorted(CHINA_M2_OVERRIDE.keys())
-    if override_months:
-        _last = override_months[-1]
-        _y, _m = map(int, _last.split("-"))
+    # China M2 freshness banner. Feed-first: the CN leg's true data frontier is
+    # the newer of the live CNM2 feed and any still-active override month, so the
+    # banner reflects REAL data currency — it stops nagging when the feed is fresh
+    # even if nobody touched the override (the old version keyed off the override
+    # alone and would prompt a redundant manual update). PBoC publishes month N's
+    # M2 ~13th of N+1, so the next print (N+1) lands ~13th of N+2; "stale" means
+    # today is past that and NEITHER feed nor override has caught up.
+    _ov_months = sorted(CHINA_M2_OVERRIDE.keys())
+    _ov_latest = _ov_months[-1] if _ov_months else None
+    cn_latest = max([m for m in (cn_feed_latest, _ov_latest) if m], default=None)
+    if cn_latest:
+        _y, _m = map(int, cn_latest.split("-"))
         _ny, _nm = (_y, _m + 2) if (_m + 2) <= 12 else (_y + 1, _m + 2 - 12)
         _next_release = dt.date(_ny, _nm, 13)
         china_override = {
-            "latest": _last,
+            "latest": cn_latest,                    # true CN M2 frontier (feed or override)
+            "feed_latest": cn_feed_latest,          # what the live feed serves
+            "override_latest": _ov_latest,          # newest hand-entered month
+            "source": "feed" if (cn_feed_latest and cn_feed_latest >= (_ov_latest or "")) else "override",
+            "redundant_override_months": cn_redundant,  # feed caught up — safe to delete
+            "active_override_months": cn_active,        # override still doing work
             "next_release_iso": _next_release.isoformat(),
             "stale": today >= _next_release,
             "days_until": (_next_release - today).days,
         }
     else:
-        china_override = {"latest": None, "next_release_iso": None,
+        china_override = {"latest": None, "feed_latest": None, "override_latest": None,
+                          "source": None, "redundant_override_months": [],
+                          "active_override_months": [], "next_release_iso": None,
                           "stale": True, "days_until": 0}
 
     # --- Carry-forward backstop -------------------------------------------
@@ -477,7 +547,8 @@ def build():
             "series": leaves,                   # {leaf_key: latest observation date}
         }
 
-    data = {"updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+    data = {"schema_version": SCHEMA_VERSION, "dashboard": "tec",
+            "updated": dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "freq": "daily", "lag_days": 90, "summary": summary, "series": series,
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
             "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
@@ -488,6 +559,17 @@ def build():
     json.dump(data, open(os.path.join(HERE, "data", "data.json"), "w"), default=str)
     with open(os.path.join(HERE, "data", "data.js"), "w") as f:
         f.write("window.TGL_DATA = " + json.dumps(data, default=str) + ";")
+
+    # AI-first digest (DATA_CONTRACT.md). Emitted here so a summary.json always
+    # exists; verify_data.py re-emits it after stamping source-verified freshness
+    # so the published digest carries the live/behind/stale verdicts. Wrapped so a
+    # digest hiccup never fails the data write that just succeeded.
+    try:
+        from summarize import build_summary
+        with open(os.path.join(HERE, "data", "summary.json"), "w") as f:
+            json.dump(build_summary(data), f, default=str)
+    except Exception as e:
+        print("  SUMMARY build FAILED:", str(e)[:100])
     if series:
         print(f"WROTE {len(series)} daily points | {summary['latest']} "
               f"${summary['total_tn']}T  YoY {summary['yoy']}% (3m {summary['yoy_s']}%)")

@@ -40,9 +40,37 @@ The daily workflow runs hands-off. Resilience guards in `update_data.py` mean th
 
 If a run does fail, the diagnostic path is the Actions tab at https://github.com/Islandboy1968/global-m2/actions. The `Run pipeline` step prints which symbols were skipped and which sub-builds, if any, returned a `FAILED` line. The dashboard itself shows the timestamp of the last successful refresh in the `updated` field, so a stale page is easy to spot.
 
-## Updating China's M2 by hand (~30 seconds/month)
+## China M2 — feed-first, usually no action needed
 
-TradingView's China M2 feed lags the PBoC by about a month. When the PBoC releases a new monthly figure, add one line to the `CHINA_M2_OVERRIDE` dict near the top of `update_data.py`. The format is `"YYYY-MM": value_in_yuan`, e.g. `"2026-05": 354.5e12` for 354.5 trillion yuan. Everything else updates automatically. This is the only recurring manual task.
+TradingView's `ECONOMICS:CNM2` feed _can_ lag the PBoC by about a month, so the
+repo keeps a `CHINA_M2_OVERRIDE` dict near the top of `update_data.py` as a
+backstop. But the pipeline is **feed-first**: on every run it reconciles the
+override against the live feed (`reconcile_china_override`). The live feed is the
+source of truth for any month it already serves; the override only contributes
+months the feed genuinely lacks (a timeliness bridge) or gets wrong (a correction).
+
+In the common case the feed is current and the override does nothing — the run
+prints which override months the feed has caught up to (`safe to delete from
+CHINA_M2_OVERRIDE`) and `data/summary.json`'s `china_override` block reports
+`source: "feed"`. **There is no standing monthly task.** You only add an override
+line in the rare month the feed actually lags: `"YYYY-MM": value_in_yuan`, e.g.
+`"2026-05": 354.5e12`. The dashboard banner (`china_override.stale`) flags when
+*neither* feed nor override has the latest expected print.
+
+## Machine-readable surfaces (for AI / agents)
+
+The dashboard is consumable by an AI without scraping charts or loading the full
+~1.5 MB series payload. Read in this order:
+
+1. **`data/index.json`** — entry point: lists the surfaces and the companion EA dashboard.
+2. **`data/summary.json`** (~36 KB) — an AI-first digest: per indicator, its latest
+   value, units, recent-window trend (doubling/halving time), YoY, and the
+   source-verified freshness verdict (`IN_SYNC`/`BEHIND`/`MISSING`). Read this first.
+3. **`data/data.json`** — the full raw series, when you need the shape of a curve.
+
+Both carry `schema_version` + `dashboard: "tec"`. The shape is documented in
+[`DATA_CONTRACT.md`](DATA_CONTRACT.md), shared with the EA dashboard so one parser
+ingests both. `indicators_meta.py` is the self-describing registry behind the digest.
 
 ## Method (short)
 
