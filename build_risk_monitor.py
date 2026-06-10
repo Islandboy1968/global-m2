@@ -158,6 +158,79 @@ def build_row(a, failures):
     }
 
 
+# ── Alpha-tier page ─────────────────────────────────────────────────────────
+def make_alpha_html(html):
+    """Derive alpha.html (the RV Alpha tier page) from the freshly-baked Pro
+    index.html. Same data block, presentation differences only:
+      - isProSubscriber = false (Pro table paywalled)
+      - tier pill reads RV ALPHA (on both trend tabs)
+      - RV Alpha Trends tab is first and opens by default
+      - 3 preview rows above the paywall (overlay repositioned at runtime to
+        the top of row 4 — the source hard-codes top:120px, the 2-row mark)
+    FAIL LOUD: every anchor must match exactly once, so a future redesign of
+    index.html that breaks an anchor fails the build rather than silently
+    shipping a stale/wrong Alpha page.
+    """
+    def sub(s, old, new):
+        if s.count(old) != 1:
+            raise SystemExit("FAIL: alpha.html anchor matched %d times (want 1): %r"
+                             % (s.count(old), old[:70]))
+        return s.replace(old, new)
+
+    html = sub(html, "var isProSubscriber = true;", "var isProSubscriber = false;")
+
+    html = sub(html, '<span class="tag" id="tierTag">RV PRO</span>',
+                     '<span class="tag" id="tierTag">RV ALPHA</span>')
+    html = sub(html, 'var tags = { pro: "RV PRO", alpha: "RV ALPHA", guide: "GUIDE" };',
+                     'var tags = { pro: "RV ALPHA", alpha: "RV ALPHA", guide: "GUIDE" };')
+    html = sub(html, 'document.getElementById("tierTag").textContent = tags[tab] || "RV PRO";',
+                     'document.getElementById("tierTag").textContent = tags[tab] || "RV ALPHA";')
+
+    html = sub(html, """    <button class="tab-btn active" id="tabPro" onclick="switchTab('pro')">RV Pro Positions</button>
+    <button class="tab-btn" id="tabAlpha" onclick="switchTab('alpha')">RV Alpha Trends</button>""",
+                     """    <button class="tab-btn active" id="tabAlpha" onclick="switchTab('alpha')">RV Alpha Trends</button>
+    <button class="tab-btn" id="tabPro" onclick="switchTab('pro')">RV Pro Positions</button>""")
+
+    html = sub(html, '<div id="proContent" style="position: relative;">',
+                     '<div id="proContent" class="hidden" style="position: relative;">')
+    html = sub(html, '<div id="alphaContent" class="hidden">', '<div id="alphaContent">')
+
+    html = sub(html, "// Blur rows beyond the first 2 (preview rows)",
+                     "// Blur rows beyond the first 3 (preview rows)")
+    html = sub(html, "for (var i = 2; i < rows.length; i++) {",
+                     "for (var i = 3; i < rows.length; i++) {")
+    html = sub(html, "First 2 rows visible as preview", "First 3 rows visible as preview")
+
+    html = sub(html, """    for (var i = 3; i < rows.length; i++) {
+      rows[i].style.filter = "blur(6px)";
+      rows[i].style.pointerEvents = "none";
+      rows[i].style.userSelect = "none";
+    }
+  }
+})();""",
+                     """    for (var i = 3; i < rows.length; i++) {
+      rows[i].style.filter = "blur(6px)";
+      rows[i].style.pointerEvents = "none";
+      rows[i].style.userSelect = "none";
+    }
+    // Align the overlay with the first blurred row (row 4). Must be measured
+    // while the Pro tab is visible, so re-run on every switch to it.
+    window.positionProPaywall = function() {
+      var content = document.getElementById("proContent");
+      if (!content || content.classList.contains("hidden") || rows.length <= 3) return;
+      var top = rows[3].getBoundingClientRect().top - content.getBoundingClientRect().top;
+      wall.style.top = Math.max(0, Math.round(top)) + "px";
+    };
+    var origSwitchTab = switchTab;
+    switchTab = function(tab) {
+      origSwitchTab(tab);
+      if (tab === "pro") window.positionProPaywall();
+    };
+  }
+})();""")
+    return html
+
+
 def main():
     tgl = load_tgl()
     macro = build_macro(tgl)
@@ -206,7 +279,11 @@ def main():
     html = html[:a] + new_block + html[b:]
     open(path, "w").write(html)
 
+    alpha_path = os.path.join(RM, "alpha.html")
+    open(alpha_path, "w").write(make_alpha_html(html))
+
     print("Wrote %s" % path)
+    print("Wrote %s" % alpha_path)
     print("  M2 %s (since %s) · ISM %s %.1f (since %s) · YoY %.1f%% 6m %.1f%%" % (
         macro["m2Trend"], macro["m2Since"], macro["ismTrend"], macro["ismValue"],
         macro["ismSince"], macro["m2Roc"]["yoy"], macro["m2Roc"]["mom6"]))

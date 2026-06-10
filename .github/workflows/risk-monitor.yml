@@ -2,7 +2,8 @@ name: Refresh GMI Risk Monitor
 
 # Pulls each position from TradingView, computes signals/secular/vol via the
 # verified modules, reuses M2/ISM from data.js, and bakes the result into
-# dashboard-risk-monitor/index.html. Weekly (after Fri close) + manual.
+# dashboard-risk-monitor/index.html (Pro) + alpha.html (Alpha tier, derived
+# from the same baked file). Weekly (after Fri close) + manual.
 # If any feed fails the job goes RED (fail-loud) but still commits what resolved
 # so the gap is visible for inspection — a broken feed is caught here, not live.
 on:
@@ -38,7 +39,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dashboard-risk-monitor/index.html
+          git add dashboard-risk-monitor/index.html dashboard-risk-monitor/alpha.html
           if git diff --staged --quiet; then
             echo "No changes."
           else

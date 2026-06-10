@@ -56,8 +56,24 @@ doesn't resolve (it still commits what did, so the gap is visible) — a broken 
 is caught in CI, never shown blank/stale on the board.
 
 ## 7. Tiers & Access
-RV Pro table gated by `isProSubscriber` (first 2 rows preview, rest blurred + paywall).
-Alpha table, regime, charts, guide = all tiers. **P&E:** wire `isProSubscriber` to real auth.
+Two baked pages, same data block, refreshed together by the same pipeline run:
+
+| Page | For | URL |
+| --- | --- | --- |
+| `index.html` | RV Pro | https://islandboy1968.github.io/global-m2/dashboard-risk-monitor/index.html |
+| `alpha.html` | RV Alpha (iframe-ready) | https://islandboy1968.github.io/global-m2/dashboard-risk-monitor/alpha.html |
+
+`alpha.html` is derived from the baked `index.html` by `make_alpha_html()` in
+`build_risk_monitor.py` (presentation only, data identical): `isProSubscriber=false`,
+tier pill reads **RV ALPHA**, the **RV Alpha Trends** tab is first and opens by default,
+and the Pro table shows the first **3** positions with the rest blurred behind the
+paywall (so subscribers can see there's more). Never edit `alpha.html` by hand — it is
+overwritten on every refresh; change the transforms in `make_alpha_html()` instead.
+Each transform anchor is asserted exactly-once, so a redesign of `index.html` that
+breaks the derivation fails the build loudly rather than shipping a stale Alpha page.
+
+**P&E:** on `index.html`, wire `isProSubscriber` to real auth — or skip auth wiring
+entirely and just iframe the right page per tier.
 
 ## 8. Formulas & How They're Calculated
 All verified by an independent audit; both calc modules have passing self-tests
