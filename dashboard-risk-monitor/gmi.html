@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMI Risk Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gmi-magenta:#F12A5A;
+  --gmi-ink:#2C4C6B;
+  --gmi-ink-2:#6b86a0;
+  --gmi-line:#d8e0e8;
+  --gmi-bg:#ffffff;
+  --gmi-tint:#f4f7fa;
+  --pos:#1f8a5b;
+  --neg:#c0392b;
+  --warn:#b8860b;
+  --hot:#c2611e;
+  --early:#2563eb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--gmi-bg);color:var(--gmi-ink);
+  font-family:"Helvetica Neue",Arial,system-ui,sans-serif;-webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums lining-nums}
+body{padding:0 0 70px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+.hairline{height:4px;background:var(--gmi-magenta);width:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+header.lockup{display:flex;align-items:baseline;justify-content:space-between;padding:18px 0 10px;border-bottom:1px solid var(--gmi-line)}
+.wordmark{font-family:"Teko",sans-serif;font-weight:700;font-size:42px;line-height:1;letter-spacing:1px;color:var(--gmi-ink)}
+.subline{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:600}
+.titlebar{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:22px 0 6px}
+h1{font-family:"Teko",sans-serif;font-weight:600;font-size:54px;line-height:.95;margin:0;letter-spacing:.5px}
+.asof{font-size:12.5px;color:var(--gmi-ink-2);text-align:right;line-height:1.6}
+.asof b{color:var(--gmi-ink)}
+.statusbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:16px 0 0;padding:10px 16px;border:1px solid var(--gmi-line);border-top:3px solid var(--gmi-magenta);background:#fff;font-size:12px;color:var(--gmi-ink-2)}
+.statusbar .sep{color:var(--gmi-line)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border:1px solid currentColor;font-size:10.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase}
+.chip.flip{color:var(--warn);animation:pulse 2s ease-in-out infinite}
+.viewtoggle{display:flex;align-items:center;gap:0;margin:18px 0 0;flex-wrap:wrap}
+.vbtn{cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:9px 18px;border:1px solid var(--gmi-ink);background:#fff;color:var(--gmi-ink)}
+.vbtn+.vbtn{border-left:none}
+.vbtn.active{background:var(--gmi-ink);color:#fff}
+.vhint{font-size:11.5px;color:var(--gmi-ink-2);margin-left:14px;font-style:italic}
+.regime{margin:22px 0 0;border:1px solid var(--gmi-line)}
+.regime-top{padding:18px 22px;border-left:4px solid var(--gmi-ink)}
+.regime-top .lbl{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;margin-bottom:8px}
+.regime-name{font-family:"Teko",sans-serif;font-weight:600;font-size:34px;line-height:1;display:flex;align-items:center;gap:10px}
+.regime-dot{width:12px;height:12px;border-radius:50%;display:inline-block}
+.regime-desc{font-size:12.5px;color:var(--gmi-ink-2);line-height:1.6;margin-top:8px;max-width:740px}
+.regime-cols{display:flex;flex-wrap:wrap;border-top:1px solid var(--gmi-line)}
+.rcol{flex:1;min-width:320px;padding:14px 20px 10px}
+.rcol+.rcol{border-left:1px solid var(--gmi-line)}
+.rcol .head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+.rcol .lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700}
+.rcol .sig{font-family:"Teko",sans-serif;font-weight:600;font-size:26px;line-height:1.1;display:flex;align-items:center;gap:8px;margin-top:4px}
+.rcol .since{font-size:11.5px;color:var(--gmi-ink-2)}
+.rcol .since b{color:var(--gmi-ink);font-weight:600}
+.rocrow{display:flex;gap:14px;margin-top:6px;font-size:11.5px;color:var(--gmi-ink-2)}
+.rocrow b{font-weight:700}
+section.bucket{margin:34px 0 0}
+.sec-head{font-family:"Teko",sans-serif;font-weight:600;font-size:34px;letter-spacing:.5px;border-bottom:2px solid var(--gmi-ink);padding-bottom:4px;display:flex;justify-content:space-between;align-items:flex-end}
+.sec-head .secstat{font-family:"Helvetica Neue",Arial,sans-serif;font-size:13px;font-weight:600;color:var(--gmi-ink-2)}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+th,td{text-align:right;padding:9px 10px;border-bottom:1px solid var(--gmi-line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;border-bottom:1.5px solid var(--gmi-ink)}
+td.inst{font-weight:600;text-align:left}
+td.tkr{color:var(--gmi-ink-2);font-size:12px}
+td.bks{color:var(--gmi-ink-2);font-size:11px;letter-spacing:.4px}
+.pos{color:var(--pos);font-weight:600}
+.neg{color:var(--neg);font-weight:600}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:2px 9px;border:1px solid currentColor;text-transform:uppercase}
+.badge .bdot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+.flipbadge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;padding:2px 9px;border:1px solid var(--warn);color:var(--warn);text-transform:uppercase;animation:pulse 2s ease-in-out infinite}
+.volchip{display:inline-block;font-size:11.5px;font-weight:700;padding:1px 7px;border:1px solid currentColor}
+.tnote{margin-top:12px;padding:10px 14px;background:var(--gmi-tint);border:1px dashed var(--gmi-line);font-size:11.5px;color:var(--gmi-ink-2);line-height:1.6}
+.editorial{margin:26px 0 0;padding:14px 18px;border:1px solid var(--gmi-line);border-left:4px solid var(--gmi-magenta);font-size:12px;color:var(--gmi-ink-2);line-height:1.65;font-style:italic}
+.footer{margin-top:44px;padding-top:16px;border-top:1px solid var(--gmi-line);font-size:11.5px;color:var(--gmi-ink-2);line-height:1.7;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.footer .copy{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#aab8c4;white-space:nowrap}
+.subtle{color:var(--gmi-ink-2)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="hairline"></div>
+<div class="wrap">
+
+  <header class="lockup">
+    <div class="wordmark">GMI</div>
+    <div class="subline">Global Macro Investor</div>
+  </header>
+
+  <div class="titlebar">
+    <h1>Risk Monitor</h1>
+    <div class="asof">
+      Last updated: <b id="lastUpdated">—</b><br/>
+      Positions book: <b id="srcPub">—</b><br/>
+      <span class="subtle">GMI Proprietary Medium-Term Risk Indicator · Weekly signal, daily refresh</span>
+    </div>
+  </div>
+
+  <div class="statusbar" id="statusBar"></div>
+
+  <div class="viewtoggle">
+    <button class="vbtn active" id="tabPositions" onclick="switchTab('positions')">GMI Positions</button>
+    <button class="vbtn" id="tabAssets" onclick="switchTab('assets')">Assets</button>
+    <span class="vhint" id="vhint">Every open position in the GMI book — auto-synced from the GMI Positions dashboard.</span>
+  </div>
+
+  <!-- Macro regime banner -->
+  <div class="regime" id="cycleRegime">
+    <div class="regime-top" id="regimeBox">
+      <div class="lbl">GMI Macro Regime</div>
+      <div class="regime-name"><span class="regime-dot" id="regimeDot"></span><span id="regimeLabel"></span></div>
+      <p class="regime-desc" id="regimeDesc"></p>
+    </div>
+    <div class="regime-cols">
+      <div class="rcol">
+        <div class="head">
+          <div>
+            <div class="lbl">Liquidity Trend</div>
+            <div class="sig" id="m2Signal"></div>
+          </div>
+          <div class="since">Signal since <b id="m2Since"></b></div>
+        </div>
+        <div class="rocrow" id="m2RocRow"></div>
+        <svg id="m2Chart" width="100%" height="170" style="display:block;margin-top:6px"></svg>
+      </div>
+      <div class="rcol">
+        <div class="head">
+          <div>
+            <div class="lbl">Business Cycle Trend</div>
+            <div class="sig" id="ismSignal"></div>
+          </div>
+          <div class="since">Signal since <b id="ismSince"></b></div>
+        </div>
+        <svg id="ismChart" width="100%" height="196" style="display:block;margin-top:6px"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- GMI Positions tab -->
+  <section class="bucket" id="positionsContent">
+    <div class="sec-head">GMI Positions — Trend
+      <span class="secstat" id="posStat"></span>
+    </div>
+    <div style="overflow-x:auto"><table id="positionsTable"></table></div>
+    <div class="tnote" id="unpricedNote"></div>
+    <div class="tnote">This list mirrors the open positions in the GMI Positions dashboard (Tactical · Core · Long-term, deduplicated — the <b>Book</b> column shows which sleeves hold each instrument). When GMI opens or closes a position there, this table updates on the next daily refresh. To use the proprietary trend signal yourself, search &ldquo;GMI Weekly Trend Signal&rdquo; in TradingView's indicator list.</div>
+  </section>
+
+  <!-- Assets tab -->
+  <section class="bucket hidden" id="assetsContent">
+    <div class="sec-head">Key Asset Trends
+      <span class="secstat" id="assetStat"></span>
+    </div>
+    <div style="overflow-x:auto"><table id="assetsTable"></table></div>
+    <div class="tnote">Broader macro assets (gold, copper, oil, yields, the dollar) that inform the overall macro picture but are not necessarily GMI positions.</div>
+  </section>
+
+  <div class="editorial">The core value of GMI research is anticipating turns in the global liquidity cycle and the business cycle in advance, using our proprietary macro framework. GMI is a full-cycle investor: we position for the dominant trend and hold the best assets for the majority of the cycle, rather than trading moves within it. The weekly trend indicators above help you manage your own volatility tolerance around our strategic positioning.</div>
+
+  <div class="footer">
+    <p style="max-width:760px">Global M2 composite (47-economy, USD) is the GMI liquidity pulse; business cycle status is derived from the ISM Manufacturing PMI using the GMI monthly trend model. Weekly trend is the GMI proprietary volatility-scaled band signal; Secular Trend uses log regression channels for crypto, crypto-adjacent equities and EU carbon, and a 60-month SMA for traditional assets. EU Carbon (EUA) sourced via WisdomTree Carbon ETC (CARB.L). 30-day realised volatility (annualised) drives the risk colour: Normal &lt;20% / Risky 20&ndash;40% / High &gt;40%. Weekly asset trends are not intended for intraday decisions. <b>Machine-readable:</b> the full data set is embedded as JSON in <span class="subtle">&lt;script id="gmi-data"&gt;</span> and published alongside this page as <span class="subtle">gmi-positions.json</span>, ready for AI parsing.</p>
+    <div class="copy">Global Macro Investor &copy; 2026</div>
+  </div>
+
+</div>
+
+<!-- __GMI_JSON_START__ -->
+<script id="gmi-data" type="application/json">{
+ "schema_version": "1.0",
+ "dashboard": "GMI Risk Monitor (GMI edition)",
+ "generated_utc": "2026-06-10T20:21:39Z",
+ "macro_regime": {
+  "m2_trend": "green",
+  "m2_since": "Nov 2022",
+  "m2_roc": {
+   "yoy": 6.4,
+   "mom6": 6.3
+  },
+  "ism_trend": "green",
+  "ism_since": "Mar 2024",
+  "ism_value": 54.0
+ },
+ "positions_meta": {
+  "source_publication": "GMI June 2026 Monthly",
+  "as_of_positions": "2026-06-10T15:06:00Z",
+  "source": "cached snapshot",
+  "unpriced": [
+   {
+    "name": "Exponential Age Basket",
+    "ticker": "EAB",
+    "books": "LT",
+    "asset_class": "basket"
+   },
+   {
+    "name": "Exponential Age Digital Asset Fund",
+    "ticker": "EADAF",
+    "books": "LT",
+    "asset_class": "fund"
+   }
+  ]
+ },
+ "gmi_positions": [
+  {
+   "asset": "Microsoft",
+   "ticker": "MSFT",
+   "trend": "green",
+   "trendChange": false,
+   "price": 397.36,
+   "category": "Equity",
+   "since": "Apr 2026",
+   "secular": "rising",
+   "vol30d": 36.2,
+   "regime": "Normal",
+   "annVol": 25.6,
+   "books": "T \u00b7 C"
+  },
+  {
+   "asset": "Sui",
+   "ticker": "SUI",
+   "trend": "green",
+   "trendChange": false,
+   "price": 0.7334,
+   "category": "Crypto",
+   "since": "May 2026",
+   "secular": "rising",
+   "vol30d": 62.2,
+   "regime": "Extreme",
+   "annVol": 77.9,
+   "books": "T \u00b7 C \u00b7 LT"
+  },
+  {
+   "asset": "Ethereum",
+   "ticker": "ETH",
+   "trend": "red",
+   "trendChange": false,
+   "price": 1624.93,
+   "category": "Crypto",
+   "since": "May 2026",
+   "secular": "rising",
+   "vol30d": 56.4,
+   "regime": "Normal",
+   "annVol": 56.4,
+   "books": "C \u00b7 LT"
+  },
+  {
+   "asset": "Solana",
+   "ticker": "SOL",
+   "trend": "red",
+   "trendChange": false,
+   "price": 63.28,
+   "category": "Crypto",
+   "since": "Feb 2026",
+   "secular": "rising",
+   "vol30d": 52.2,
+   "regime": "Normal",
+   "annVol": 59.6,
+   "books": "C \u00b7 LT"
+  },
+  {
+   "asset": "EU Carbon (EUA)",
+   "ticker": "EUA",
+   "trend": "green",
+   "trendChange": false,
+   "price": 27.73,
+   "category": "Commodity",
+   "since": "Apr 2026",
+   "secular": "rising",
+   "vol30d": 24.6,
+   "regime": "Normal",
+   "annVol": 29.8,
+   "books": "C"
+  },
+  {
+   "asset": "Nasdaq 100",
+   "ticker": "NDX",
+   "trend": "green",
+   "trendChange": false,
+   "price": 28508.0273,
+   "category": "Index",
+   "since": "Apr 2026",
+   "secular": "rising",
+   "vol30d": 23.6,
+   "regime": "Normal",
+   "annVol": 17.0,
+   "books": "C"
+  },
+  {
+   "asset": "Apple",
+   "ticker": "AAPL",
+   "trend": "green",
+   "trendChange": false,
+   "price": 291.58,
+   "category": "Equity",
+   "since": "Feb 2026",
+   "secular": "rising",
+   "vol30d": 22.9,
+   "regime": "Normal",
+   "annVol": 22.6,
+   "books": "C"
+  },
+  {
+   "asset": "Tesla",
+   "ticker": "TSLA",
+   "trend": "red",
+   "trendChange": true,
+   "price": 381.59,
+   "category": "Equity",
+   "since": "Jun 2026",
+   "secular": "rising",
+   "vol30d": 47.2,
+   "regime": "Normal",
+   "annVol": 44.6,
+   "books": "C \u00b7 LT"
+  },
+  {
+   "asset": "Coinbase",
+   "ticker": "COIN",
+   "trend": "green",
+   "trendChange": false,
+   "price": 153.97,
+   "category": "Equity",
+   "since": "Mar 2026",
+   "secular": "rising",
+   "vol30d": 65.7,
+   "regime": "Extreme",
+   "annVol": 70.2,
+   "books": "C \u00b7 LT"
+  },
+  {
+   "asset": "Dogecoin",
+   "ticker": "DOGE",
+   "trend": "red",
+   "trendChange": true,
+   "price": 0.0829,
+   "category": "Crypto",
+   "since": "Jun 2026",
+   "secular": "rising",
+   "vol30d": 48.1,
+   "regime": "Extreme",
+   "annVol": 63.9,
+   "books": "C"
+  },
+  {
+   "asset": "DeepBook",
+   "ticker": "DEEP",
+   "trend": "red",
+   "trendChange": true,
+   "price": 0.0156,
+   "category": "Crypto",
+   "since": "Jun 2026",
+   "secular": null,
+   "vol30d": 90.9,
+   "regime": "Normal",
+   "annVol": 84.0,
+   "books": "C"
+  },
+  {
+   "asset": "Invesco Solar",
+   "ticker": "TAN",
+   "trend": "green",
+   "trendChange": false,
+   "price": 59.16,
+   "category": "Equity",
+   "since": "Jan 2026",
+   "secular": "rising",
+   "vol30d": 55.0,
+   "regime": "Normal",
+   "annVol": 38.7,
+   "books": "C"
+  },
+  {
+   "asset": "Hims & Hers",
+   "ticker": "HIMS",
+   "trend": "green",
+   "trendChange": false,
+   "price": 27.78,
+   "category": "Equity",
+   "since": "Mar 2026",
+   "secular": "rising",
+   "vol30d": 87.9,
+   "regime": "Extreme",
+   "annVol": 96.8,
+   "books": "C"
+  },
+  {
+   "asset": "Circle",
+   "ticker": "CRCL",
+   "trend": "red",
+   "trendChange": false,
+   "price": 78.93,
+   "category": "Equity",
+   "since": "Apr 2026",
+   "secular": null,
+   "vol30d": 78.4,
+   "regime": "Extreme",
+   "annVol": 108.9,
+   "books": "C"
+  },
+  {
+   "asset": "Bitcoin",
+   "ticker": "BTC",
+   "trend": "red",
+   "trendChange": true,
+   "price": 61772.85,
+   "category": "Crypto",
+   "since": "Jun 2026",
+   "secular": "rising",
+   "vol30d": 36.7,
+   "regime": "Normal",
+   "annVol": 39.5,
+   "books": "LT"
+  },
+  {
+   "asset": "Robinhood",
+   "ticker": "HOOD",
+   "trend": "green",
+   "trendChange": false,
+   "price": 86.36,
+   "category": "Equity",
+   "since": "Apr 2026",
+   "secular": "rising",
+   "vol30d": 78.8,
+   "regime": "Extreme",
+   "annVol": 68.8,
+   "books": "LT"
+  }
+ ],
+ "assets": [
+  {
+   "asset": "Bitcoin",
+   "ticker": "BTC",
+   "trend": "red",
+   "trendChange": true,
+   "price": 61772.85,
+   "category": "Risk Asset",
+   "since": "Jun 2026",
+   "secular": "rising",
+   "vol30d": 36.7,
+   "regime": "Normal",
+   "annVol": 39.5
+  },
+  {
+   "asset": "Nasdaq 100",
+   "ticker": "NDX",
+   "trend": "green",
+   "trendChange": false,
+   "price": 28508.0273,
+   "category": "Risk Asset",
+   "since": "Apr 2026",
+   "secular": "rising",
+   "vol30d": 23.6,
+   "regime": "Normal",
+   "annVol": 17.0
+  },
+  {
+   "asset": "Gold",
+   "ticker": "XAU",
+   "trend": "red",
+   "trendChange": false,
+   "price": 4076.08,
+   "category": "Safe Haven",
+   "since": "Mar 2026",
+   "secular": "rising",
+   "vol30d": 23.1,
+   "regime": "Normal",
+   "annVol": 26.6
+  },
+  {
+   "asset": "Copper",
+   "ticker": "HG",
+   "trend": "green",
+   "trendChange": false,
+   "price": 6.1975,
+   "category": "Cyclical",
+   "since": "Sep 2025",
+   "secular": "rising",
+   "vol30d": 31.7,
+   "regime": "Normal",
+   "annVol": 39.1
+  },
+  {
+   "asset": "US Dollar Index",
+   "ticker": "DXY",
+   "trend": "green",
+   "trendChange": false,
+   "price": 100.032,
+   "category": "Currency",
+   "since": "Mar 2026",
+   "secular": "falling",
+   "vol30d": 4.0,
+   "regime": "Normal",
+   "annVol": 5.8
+  },
+  {
+   "asset": "2-Year Yields",
+   "ticker": "US2Y",
+   "trend": "green",
+   "trendChange": false,
+   "price": 4.135,
+   "category": "Rates",
+   "since": "Mar 2026",
+   "secular": "rising",
+   "vol30d": 18.4,
+   "regime": "Normal",
+   "annVol": 19.0
+  },
+  {
+   "asset": "10-Year Yields",
+   "ticker": "US10Y",
+   "trend": "green",
+   "trendChange": false,
+   "price": 4.548,
+   "category": "Rates",
+   "since": "Mar 2026",
+   "secular": "rising",
+   "vol30d": 16.5,
+   "regime": "Normal",
+   "annVol": 15.5
+  },
+  {
+   "asset": "Crude Oil",
+   "ticker": "CL",
+   "trend": "green",
+   "trendChange": false,
+   "price": 90.93,
+   "category": "Cyclical",
+   "since": "Feb 2026",
+   "secular": "rising",
+   "vol30d": 43.9,
+   "regime": "Normal",
+   "annVol": 48.3
+  }
+ ]
+}</script>
+<!-- __GMI_JSON_END__ -->
+
+<script>
+// ═══════════════════════════════════════════════════
+// LIVE DATA — auto-injected by build_gmi_risk_monitor.py
+// ═══════════════════════════════════════════════════
+// __PIPELINE_DATA_START__
+
+var lastUpdatedStr = "Wednesday, June 10, 2026";
+var m2Roc = {"yoy": 6.4, "mom6": 6.3};
+var m2ChartData = [{"d": "2022-06", "c": 112.53, "s": 115.59, "g": 0}, {"d": "2022-07", "c": 112.19, "s": 115.06, "g": 0}, {"d": "2022-08", "c": 110.31, "s": 113.56, "g": 0}, {"d": "2022-09", "c": 108.55, "s": 112.09, "g": 0}, {"d": "2022-10", "c": 107.36, "s": 110.96, "g": 0}, {"d": "2022-11", "c": 112.05, "s": 107.17, "g": 1}, {"d": "2022-12", "c": 113.46, "s": 108.57, "g": 1}, {"d": "2023-01", "c": 116.76, "s": 111.21, "g": 1}, {"d": "2023-02", "c": 114.35, "s": 111.21, "g": 1}, {"d": "2023-03", "c": 115.67, "s": 111.21, "g": 1}, {"d": "2023-04", "c": 115.17, "s": 111.21, "g": 1}, {"d": "2023-05", "c": 113.94, "s": 111.21, "g": 1}, {"d": "2023-06", "c": 113.78, "s": 111.21, "g": 1}, {"d": "2023-07", "c": 114.23, "s": 111.21, "g": 1}, {"d": "2023-08", "c": 113.0, "s": 111.21, "g": 1}, {"d": "2023-09", "c": 112.36, "s": 111.21, "g": 1}, {"d": "2023-10", "c": 111.98, "s": 111.21, "g": 1}, {"d": "2023-11", "c": 115.17, "s": 111.21, "g": 1}, {"d": "2023-12", "c": 117.04, "s": 112.21, "g": 1}, {"d": "2024-01", "c": 116.15, "s": 112.21, "g": 1}, {"d": "2024-02", "c": 116.05, "s": 112.21, "g": 1}, {"d": "2024-03", "c": 116.36, "s": 112.44, "g": 1}, {"d": "2024-04", "c": 115.68, "s": 112.44, "g": 1}, {"d": "2024-05", "c": 116.36, "s": 112.74, "g": 1}, {"d": "2024-06", "c": 116.42, "s": 113.14, "g": 1}, {"d": "2024-07", "c": 117.12, "s": 113.92, "g": 1}, {"d": "2024-08", "c": 119.63, "s": 115.87, "g": 1}, {"d": "2024-09", "c": 121.3, "s": 117.33, "g": 1}, {"d": "2024-10", "c": 119.38, "s": 117.33, "g": 1}, {"d": "2024-11", "c": 118.85, "s": 117.33, "g": 1}, {"d": "2024-12", "c": 117.87, "s": 117.33, "g": 1}, {"d": "2025-01", "c": 119.34, "s": 117.33, "g": 1}, {"d": "2025-02", "c": 120.12, "s": 117.33, "g": 1}, {"d": "2025-03", "c": 122.33, "s": 118.02, "g": 1}, {"d": "2025-04", "c": 124.28, "s": 119.72, "g": 1}, {"d": "2025-05", "c": 125.83, "s": 121.18, "g": 1}, {"d": "2025-06", "c": 127.81, "s": 122.93, "g": 1}, {"d": "2025-07", "c": 127.19, "s": 122.93, "g": 1}, {"d": "2025-08", "c": 128.49, "s": 123.89, "g": 1}, {"d": "2025-09", "c": 129.47, "s": 124.99, "g": 1}, {"d": "2025-10", "c": 128.9, "s": 124.99, "g": 1}, {"d": "2025-11", "c": 129.91, "s": 125.74, "g": 1}, {"d": "2025-12", "c": 131.87, "s": 127.44, "g": 1}, {"d": "2026-01", "c": 134.11, "s": 129.33, "g": 1}, {"d": "2026-02", "c": 134.83, "s": 130.28, "g": 1}, {"d": "2026-03", "c": 134.86, "s": 130.75, "g": 1}, {"d": "2026-04", "c": 136.37, "s": 132.15, "g": 1}, {"d": "2026-05", "c": 136.49, "s": 132.65, "g": 1}, {"d": "2026-06", "c": 135.93, "s": 132.65, "g": 1}];
+var ismChartData = [{"d": "2023-06", "c": 46.0, "s": 49.42, "g": 0}, {"d": "2023-07", "c": 46.4, "s": 49.42, "g": 0}, {"d": "2023-08", "c": 47.6, "s": 49.42, "g": 0}, {"d": "2023-09", "c": 49.0, "s": 49.42, "g": 0}, {"d": "2023-10", "c": 46.7, "s": 49.42, "g": 0}, {"d": "2023-11", "c": 46.6, "s": 49.42, "g": 0}, {"d": "2023-12", "c": 47.1, "s": 49.42, "g": 0}, {"d": "2024-01", "c": 49.1, "s": 49.42, "g": 0}, {"d": "2024-02", "c": 47.8, "s": 49.42, "g": 0}, {"d": "2024-03", "c": 50.3, "s": 45.98, "g": 1}, {"d": "2024-04", "c": 49.2, "s": 45.98, "g": 1}, {"d": "2024-05", "c": 48.7, "s": 45.98, "g": 1}, {"d": "2024-06", "c": 48.5, "s": 45.98, "g": 1}, {"d": "2024-07", "c": 46.8, "s": 45.98, "g": 1}, {"d": "2024-08", "c": 47.2, "s": 45.98, "g": 1}, {"d": "2024-09", "c": 47.2, "s": 45.98, "g": 1}, {"d": "2024-10", "c": 46.5, "s": 45.98, "g": 1}, {"d": "2024-11", "c": 48.4, "s": 45.98, "g": 1}, {"d": "2024-12", "c": 49.2, "s": 45.98, "g": 1}, {"d": "2025-01", "c": 50.9, "s": 47.17, "g": 1}, {"d": "2025-02", "c": 50.3, "s": 47.17, "g": 1}, {"d": "2025-03", "c": 49.0, "s": 47.17, "g": 1}, {"d": "2025-04", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-05", "c": 48.5, "s": 47.17, "g": 1}, {"d": "2025-06", "c": 49.0, "s": 47.17, "g": 1}, {"d": "2025-07", "c": 48.0, "s": 47.17, "g": 1}, {"d": "2025-08", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-09", "c": 49.1, "s": 47.17, "g": 1}, {"d": "2025-10", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-11", "c": 48.2, "s": 47.17, "g": 1}, {"d": "2025-12", "c": 47.9, "s": 47.17, "g": 1}, {"d": "2026-01", "c": 52.6, "s": 48.76, "g": 1}, {"d": "2026-02", "c": 52.4, "s": 48.88, "g": 1}, {"d": "2026-03", "c": 52.7, "s": 49.42, "g": 1}, {"d": "2026-04", "c": 52.7, "s": 49.75, "g": 1}, {"d": "2026-05", "c": 54.0, "s": 50.89, "g": 1}];
+var gmiPositions = [{"asset": "Microsoft", "ticker": "MSFT", "trend": "green", "trendChange": false, "price": 397.36, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 36.2, "regime": "Normal", "annVol": 25.6, "books": "T \u00b7 C"}, {"asset": "Sui", "ticker": "SUI", "trend": "green", "trendChange": false, "price": 0.7334, "category": "Crypto", "since": "May 2026", "secular": "rising", "vol30d": 62.2, "regime": "Extreme", "annVol": 77.9, "books": "T \u00b7 C \u00b7 LT"}, {"asset": "Ethereum", "ticker": "ETH", "trend": "red", "trendChange": false, "price": 1624.93, "category": "Crypto", "since": "May 2026", "secular": "rising", "vol30d": 56.4, "regime": "Normal", "annVol": 56.4, "books": "C \u00b7 LT"}, {"asset": "Solana", "ticker": "SOL", "trend": "red", "trendChange": false, "price": 63.28, "category": "Crypto", "since": "Feb 2026", "secular": "rising", "vol30d": 52.2, "regime": "Normal", "annVol": 59.6, "books": "C \u00b7 LT"}, {"asset": "EU Carbon (EUA)", "ticker": "EUA", "trend": "green", "trendChange": false, "price": 27.73, "category": "Commodity", "since": "Apr 2026", "secular": "rising", "vol30d": 24.6, "regime": "Normal", "annVol": 29.8, "books": "C"}, {"asset": "Nasdaq 100", "ticker": "NDX", "trend": "green", "trendChange": false, "price": 28508.0273, "category": "Index", "since": "Apr 2026", "secular": "rising", "vol30d": 23.6, "regime": "Normal", "annVol": 17.0, "books": "C"}, {"asset": "Apple", "ticker": "AAPL", "trend": "green", "trendChange": false, "price": 291.58, "category": "Equity", "since": "Feb 2026", "secular": "rising", "vol30d": 22.9, "regime": "Normal", "annVol": 22.6, "books": "C"}, {"asset": "Tesla", "ticker": "TSLA", "trend": "red", "trendChange": true, "price": 381.59, "category": "Equity", "since": "Jun 2026", "secular": "rising", "vol30d": 47.2, "regime": "Normal", "annVol": 44.6, "books": "C \u00b7 LT"}, {"asset": "Coinbase", "ticker": "COIN", "trend": "green", "trendChange": false, "price": 153.97, "category": "Equity", "since": "Mar 2026", "secular": "rising", "vol30d": 65.7, "regime": "Extreme", "annVol": 70.2, "books": "C \u00b7 LT"}, {"asset": "Dogecoin", "ticker": "DOGE", "trend": "red", "trendChange": true, "price": 0.0829, "category": "Crypto", "since": "Jun 2026", "secular": "rising", "vol30d": 48.1, "regime": "Extreme", "annVol": 63.9, "books": "C"}, {"asset": "DeepBook", "ticker": "DEEP", "trend": "red", "trendChange": true, "price": 0.0156, "category": "Crypto", "since": "Jun 2026", "secular": null, "vol30d": 90.9, "regime": "Normal", "annVol": 84.0, "books": "C"}, {"asset": "Invesco Solar", "ticker": "TAN", "trend": "green", "trendChange": false, "price": 59.16, "category": "Equity", "since": "Jan 2026", "secular": "rising", "vol30d": 55.0, "regime": "Normal", "annVol": 38.7, "books": "C"}, {"asset": "Hims & Hers", "ticker": "HIMS", "trend": "green", "trendChange": false, "price": 27.78, "category": "Equity", "since": "Mar 2026", "secular": "rising", "vol30d": 87.9, "regime": "Extreme", "annVol": 96.8, "books": "C"}, {"asset": "Circle", "ticker": "CRCL", "trend": "red", "trendChange": false, "price": 78.93, "category": "Equity", "since": "Apr 2026", "secular": null, "vol30d": 78.4, "regime": "Extreme", "annVol": 108.9, "books": "C"}, {"asset": "Bitcoin", "ticker": "BTC", "trend": "red", "trendChange": true, "price": 61772.85, "category": "Crypto", "since": "Jun 2026", "secular": "rising", "vol30d": 36.7, "regime": "Normal", "annVol": 39.5, "books": "LT"}, {"asset": "Robinhood", "ticker": "HOOD", "trend": "green", "trendChange": false, "price": 86.36, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 78.8, "regime": "Extreme", "annVol": 68.8, "books": "LT"}];
+var alphaAssets = [{"asset": "Bitcoin", "ticker": "BTC", "trend": "red", "trendChange": true, "price": 61772.85, "category": "Risk Asset", "since": "Jun 2026", "secular": "rising", "vol30d": 36.7, "regime": "Normal", "annVol": 39.5}, {"asset": "Nasdaq 100", "ticker": "NDX", "trend": "green", "trendChange": false, "price": 28508.0273, "category": "Risk Asset", "since": "Apr 2026", "secular": "rising", "vol30d": 23.6, "regime": "Normal", "annVol": 17.0}, {"asset": "Gold", "ticker": "XAU", "trend": "red", "trendChange": false, "price": 4076.08, "category": "Safe Haven", "since": "Mar 2026", "secular": "rising", "vol30d": 23.1, "regime": "Normal", "annVol": 26.6}, {"asset": "Copper", "ticker": "HG", "trend": "green", "trendChange": false, "price": 6.1975, "category": "Cyclical", "since": "Sep 2025", "secular": "rising", "vol30d": 31.7, "regime": "Normal", "annVol": 39.1}, {"asset": "US Dollar Index", "ticker": "DXY", "trend": "green", "trendChange": false, "price": 100.032, "category": "Currency", "since": "Mar 2026", "secular": "falling", "vol30d": 4.0, "regime": "Normal", "annVol": 5.8}, {"asset": "2-Year Yields", "ticker": "US2Y", "trend": "green", "trendChange": false, "price": 4.135, "category": "Rates", "since": "Mar 2026", "secular": "rising", "vol30d": 18.4, "regime": "Normal", "annVol": 19.0}, {"asset": "10-Year Yields", "ticker": "US10Y", "trend": "green", "trendChange": false, "price": 4.548, "category": "Rates", "since": "Mar 2026", "secular": "rising", "vol30d": 16.5, "regime": "Normal", "annVol": 15.5}, {"asset": "Crude Oil", "ticker": "CL", "trend": "green", "trendChange": false, "price": 90.93, "category": "Cyclical", "since": "Feb 2026", "secular": "rising", "vol30d": 43.9, "regime": "Normal", "annVol": 48.3}];
+var positionsMeta = {"source_publication": "GMI June 2026 Monthly", "as_of_positions": "2026-06-10T15:06:00Z", "source": "cached snapshot", "unpriced": [{"name": "Exponential Age Basket", "ticker": "EAB", "books": "LT", "asset_class": "basket"}, {"name": "Exponential Age Digital Asset Fund", "ticker": "EADAF", "books": "LT", "asset_class": "fund"}]};
+var m2Trend = "green";
+var ismTrend = "green";
+var m2Since = "Nov 2022";
+var ismSince = "Mar 2024";
+var ismValue = 54.0;
+
+// __PIPELINE_DATA_END__
+
+document.getElementById("lastUpdated").textContent = lastUpdatedStr;
+document.getElementById("srcPub").textContent = positionsMeta.source_publication || "—";
+
+function formatPrice(p){
+  if(p===null||p===undefined) return "—";
+  if(p>=100) return "$"+p.toLocaleString("en-US",{maximumFractionDigits:0});
+  if(p>=1) return "$"+p.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+  return "$"+p.toLocaleString("en-US",{minimumFractionDigits:4,maximumFractionDigits:4});
+}
+function volClass(v){
+  if(v===null||v===undefined) return {color:"var(--gmi-ink-2)",label:""};
+  if(v>=40) return {color:"var(--hot)",label:"High Risk"};
+  if(v>=20) return {color:"var(--warn)",label:"Risky"};
+  return {color:"var(--pos)",label:"Normal"};
+}
+
+function buildTable(data, tableEl, withBooks){
+  var headers = withBooks
+    ? ["Position","Ticker","Book","Price","30d Vol","Risk","Secular Trend","Weekly Trend","Signal Change","Since"]
+    : ["Asset","Ticker","Price","30d Vol","Risk","Secular Trend","Weekly Trend","Signal Change","Since"];
+  var html = "<thead><tr>";
+  headers.forEach(function(h,i){
+    var leftCols = withBooks ? 3 : 2;
+    html += '<th style="text-align:'+(i<leftCols?'left':i>=headers.length-4?'center':'right')+'">'+h+'</th>';
+  });
+  html += "</tr></thead><tbody>";
+  data.forEach(function(row){
+    html += "<tr>";
+    html += '<td class="inst">'+row.asset+'</td>';
+    html += '<td class="tkr" style="text-align:left">'+row.ticker+'</td>';
+    if(withBooks) html += '<td class="bks" style="text-align:left">'+(row.books||"—")+'</td>';
+    var isYield = row.category==="Rates";
+    html += '<td>'+(isYield? row.price.toFixed(2)+"%" : formatPrice(row.price))+'</td>';
+    var vc = volClass(row.vol30d);
+    if(row.vol30d!==null&&row.vol30d!==undefined){
+      html += '<td><span class="volchip" style="color:'+vc.color+'">'+row.vol30d.toFixed(1)+'%</span></td>';
+      html += '<td><span style="font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:'+vc.color+'">'+vc.label+'</span></td>';
+    } else {
+      html += '<td><span class="subtle">—</span></td><td><span class="subtle">—</span></td>';
+    }
+    if(row.secular){
+      var sUp = row.secular==="rising", sRange = row.secular==="ranging";
+      var sCol = sUp?"var(--pos)":sRange?"var(--warn)":"var(--neg)";
+      var sLab = sUp?"↑ Rising":sRange?"↔ Ranging":"↓ Falling";
+      html += '<td style="text-align:center"><span class="badge" style="color:'+sCol+'">'+sLab+'</span></td>';
+    } else {
+      html += '<td style="text-align:center"><span class="subtle" style="font-size:11px;font-style:italic">n/a</span></td>';
+    }
+    var up = row.trend==="green";
+    html += '<td style="text-align:center"><span class="badge" style="color:'+(up?"var(--pos)":"var(--neg)")+'"><span class="bdot"></span>'+(up?"↑ Rising":"↓ Falling")+'</span></td>';
+    html += row.trendChange
+      ? '<td style="text-align:center"><span class="flipbadge">'+(up?"New Buy":"New Sell")+'</span></td>'
+      : '<td style="text-align:center"><span class="subtle">—</span></td>';
+    html += '<td style="text-align:center;font-size:11.5px;color:var(--gmi-ink-2)">'+(row.since||"—")+'</td>';
+    html += "</tr>";
+  });
+  html += "</tbody>";
+  tableEl.innerHTML = html;
+}
+
+function switchTab(tab){
+  document.getElementById("positionsContent").classList.toggle("hidden", tab!=="positions");
+  document.getElementById("assetsContent").classList.toggle("hidden", tab!=="assets");
+  document.getElementById("tabPositions").classList.toggle("active", tab==="positions");
+  document.getElementById("tabAssets").classList.toggle("active", tab==="assets");
+  document.getElementById("vhint").textContent = tab==="positions"
+    ? "Every open position in the GMI book — auto-synced from the GMI Positions dashboard."
+    : "Macro benchmarks that frame the regime — not necessarily GMI positions.";
+}
+
+// ── Regime banner ──
+(function(){
+  var T = {green:{color:"var(--pos)",label:"Rising"}, red:{color:"var(--neg)",label:"Falling"}};
+  var m2t = T[m2Trend]||T.green, ismt = T[ismTrend]||T.green;
+  document.getElementById("m2Signal").innerHTML =
+    '<span class="regime-dot" style="width:9px;height:9px;background:'+m2t.color+'"></span><span style="color:'+m2t.color+'">'+m2t.label+'</span><span style="font-size:14px;color:var(--gmi-ink-2);font-family:\'Helvetica Neue\',Arial,sans-serif">(Global M2*)</span>';
+  document.getElementById("ismSignal").innerHTML =
+    '<span class="regime-dot" style="width:9px;height:9px;background:'+ismt.color+'"></span><span style="color:'+ismt.color+'">'+ismt.label+'</span><span style="font-size:14px;color:var(--gmi-ink-2);font-family:\'Helvetica Neue\',Arial,sans-serif">(ISM '+(ismValue!=null?ismValue:"")+')</span>';
+  document.getElementById("m2Since").textContent = m2Since;
+  document.getElementById("ismSince").textContent = ismSince;
+
+  var regimes = {
+    "green_green":{label:"Full Cycle Expansion",color:"var(--pos)",desc:"Liquidity and the real economy are both rising. GMI: hold positions with conviction through shorter-term volatility. Use the trend tables to manage your own portfolio volatility."},
+    "green_red":{label:"Early Cycle — Liquidity Leads",color:"var(--early)",desc:"Liquidity is rising but the real economy has not yet confirmed. Accumulation phase where crypto and tech tend to front-run the recovery."},
+    "red_green":{label:"Late Cycle — Liquidity Fading",color:"var(--warn)",desc:"Real economy still rising but liquidity deteriorating. Caution phase — respect weekly trend signals more closely."},
+    "red_red":{label:"Contraction",color:"var(--neg)",desc:"Both liquidity and the real economy falling. Defensive positioning warranted; follow weekly signals with higher conviction."}
+  };
+  var r = regimes[m2Trend+"_"+ismTrend]||regimes.green_green;
+  document.getElementById("regimeDot").style.background = r.color;
+  var lab = document.getElementById("regimeLabel"); lab.textContent = r.label; lab.style.color = r.color;
+  document.getElementById("regimeDesc").textContent = r.desc;
+  document.getElementById("regimeBox").style.borderLeftColor = r.color;
+
+  var el = document.getElementById("m2RocRow");
+  function roc(lbl,v){ if(v==null) return ""; var c=v>=0?"var(--pos)":"var(--neg)";
+    return '<span>'+lbl+' <b style="color:'+c+'">'+(v>=0?"+":"")+v.toFixed(1)+'%</b></span>'; }
+  el.innerHTML = roc("YoY",m2Roc.yoy)+roc("6m/6m",m2Roc.mom6);
+})();
+
+// ── Status bar ──
+(function(){
+  var bar = document.getElementById("statusBar");
+  var names = {"green_green":"Full Expansion","green_red":"Early Cycle","red_green":"Late Cycle","red_red":"Contraction"};
+  var cols = {"green_green":"var(--pos)","green_red":"var(--early)","red_green":"var(--warn)","red_red":"var(--neg)"};
+  var key = m2Trend+"_"+ismTrend;
+  var items = ['<span style="font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase">Regime:</span> <b style="color:'+(cols[key]||"inherit")+'">'+(names[key]||"—")+'</b>'];
+  var flips = {};
+  gmiPositions.concat(alphaAssets).forEach(function(d){ if(d.trendChange) flips[d.ticker]=true; });
+  var ft = Object.keys(flips);
+  items.push(ft.length
+    ? '<span class="chip flip">'+ft.length+' signal change'+(ft.length>1?'s':'')+': '+ft.join(", ")+'</span>'
+    : '<span class="subtle">No signal changes this week</span>');
+  items.push('<span class="subtle">'+gmiPositions.length+' open GMI positions tracked'+(positionsMeta.unpriced.length?(' (+'+positionsMeta.unpriced.length+' unpriced)'):'')+'</span>');
+  bar.innerHTML = items.join('<span class="sep">│</span>');
+})();
+
+// ── SVG mini-chart (light palette) ──
+function renderTrendChart(svgId, data, opts){
+  var svg = document.getElementById(svgId);
+  if(!svg||!data||data.length<2) return;
+  opts = opts||{};
+  var W = svg.getBoundingClientRect().width||400;
+  var H = parseInt(svg.getAttribute("height"))||100;
+  var pad = {t:6,r:8,b:20,l:8}, cW = W-pad.l-pad.r, cH = H-pad.t-pad.b;
+  var all = data.map(function(d){return d.c}).concat(data.map(function(d){return d.s}));
+  var minV = Math.min.apply(null,all), maxV = Math.max.apply(null,all);
+  var range = maxV-minV||1;
+  minV -= range*(opts.padBot!=null?opts.padBot:.08); maxV += range*(opts.padTop!=null?opts.padTop:.08);
+  range = maxV-minV;
+  function x(i){return pad.l+(i/(data.length-1))*cW}
+  function y(v){return pad.t+(1-(v-minV)/range)*cH}
+  var ns = "http://www.w3.org/2000/svg";
+  svg.innerHTML = "";
+  for(var gi=0;gi<=4;gi++){
+    var gl = document.createElementNS(ns,"line"), gy = pad.t+(gi/4)*cH;
+    gl.setAttribute("x1",pad.l);gl.setAttribute("x2",pad.l+cW);gl.setAttribute("y1",gy);gl.setAttribute("y2",gy);
+    gl.setAttribute("stroke","#e8edf2");gl.setAttribute("stroke-width","1");gl.setAttribute("stroke-dasharray","2,4");
+    svg.appendChild(gl);
+  }
+  for(var i=1;i<data.length;i++){
+    if(data[i].g!==data[i-1].g) continue;
+    var ln = document.createElementNS(ns,"line");
+    ln.setAttribute("x1",x(i-1));ln.setAttribute("y1",y(data[i-1].s));
+    ln.setAttribute("x2",x(i));ln.setAttribute("y2",y(data[i].s));
+    ln.setAttribute("stroke",data[i].g?"rgba(31,138,91,0.65)":"rgba(192,57,43,0.65)");
+    ln.setAttribute("stroke-width","2");ln.setAttribute("stroke-dasharray","4,3");
+    svg.appendChild(ln);
+  }
+  var p = "M"+x(0)+","+y(data[0].c);
+  for(var i=1;i<data.length;i++) p += "L"+x(i)+","+y(data[i].c);
+  var cl = document.createElementNS(ns,"path");
+  cl.setAttribute("d",p);cl.setAttribute("fill","none");
+  cl.setAttribute("stroke","#2C4C6B");cl.setAttribute("stroke-width","1.75");cl.setAttribute("stroke-linejoin","round");
+  svg.appendChild(cl);
+  var li = data.length-1, dot = document.createElementNS(ns,"circle");
+  dot.setAttribute("cx",x(li));dot.setAttribute("cy",y(data[li].c));dot.setAttribute("r","3.5");
+  dot.setAttribute("fill",data[li].g?"#1f8a5b":"#c0392b");dot.setAttribute("stroke","#fff");dot.setAttribute("stroke-width","1.5");
+  svg.appendChild(dot);
+  [0,Math.floor(data.length/2),data.length-1].forEach(function(idx){
+    var t = document.createElementNS(ns,"text");
+    t.setAttribute("x",x(idx));t.setAttribute("y",H-2);
+    t.setAttribute("text-anchor",idx===0?"start":idx===data.length-1?"end":"middle");
+    t.setAttribute("fill","#6b86a0");t.setAttribute("font-size","10");
+    t.setAttribute("font-family","'Helvetica Neue',Arial,sans-serif");
+    t.textContent = data[idx].d;
+    svg.appendChild(t);
+  });
+}
+renderTrendChart("m2Chart", m2ChartData, {padTop:.2,padBot:.16});
+renderTrendChart("ismChart", ismChartData, {padTop:.2,padBot:.16});
+
+// ── Tables + stats ──
+buildTable(gmiPositions, document.getElementById("positionsTable"), true);
+buildTable(alphaAssets, document.getElementById("assetsTable"), false);
+(function(){
+  var up = gmiPositions.filter(function(r){return r.trend==="green"}).length;
+  document.getElementById("posStat").textContent = gmiPositions.length+" positions · "+up+" rising / "+(gmiPositions.length-up)+" falling";
+  var au = alphaAssets.filter(function(r){return r.trend==="green"}).length;
+  document.getElementById("assetStat").textContent = alphaAssets.length+" assets · "+au+" rising / "+(alphaAssets.length-au)+" falling";
+  var un = document.getElementById("unpricedNote");
+  if(positionsMeta.unpriced.length){
+    un.innerHTML = "<b>Also open, no market feed:</b> "+positionsMeta.unpriced.map(function(u){
+      return u.name+" ("+u.books+")";
+    }).join(" · ")+" — tracked at mark/NAV in the GMI Positions dashboard.";
+  } else { un.style.display = "none"; }
+})();
+</script>
+</body>
+</html>
