@@ -1,13 +1,16 @@
 {
   "schema_version":"1.0",
-  "source_publication":"GMI June 2026 Monthly",
+  "source_publication":"GMI June 2026 Monthly + Flash Update 09 Jun",
   "as_of_prices":"2026-06-10T15:06:00Z",
   "sections":{
     "tactical":{"name":"Tactical",
       "definition":"The shorter-horizon rotation book - 1 to 6 month in duration. Smaller sized positions to add a bit of juice or to hedge. Trades expressed with a defined catalyst or relative-value setup, sized to be added and cut on the technicals rather than held through the cycle.",
-      "ai_commentary":"The June rotation is done — Google banked and the proceeds now working in MSFT from 464, marked -13% against a 402.70 tape; underwater early but the thesis is unchanged. QQQ is also closed per the June book, +68% banked ahead of the SpaceX supply event, leaving MSFT and the SUI tactical drag (-66%) as the only lines in the sleeve.",
+      "ai_commentary":"The stink bids filled on the flush — ETH at 1,650, SOL at 65 and SUI at 0.75 per the 09 Jun Flash Update, bought ~2sd oversold into the SpaceX/Google supply distortion as 1-6 month trades, all roughly flat at today's marks. They join MSFT from 464 (-13% against a 402.70 tape; rotation thesis unchanged) and the April SUI lot (-66%, beta on the core call). QQQ closed at +68% per the June book.",
       "positions":[
         {"id":"tac-msft","instrument":"Microsoft","ticker":"MSFT","asset_class":"equity","entry_date":"Jun '26","entry_price":464,"current_price":402.7,"price_source":"Yahoo live","state":"live","itd_pct":-13.2,"status":"open"},
+        {"id":"tac-eth-stink","instrument":"Ethereum","ticker":"ETH","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":1650,"current_price":1641.38,"price_source":"Crypto.com live","state":"live","itd_pct":-0.5,"status":"open"},
+        {"id":"tac-sol-stink","instrument":"Solana","ticker":"SOL","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":65,"current_price":64.87,"price_source":"Crypto.com live","state":"live","itd_pct":-0.2,"status":"open"},
+        {"id":"tac-sui-stink","instrument":"SUI (stink bid)","ticker":"SUI","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":0.75,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":0.5,"status":"open"},
         {"id":"tac-qqq","instrument":"QQQ","ticker":"QQQ","asset_class":"etf","entry_date":"22 Apr '25","entry_price":438.82,"current_price":738.1,"price_source":"closed (GMI Jun '26)","state":"live","itd_pct":68.2,"status":"closed","close_price":738.1,"close_date":"2026-06-01","realized_itd":68.2},
         {"id":"tac-sui","instrument":"SUI (tactical)","ticker":"SUI","asset_class":"crypto","entry_date":"22 Apr '25","entry_price":2.2,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":-65.7,"status":"open"}
       ]},
@@ -59,11 +62,11 @@
       {"instrument":"Coinbase","ticker":"COIN","entry_date":"28 Mar '22","entry_price":101.6,"itd_pct":86.1},
       {"instrument":"Meta","ticker":"META","entry_date":"28 Mar '22","entry_price":189.9,"itd_pct":233.1},
       {"instrument":"Galaxy","ticker":"GLXY","entry_date":"28 Mar '22","entry_price":18.8,"itd_pct":57.2},
-      {"instrument":"SMH ETF","ticker":"SMH","entry_date":"28 Mar '22","entry_price":122.7,"itd_pct":388.0},
+      {"instrument":"SMH ETF","ticker":"SMH","entry_date":"28 Mar '22","entry_price":122.7,"itd_pct":388},
       {"instrument":"SMT LN","ticker":"SMT","entry_date":"28 Mar '22","entry_price":10.5,"itd_pct":94.3},
       {"instrument":"Tesla","ticker":"TSLA","entry_date":"28 Mar '22","entry_price":249.2,"itd_pct":74.9},
       {"instrument":"BITB ETF","ticker":"BITB","entry_date":"05 Feb '23","entry_price":23.6,"itd_pct":68.8},
-      {"instrument":"AMZN","ticker":"AMZN","entry_date":"05 Feb '23","entry_price":170.2,"itd_pct":59.0},
+      {"instrument":"AMZN","ticker":"AMZN","entry_date":"05 Feb '23","entry_price":170.2,"itd_pct":59},
       {"instrument":"CIBR ETF","ticker":"CIBR","entry_date":"05 Feb '23","entry_price":56.2,"itd_pct":58.3},
       {"instrument":"RKLB","ticker":"RKLB","entry_date":"27 Jan '25","entry_price":29.4,"itd_pct":387.5},
       {"instrument":"NVDA","ticker":"NVDA","entry_date":"27 Jan '25","entry_price":118.4,"itd_pct":78.3}

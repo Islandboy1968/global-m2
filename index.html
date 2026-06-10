@@ -194,13 +194,6 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">06</span><h2>US bank securities held &mdash; deficit monetization</h2><span class="ccap" id="monetCap">&mdash;</span></div>
-    <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>US bank securities held &mdash; toggle Level / YoY / 6m6m</span></div>
-      <div class="chartbox"><canvas id="monetChart"></canvas></div>
-      <div class="ctrls"><div class="ranges"></div><div class="lagctl" id="monetTog"><span class="lagk">view</span></div></div>
-      <div class="src">US banks absorbing Treasury issuance (securities = total bank credit &minus; loans, ~$5.7tn) &mdash; the deficit-monetization engine GMI expects to carry the cycle into a super-cycle. It activates from ~Aug 2025, when the reverse-repo buffer (peak $2.55tn, Dec 2022) drained to zero and banks became the marginal funder. <b>Watch the 6m/6m rate:</b> eSLR relief (mandatory Apr 2026) unlocks a Fed-estimated $2&ndash;3tn of bank capacity, but absorption (~$230bn/yr) is still in first gear pending a return of risk appetite &mdash; an acceleration here is the leading tell the Treasury&ndash;Bank liquidity regime is delivering. FRED &middot; Global Macro Investor</div>
-    </div>
   </section>
 
   <!-- ============ US TAB ============ -->
@@ -263,6 +256,14 @@
       <div class="chartbox"><canvas id="usBtc"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED / LSEG Datastream &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">08</span><h2>US bank securities held &mdash; deficit monetization</h2><span class="ccap" id="monetCap">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>US bank securities held &mdash; toggle Level / YoY / 6m6m</span></div>
+      <div class="chartbox"><canvas id="monetChart"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl" id="monetTog"><span class="lagk">view</span></div></div>
+      <div class="src">US banks absorbing Treasury issuance (securities = total bank credit &minus; loans, ~$5.7tn) &mdash; the deficit-monetization engine GMI expects to carry the cycle into a super-cycle. It activates from ~Aug 2025, when the reverse-repo buffer (peak $2.55tn, Dec 2022) drained to zero and banks became the marginal funder. <b>Watch the 6m/6m rate:</b> eSLR relief (mandatory Apr 2026) unlocks a Fed-estimated $2&ndash;3tn of bank capacity, but absorption (~$230bn/yr) is still in first gear pending a return of risk appetite &mdash; an acceleration here is the leading tell the Treasury&ndash;Bank liquidity regime is delivering. FRED &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -1027,40 +1028,15 @@ const GLOBAL = (function(){
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
   charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
   charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
-  // ---- 06 · US bank securities held — the deficit-monetization signal ----
-  // One line, toggled Level / YoY / 6m-on-6m annualised (no overlay). The signal
-  // activates once the RRP buffer emptied (~Aug 2025); full history for context.
-  const bsRaw=(TL.monetization&&TL.monetization.bank_securities)||[];
-  const bsLvl=bsRaw.map(r=>({x:Date.parse(r.d), y:r.v*1000}));
-  const bsYoY=[], bs6m=[];
-  for(let i=0;i<bsRaw.length;i++){ const x=Date.parse(bsRaw[i].d);
-    if(i>=12 && bsRaw[i-12].v) bsYoY.push({x, y:(bsRaw[i].v/bsRaw[i-12].v-1)*100});
-    if(i>=6  && bsRaw[i-6].v)  bs6m.push({x, y:(Math.pow(bsRaw[i].v/bsRaw[i-6].v,2)-1)*100}); }
-  const bsModes={"Level":{d:bsLvl,f:fmtBN},"YoY":{d:bsYoY,f:fmtPCT},"6m/6m":{d:bs6m,f:fmtPCT}};
-  const bsDS={data:bsLvl,borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05};
-  charts.push(new Chart(monetChart,{type:"line",data:{datasets:[bsDS]},options:opts(BLACK, fmtBN)}));
-  document.getElementById("monetCap").textContent=
-    "Held $"+(bsRaw.length?(+bsRaw[bsRaw.length-1].v).toFixed(2):"—")+"tn · YoY "+p1(lastY(bsYoY))
-    +" · 6m/6m "+p1(lastY(bs6m))+" · "+monthYear(DATA.updated);
   charts.forEach((c,i)=>c.$auto=(i<3));
-  [momoChart,levelChart,yoyChart,btcChart,ndxChart,monetChart].forEach((cv,i)=>attach(cv,charts[i]));
-  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[5]);
+  [momoChart,levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]);
   controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
   controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
   // open the momentum panel on a recent window so the % axis isn't compressed by early-history swings
   (function(){const c=charts[0]; const ext=xExtent(c);
     c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);
     [...c.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));})();
-  // chart 06 · Level / YoY / 6m6m toggle (one line at a time), default Level, 2015+ window
-  (function(){const c=charts[5]; if(!c) return; const ext=xExtent(c);
-    c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1];
-    const box=document.getElementById("monetTog"); if(!box){ fitY(c); return; }
-    const btns={};
-    const setMode=name=>{ bsDS.data=bsModes[name].d; c.options.scales.y.ticks.callback=bsModes[name].f;
-      Object.keys(btns).forEach(k=>btns[k].classList.toggle("on",k===name)); fitY(c); c.update(); };
-    ["Level","YoY","6m/6m"].forEach(name=>{ const b=document.createElement("button"); b.textContent=name;
-      b.onclick=()=>setMode(name); btns[name]=b; box.appendChild(b); });
-    setMode("Level");})();
   return {charts};
 })();
 
@@ -1107,11 +1083,35 @@ const US = (function(){
   const DEF=(U.lag_days||90);
   charts.push(overlay(usNdx, PBN("vn"), (DATA.ndx||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Nasdaq 100 (RHS)", "US Total Liquidity, Broad ($BN)", DEF));
   charts.push(overlay(usBtc, PBN("vo"), (DATA.btc||[]).map(a=>({x:Date.parse(a.d)-DEF*DAY, y:a.p})), "Bitcoin (RHS)", "US Total Liquidity, Narrow ($BN)", DEF));
+  // ---- 08 · US bank securities held — deficit monetization (Level / YoY / 6m6m toggle) ----
+  const bsRaw=((DATA.total_liquidity&&DATA.total_liquidity.monetization&&DATA.total_liquidity.monetization.bank_securities))||[];
+  const bsLvl=bsRaw.map(r=>({x:Date.parse(r.d), y:r.v*1000}));
+  const bsYoY=[], bs6m=[];
+  for(let i=0;i<bsRaw.length;i++){
+    if(i>=12 && bsRaw[i-12].v) bsYoY.push({x:Date.parse(bsRaw[i].d), y:(bsRaw[i].v/bsRaw[i-12].v-1)*100});
+    if(i>=6  && bsRaw[i-6].v)  bs6m.push({x:Date.parse(bsRaw[i].d), y:(Math.pow(bsRaw[i].v/bsRaw[i-6].v,2)-1)*100}); }
+  const bsModes={"Level":{d:bsLvl,f:fmtBN},"YoY":{d:bsYoY,f:fmtPCT},"6m/6m":{d:bs6m,f:fmtPCT}};
+  const bsDS={data:bsLvl,borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05};
+  charts.push(new Chart(monetChart,{type:"line",data:{datasets:[bsDS]},options:opts(BLACK, fmtBN)}));
+  { const _lv=a=>a.length?a[a.length-1].y:null, _p=v=>v==null?"—":(v>=0?"+":"")+v.toFixed(1)+"%";
+    document.getElementById("monetCap").textContent=
+      "Held $"+(bsRaw.length?(+bsRaw[bsRaw.length-1].v).toFixed(2):"—")+"tn · YoY "+_p(_lv(bsYoY))
+      +" · 6m/6m "+_p(_lv(bs6m))+" · "+monthYear(DATA.updated); }
   charts.forEach((c,i)=>c.$auto=(i<5));
-  [usLevel,usYoy,usLevelOld,usYoyOld,usM2Yoy,usNdx,usBtc].forEach((cv,i)=>attach(cv,charts[i]));
-  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]); controls(charts[4]);
+  [usLevel,usYoy,usLevelOld,usYoyOld,usM2Yoy,usNdx,usBtc,monetChart].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[3]); controls(charts[4]); controls(charts[7]);
   controls(charts[5],{asset:DATA.ndx, leftLabel:"US Total Liquidity, Broad ($BN)", pairLbl:"US TGL (Broad) vs NDX", leadEl:document.getElementById("usNdxLead"), def:DEF});
   controls(charts[6],{asset:DATA.btc, leftLabel:"US Total Liquidity, Narrow ($BN)", pairLbl:"US TGL (Narrow) vs BTC", leadEl:document.getElementById("usBtcLead"), def:DEF});
+  // chart 08 · Level / YoY / 6m6m toggle, default Level, 2015+ window
+  (function(){const c=charts[7]; if(!c) return; const ext=xExtent(c);
+    c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1];
+    const box=document.getElementById("monetTog"); if(!box){ fitY(c); return; }
+    const btns={};
+    const setMode=name=>{ bsDS.data=bsModes[name].d; c.options.scales.y.ticks.callback=bsModes[name].f;
+      Object.keys(btns).forEach(k=>btns[k].classList.toggle("on",k===name)); fitY(c); c.update(); };
+    ["Level","YoY","6m/6m"].forEach(name=>{ const b=document.createElement("button"); b.textContent=name;
+      b.onclick=()=>setMode(name); btns[name]=b; box.appendChild(b); });
+    setMode("Level");})();
   return {charts};
 })();
 

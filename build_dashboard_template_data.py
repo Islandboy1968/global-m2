@@ -10,7 +10,7 @@ The dashboard reads this baked-in data via the `injected` adapter — no live
 browser fetch, no CORS, no hang. Run hourly by the workflow; the in-progress
 weekly bar carries the latest (delayed) price, so each run refreshes "now".
 """
-import json, os, time, datetime as dt
+import json, os, subprocess, time, datetime as dt
 import tv_pull
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -86,24 +86,43 @@ def main():
     print("wrote", data_path, "updated", updated)
 
     build_beta(banner + body)
+    build_analysis()
 
 
 def build_beta(data_js):
-    """Assemble the single-file beta: inline data + compute + sources into the
-    shell (assets stay on their default `injected` source — no browser fetch)."""
-    shell = open(os.path.join(TPL, "compounding-machine.html")).read()
+    """Assemble the single-file betas: inline data + compute + sources into each
+    shell (assets stay on their default `injected` source — no browser fetch).
+    Two skins share one engine: the RV-styled shell and the GMI-branded shell
+    (compounding-machine-gmi.html, the skin that accompanies the GMI dashboards)."""
     compute = open(os.path.join(TPL, "lib", "compute.js")).read()
     sources = open(os.path.join(TPL, "lib", "sources.js")).read()
 
     def inline(js):
         return "<script>\n" + js + "\n</scr" + "ipt>"
 
-    shell = shell.replace('<script src="data/data.js"></script>', inline(data_js))
-    shell = shell.replace('<script src="lib/compute.js"></script>', inline(compute))
-    shell = shell.replace('<script src="lib/sources.js"></script>', inline(sources))
-    out = os.path.join(TPL, "compounding-machine-beta.html")
-    open(out, "w").write(shell)
-    print("rebuilt", out)
+    for shell_name, out_name in [
+        ("compounding-machine.html", "compounding-machine-beta.html"),
+        ("compounding-machine-gmi.html", "compounding-machine-gmi-beta.html"),
+    ]:
+        shell = open(os.path.join(TPL, shell_name)).read()
+        shell = shell.replace('<script src="data/data.js"></script>', inline(data_js))
+        shell = shell.replace('<script src="lib/compute.js"></script>', inline(compute))
+        shell = shell.replace('<script src="lib/sources.js"></script>', inline(sources))
+        out = os.path.join(TPL, out_name)
+        open(out, "w").write(shell)
+        print("rebuilt", out)
+
+
+def build_analysis():
+    """Emit data/analysis.json — the machine-readable insight feed. Runs the
+    SAME lib/compute.js the dashboard executes (under Node) so the JSON can
+    never drift from what the page shows. Fail-soft: a Node failure keeps the
+    previous analysis.json (its own `updated` stamp exposes the staleness) and
+    never blocks the data refresh."""
+    try:
+        subprocess.run(["node", os.path.join(TPL, "build_analysis.js")], check=True)
+    except Exception as ex:
+        print("WARNING: analysis.json refresh failed (%r) — keeping previous file" % (ex,))
 
 
 if __name__ == "__main__":
