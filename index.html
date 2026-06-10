@@ -1039,6 +1039,9 @@ const GLOBAL = (function(){
   const bsModes={"Level":{d:bsLvl,f:fmtBN},"YoY":{d:bsYoY,f:fmtPCT},"6m/6m":{d:bs6m,f:fmtPCT}};
   const bsDS={data:bsLvl,borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05};
   charts.push(new Chart(monetChart,{type:"line",data:{datasets:[bsDS]},options:opts(BLACK, fmtBN)}));
+  document.getElementById("monetCap").textContent=
+    "Held $"+(bsRaw.length?(+bsRaw[bsRaw.length-1].v).toFixed(2):"—")+"tn · YoY "+p1(lastY(bsYoY))
+    +" · 6m/6m "+p1(lastY(bs6m))+" · "+monthYear(DATA.updated);
   charts.forEach((c,i)=>c.$auto=(i<3));
   [momoChart,levelChart,yoyChart,btcChart,ndxChart,monetChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[5]);
