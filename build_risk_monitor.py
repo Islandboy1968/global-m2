@@ -186,8 +186,10 @@ def make_alpha_html(html):
     html = sub(html, 'document.getElementById("tierTag").textContent = tags[tab] || "RV PRO";',
                      'document.getElementById("tierTag").textContent = tags[tab] || "RV ALPHA";')
 
+    # Pro labels this tab "Assets" (P&E request); on the Alpha page it is the
+    # headline tab, so it carries the tier name.
     html = sub(html, """    <button class="tab-btn active" id="tabPro" onclick="switchTab('pro')">RV Pro Positions</button>
-    <button class="tab-btn" id="tabAlpha" onclick="switchTab('alpha')">RV Alpha Trends</button>""",
+    <button class="tab-btn" id="tabAlpha" onclick="switchTab('alpha')">Assets</button>""",
                      """    <button class="tab-btn active" id="tabAlpha" onclick="switchTab('alpha')">RV Alpha Trends</button>
     <button class="tab-btn" id="tabPro" onclick="switchTab('pro')">RV Pro Positions</button>""")
 

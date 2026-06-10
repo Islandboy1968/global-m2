@@ -67,7 +67,10 @@ Two baked pages, same data block, refreshed together by the same pipeline run:
 `build_risk_monitor.py` (presentation only, data identical): `isProSubscriber=false`,
 tier pill reads **RV ALPHA**, the **RV Alpha Trends** tab is first and opens by default,
 and the Pro table shows the first **3** positions with the rest blurred behind the
-paywall (so subscribers can see there's more). Never edit `alpha.html` by hand — it is
+paywall (so subscribers can see there's more). On the Pro page the same tab is
+labelled **Assets** (P&E request); the upgrade button opens the pricing page in a
+new tab (`target=_blank`) because the RV iframe sandbox blocks top-level navigation;
+both pages carry narrow dark scrollbars to match the RV shell. Never edit `alpha.html` by hand — it is
 overwritten on every refresh; change the transforms in `make_alpha_html()` instead.
 Each transform anchor is asserted exactly-once, so a redesign of `index.html` that
 breaks the derivation fails the build loudly rather than shipping a stale Alpha page.
