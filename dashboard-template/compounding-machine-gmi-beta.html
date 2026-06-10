@@ -24,7 +24,7 @@
   @font-face{font-family:"AT Aero";src:url("../fonts/AtAero-Medium.woff2") format("woff2"),url("../fonts/AtAero-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
   :root{
     --pink:#f12a5a; --ink:#131316;
-    --mut:rgba(19,19,22,.6); --mut2:rgba(19,19,22,.45); --faint:rgba(19,19,22,.35);
+    --mut:rgba(19,19,22,.72); --mut2:rgba(19,19,22,.58); --faint:rgba(19,19,22,.45);
     --line:rgba(19,19,22,.12); --grid:rgba(19,19,22,.07);
     --panel:linear-gradient(180deg,#ECC2EA 0%,#F8DDEF 60%,#FBE7F2 100%);
     --green:#15803d; --red:#c81e1e; --gold:#b45309; --purple:#7c3aed;
@@ -454,7 +454,7 @@ const { ComposedChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cartesi
 
 // GMI light palette — token-for-token from the live dashboard (../index.html).
 const C = {
-  ink:"#131316", mut:"rgba(19,19,22,.6)", mut2:"rgba(19,19,22,.45)", faint:"rgba(19,19,22,.35)",
+  ink:"#131316", mut:"rgba(19,19,22,.72)", mut2:"rgba(19,19,22,.58)", faint:"rgba(19,19,22,.45)",
   line:"rgba(19,19,22,.12)", grid:"rgba(19,19,22,.07)",
   pink:"#f12a5a", green:"#15803d", red:"#c81e1e", gold:"#b45309", purple:"#7c3aed",
   buyDot:"#16a34a", sellDot:"#dc2626",
@@ -493,7 +493,7 @@ function yearTicks(min,max){
 
 // ---------- atoms ----------
 function Eyebrow({children,color=C.mut,style}){
-  return <div style={{fontFamily:MONO,fontSize:10.5,letterSpacing:".2em",textTransform:"uppercase",color,fontWeight:500,...style}}>{children}</div>;
+  return <div style={{fontFamily:MONO,fontSize:11.5,letterSpacing:".2em",textTransform:"uppercase",color,fontWeight:500,...style}}>{children}</div>;
 }
 
 function Segmented({options,value,onChange,size="md"}){
@@ -534,7 +534,7 @@ function SectionHead({num,title,cap}){
   return <div style={{display:"flex",flexWrap:"wrap",alignItems:"baseline",gap:"4px 12px",margin:"30px 0 9px"}}>
     <div style={{flexBasis:"100%",fontFamily:MONO,fontSize:11,fontWeight:500,letterSpacing:"2px",color:C.pink}}>{num}</div>
     <h2 style={{fontFamily:TITLE,fontWeight:400,fontSize:27,lineHeight:1,margin:0,color:C.ink}}>{title}</h2>
-    {cap&&<div style={{marginLeft:"auto",fontFamily:MONO,fontSize:12,color:C.mut,textAlign:"right"}}>{cap}</div>}
+    {cap&&<div style={{marginLeft:"auto",fontFamily:MONO,fontSize:12.5,color:C.mut,textAlign:"right"}}>{cap}</div>}
   </div>;
 }
 
@@ -551,18 +551,18 @@ function Slider({label,value,onChange,min,max,step,pre="",suf="",editable=false,
   };
   return(<div style={{marginBottom:20}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-      <span style={{fontSize:13,color:C.mut}}>{label}</span>
+      <span style={{fontSize:14.5,color:C.mut,fontWeight:500}}>{label}</span>
       {editable?(
         <div style={{display:"flex",alignItems:"center",background:"#fff",border:`1px solid ${C.line}`,borderRadius:7,padding:"3px 10px"}}>
           {pre&&<span style={{fontSize:13,color:C.mut2,fontFamily:MONO}}>{pre}</span>}
           <input type="text" inputMode="numeric" value={display}
             onChange={e=>setDraft(e.target.value)} onBlur={commit}
             onKeyDown={e=>{if(e.key==='Enter')e.target.blur();}}
-            style={{background:"transparent",border:"none",outline:"none",color:C.ink,fontFamily:MONO,fontWeight:500,fontSize:15,width:96,textAlign:"right",padding:"2px 0"}}/>
+            style={{background:"transparent",border:"none",outline:"none",color:C.ink,fontFamily:MONO,fontWeight:500,fontSize:16,width:100,textAlign:"right",padding:"2px 0"}}/>
           {suf&&<span style={{fontSize:13,color:C.mut2,fontFamily:MONO,marginLeft:3}}>{suf}</span>}
         </div>
       ):(
-        <span style={{fontSize:15,color:C.ink,fontFamily:MONO,fontWeight:500}}>{pre}{typeof value==='number'&&value>=1000?value.toLocaleString():value}{suf}</span>
+        <span style={{fontSize:16,color:C.ink,fontFamily:MONO,fontWeight:500}}>{pre}{typeof value==='number'&&value>=1000?value.toLocaleString():value}{suf}</span>
       )}
     </div>
     <input type="range" min={min} max={max} step={step} value={value}
@@ -575,16 +575,16 @@ function SummaryTile({label,children,sub}){
   return <div style={{flex:"1 1 0",minWidth:130,padding:"4px 22px"}}>
     <Eyebrow style={{marginBottom:10}}>{label}</Eyebrow>
     <div>{children}</div>
-    {sub&&<div style={{fontSize:11.5,color:C.mut2,marginTop:8}}>{sub}</div>}
+    {sub&&<div style={{fontSize:12.5,color:C.mut2,marginTop:8}}>{sub}</div>}
   </div>;
 }
 
 function Stat({label,value,color=C.ink,sub}){
   return <div style={{background:"#fff",padding:"18px 18px 16px"}}>
     <Eyebrow style={{marginBottom:14}}>{label}</Eyebrow>
-    <div style={{fontSize:23,fontWeight:500,color,fontFamily:MONO,letterSpacing:"-.01em",lineHeight:1}}>{value}</div>
+    <div style={{fontSize:25,fontWeight:500,color,fontFamily:MONO,letterSpacing:"-.01em",lineHeight:1}}>{value}</div>
     <div style={{height:1,background:C.line,margin:"14px 0 10px"}}></div>
-    <div style={{fontSize:11.5,color:C.mut,lineHeight:1.35}}>{sub}</div>
+    <div style={{fontSize:12.5,color:C.mut,lineHeight:1.4}}>{sub}</div>
   </div>;
 }
 
@@ -595,7 +595,7 @@ function ChartLegend({items}){
         {it.dot
           ? <span style={{width:10,height:10,borderRadius:99,background:it.color,display:"inline-block",boxShadow:"0 0 0 2px #fff"}}></span>
           : <span style={{width:22,height:0,borderTop:`${it.w||2}px ${it.dash?"dashed":"solid"} ${it.color}`,display:"inline-block"}}></span>}
-        <span style={{fontFamily:SANS,fontSize:13,color:it.strong?C.ink:C.mut,fontWeight:it.strong?500:400}}>{it.label}</span>
+        <span style={{fontFamily:SANS,fontSize:14,color:it.strong?C.ink:C.mut,fontWeight:500}}>{it.label}</span>
       </div>
     ))}
   </div>;
@@ -673,7 +673,7 @@ function CompoundingMachine(){
   const distCol=distPct<0?C.red:C.green;
 
   const Tip=({active,payload})=>{if(!active||!payload?.length)return null;const d=payload[0]?.payload;if(!d)return null;
-    return(<div style={{background:"rgba(255,255,255,0.97)",border:`1px solid ${C.line}`,padding:"11px 14px",borderRadius:8,fontSize:12,color:C.ink,fontFamily:MONO,boxShadow:"0 2px 10px rgba(19,19,22,.08)"}}>
+    return(<div style={{background:"rgba(255,255,255,0.97)",border:`1px solid ${C.line}`,padding:"11px 14px",borderRadius:8,fontSize:13,color:C.ink,fontFamily:MONO,boxShadow:"0 2px 10px rgba(19,19,22,.08)"}}>
       <div style={{color:C.mut,marginBottom:6,letterSpacing:".02em"}}>{fmtDate(d.date)}</div>
       {d.price!=null&&<div style={{color:C.ink}}>Price&nbsp; {fmtP(d.price)}</div>}
       {d.trend!=null&&<div style={{color:C.pink}}>Trend&nbsp; {fmtP(d.trend)}</div>}
@@ -701,8 +701,8 @@ function CompoundingMachine(){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:20,margin:"26px 0 18px"}}>
         <div style={{maxWidth:680}}>
           <div style={{fontFamily:MONO,fontWeight:500,fontSize:12,letterSpacing:"3px",textTransform:"uppercase",color:C.pink,marginBottom:7}}>{meta.name} · Log Trend Strategy</div>
-          <h1 style={{fontFamily:TITLE,fontWeight:400,fontSize:40,margin:0,lineHeight:.95,letterSpacing:0,color:C.ink}}>The GMI Compounding Machine</h1>
-          <p style={{fontFamily:MONO,fontSize:12,color:C.mut,marginTop:12,marginBottom:0,lineHeight:1.55,maxWidth:560}}>
+          <h1 style={{fontFamily:TITLE,fontWeight:400,fontSize:44,margin:0,lineHeight:.95,letterSpacing:0,color:C.ink}}>The GMI Compounding Machine</h1>
+          <p style={{fontFamily:MONO,fontSize:13,color:C.mut,marginTop:12,marginBottom:0,lineHeight:1.6,maxWidth:580}}>
             Regression frozen end of 2025 — <span style={{color:C.ink}}>{impliedCAGR}%</span> CAGR, 1σ = <span style={{color:C.ink}}>{sd1pct}%</span>.
             Weekly signals, fixed-dollar adds at the lows. The channel extends to {meta.projectToYear} to show the band of possible prices — not a forecast.
           </p>
@@ -721,20 +721,20 @@ function CompoundingMachine(){
         borderColor:inBuyZone?"rgba(22,163,74,0.45)":inSellZone?"rgba(220,38,38,0.4)":C.line}}>
         <div style={{display:"flex",flexWrap:"wrap",alignItems:"stretch",padding:"22px 8px"}}>
           <SummaryTile label={`${meta.ticker} Price`} sub={fmtDateFull(lastDate)}>
-            <span style={{fontSize:26,fontWeight:500,fontFamily:MONO,letterSpacing:"-.01em",color:C.ink}}>{fmtP(lastPrice)}</span>
+            <span style={{fontSize:28,fontWeight:500,fontFamily:MONO,letterSpacing:"-.01em",color:C.ink}}>{fmtP(lastPrice)}</span>
           </SummaryTile>
           <div style={{width:1,background:div,alignSelf:"stretch",margin:"2px 0"}}></div>
           <SummaryTile label="Log Trend" sub="Fair value, frozen Dec '25">
-            <span style={{fontSize:26,fontWeight:500,fontFamily:MONO,color:C.ink,letterSpacing:"-.01em"}}>{fmtP(trendNow)}</span>
+            <span style={{fontSize:28,fontWeight:500,fontFamily:MONO,color:C.ink,letterSpacing:"-.01em"}}>{fmtP(trendNow)}</span>
           </SummaryTile>
           <div style={{width:1,background:div,alignSelf:"stretch",margin:"2px 0"}}></div>
           <SummaryTile label="Distance to Trend" sub="Price vs fair value">
-            <span style={{fontSize:26,fontWeight:500,fontFamily:MONO,color:distCol,letterSpacing:"-.01em"}}>{distPct>0?"+":""}{distPct}%</span>
+            <span style={{fontSize:28,fontWeight:500,fontFamily:MONO,color:distCol,letterSpacing:"-.01em"}}>{distPct>0?"+":""}{distPct}%</span>
           </SummaryTile>
           <div style={{width:1,background:div,alignSelf:"stretch",margin:"2px 0"}}></div>
           <SummaryTile label="Signal">
             <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-              <span style={{fontSize:28,fontWeight:500,fontFamily:MONO,color:sigCol,letterSpacing:"-.02em"}}>{currentSigma>0?"+":""}{currentSigma.toFixed(1)}σ</span>
+              <span style={{fontSize:30,fontWeight:500,fontFamily:MONO,color:sigCol,letterSpacing:"-.02em"}}>{currentSigma>0?"+":""}{currentSigma.toFixed(1)}σ</span>
               {inBuyZone&&<Pill tone="buy">Buy zone</Pill>}
               {inSellZone&&<Pill tone="sell">Sell zone</Pill>}
               {!inBuyZone&&!inSellZone&&<Pill tone="neutral">Neutral</Pill>}
@@ -788,9 +788,9 @@ function CompoundingMachine(){
           <ComposedChart data={cd} margin={{top:8,right:16,left:8,bottom:4}}>
             <CartesianGrid stroke={C.grid} vertical={false}/>
             <XAxis dataKey="date" type="number" scale="time" domain={[xMin,xMax]} ticks={yearTicks(xMin,xMax)}
-              tickFormatter={fmtDate} stroke={C.mut2} tick={{fill:C.mut,fontSize:11}} tickLine={false} axisLine={{stroke:C.line}}/>
+              tickFormatter={fmtDate} stroke={C.mut2} tick={{fill:C.mut,fontSize:12.5}} tickLine={false} axisLine={{stroke:C.line}}/>
             <YAxis scale="log" domain={[pMin*0.9,pMax*1.1]} ticks={logTicks(pMin,pMax)} tickFormatter={fmtP}
-              stroke={C.mut2} tick={{fill:C.mut,fontSize:11}} tickLine={false} axisLine={false} width={56}/>
+              stroke={C.mut2} tick={{fill:C.mut,fontSize:12.5}} tickLine={false} axisLine={false} width={56}/>
             <Tooltip content={<Tip/>}/>
             <ReferenceLine x={lastDate} stroke={C.line} strokeDasharray="3 4" label={{value:"now",fill:C.mut2,fontSize:10,position:"insideTopRight"}}/>
             <Line dataKey="upper2" stroke={C.mut2} strokeWidth={1} strokeDasharray="1 5" dot={false} connectNulls isAnimationActive={false}/>
@@ -818,9 +818,9 @@ function CompoundingMachine(){
           <ComposedChart data={pd} margin={{top:8,right:16,left:8,bottom:4}}>
             <CartesianGrid stroke={C.grid} vertical={false}/>
             <XAxis dataKey="date" type="number" scale="time" domain={[xMinV,xMaxV]} ticks={yearTicks(xMinV,xMaxV)}
-              tickFormatter={fmtDate} stroke={C.mut2} tick={{fill:C.mut,fontSize:11}} tickLine={false} axisLine={{stroke:C.line}}/>
+              tickFormatter={fmtDate} stroke={C.mut2} tick={{fill:C.mut,fontSize:12.5}} tickLine={false} axisLine={{stroke:C.line}}/>
             <YAxis scale="log" domain={[vMin*0.9,vMax*1.1]} ticks={logTicks(vMin,vMax)} tickFormatter={fmt$}
-              stroke={C.mut2} tick={{fill:C.mut,fontSize:11}} tickLine={false} axisLine={false} width={56}/>
+              stroke={C.mut2} tick={{fill:C.mut,fontSize:12.5}} tickLine={false} axisLine={false} width={56}/>
             <Tooltip content={<Tip/>}/>
             <Line dataKey="hodl" stroke={C.mut} strokeWidth={1.5} dot={false} isAnimationActive={false} opacity={0.7}/>
             <Line dataKey="pure" stroke={C.purple} strokeWidth={2} dot={false} isAnimationActive={false}/>
@@ -835,7 +835,7 @@ function CompoundingMachine(){
         <div className="ctrl-grid">
           <div>
             <Eyebrow color={C.green} style={{marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${C.line}`}}>Buys ({buys.length}) · {fmt$(buyAmount)} each</Eyebrow>
-            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:12.5}}>
+            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:13.5}}>
               {buys.map((e,i)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 2px",borderBottom:`1px solid ${C.grid}`}}>
                   <span style={{color:C.mut}}>{fmtDateFull(e.date)}</span>
@@ -847,7 +847,7 @@ function CompoundingMachine(){
           </div>
           <div>
             <Eyebrow color={C.red} style={{marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${C.line}`}}>Sells ({sells.length}){sellPct===0?" · disabled":""}</Eyebrow>
-            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:12.5}}>
+            <div style={{maxHeight:240,overflowY:"auto",fontFamily:MONO,fontSize:13.5}}>
               {sells.length===0&&<div style={{color:C.mut2,padding:"8px 2px"}}>No sells — pure compounding mode</div>}
               {sells.map((e,i)=>(
                 <div key={i} style={{display:"flex",justifyContent:"space-between",gap:8,padding:"6px 2px",borderBottom:`1px solid ${C.grid}`}}>
@@ -864,7 +864,7 @@ function CompoundingMachine(){
       {/* HOW TO USE */}
       <SectionHead num="05" title="How to Use It"/>
       <Card style={{marginBottom:8,borderLeft:`4px solid ${C.pink}`}}>
-        <div style={{fontFamily:SANS,fontSize:13.5,color:C.mut,lineHeight:1.7,maxWidth:900}}>
+        <div style={{fontFamily:SANS,fontSize:15,fontWeight:500,color:C.mut,lineHeight:1.7,maxWidth:900}}>
           <p style={{margin:"0 0 12px"}}>
             The big <span style={{color:C.ink,fontFamily:MONO}}>σ</span> reading at the top is the whole signal — how far price sits from its long-run trend. Below <span style={{color:C.green}}>−{buyThreshold}σ</span> is the <span style={{color:C.green}}>buy zone</span> (stretched cheap); above <span style={{color:C.red}}>+{sellThreshold}σ</span> is the <span style={{color:C.red}}>sell zone</span>. Green dots on the chart mark historical adds, red dots mark trims.
           </p>
@@ -877,7 +877,7 @@ function CompoundingMachine(){
         </div>
       </Card>
 
-      <div style={{fontFamily:SANS,fontStyle:"italic",fontSize:11.5,color:C.mut2,textAlign:"center",marginTop:24,lineHeight:1.6}}>
+      <div style={{fontFamily:SANS,fontStyle:"italic",fontSize:12.5,color:C.mut2,textAlign:"center",marginTop:24,lineHeight:1.6}}>
         {srcLabel} · Demonstration only — not investment advice. Past performance and modelled projections do not guarantee future results.
       </div>
 
