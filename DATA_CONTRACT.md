@@ -96,6 +96,11 @@ source, compares the latest complete month to what shipped, and stamps
      "components": {"balance_sheets_tn": …, "m2_tn": …},
      "global_m2": { … }          // broad-money component (47-econ daily), carried as secondary
   },
+  "signals": [                   // computed lead/lag relationships — the SIGNAL layer
+     { "relationship": "total_liquidity_leads_btc", "best_lead_months": …,
+       "correlation": …, "r2": …, "method": "max cross-correlation, monthly, …",
+       "read": "plain-English read" }, …
+  ],
   "indicators": {
      "<block.leaf>": {
         "title","group","role","timing","unit","progress","source","description",
