@@ -173,6 +173,16 @@ def _iter_leaves(data):
     us = data.get("us")
     if isinstance(us, dict) and isinstance(us.get("series"), list):
         yield "us.series", us["series"]
+    # Global Total Liquidity Index + its decomposition (components are parts of the
+    # one index, surfaced so an AI sees the balance-sheet vs M2 split).
+    tl = data.get("total_liquidity")
+    if isinstance(tl, dict):
+        if isinstance(tl.get("series"), list):
+            yield "total_liquidity.series", tl["series"]
+        comps = tl.get("components") or {}
+        for ck in ("balance_sheets", "m2"):
+            if isinstance(comps.get(ck), list):
+                yield f"total_liquidity.components.{ck}", comps[ck]
     for blk in BLOCKS:
         b = data.get(blk)
         if isinstance(b, dict):
@@ -232,17 +242,26 @@ def _summarize_leaf(path, points):
 
 
 def _headline(data):
-    """The dashboard centrepiece: GMI Total Global Liquidity."""
-    s = data.get("summary") or {}
+    """The dashboard centrepiece: the GMI Total Global Liquidity Index (CB balance
+    sheets netted + M2, 10 economies). Global M2 is carried as a secondary
+    component read, not a competing headline."""
+    tl = (data.get("total_liquidity") or {}).get("summary") or {}
+    m2 = data.get("summary") or {}
     return {
-        "metric": "GMI Total Global Liquidity (broad money across 47 economies, "
-                  "USD at spot FX, summed)",
-        "level": s.get("total_tn"),
+        "metric": "GMI Total Global Liquidity Index (central-bank balance sheets "
+                  "netted + M2, summed across 10 major economies in USD)",
+        "level": tl.get("total_tn"),
         "unit": "$ trillions",
-        "yoy_pct": s.get("yoy"),
-        "yoy_3m_pct": s.get("yoy_s"),
-        "as_of": s.get("latest"),
-        "n_economies": s.get("n_economies"),
+        "yoy_pct": tl.get("yoy"),
+        "as_of": tl.get("latest"),
+        "n_economies": tl.get("n_economies"),
+        "components": {"balance_sheets_tn": tl.get("balance_sheets_tn"),
+                       "m2_tn": tl.get("m2_tn")},
+        "global_m2": {"level_tn": m2.get("total_tn"), "yoy_pct": m2.get("yoy"),
+                      "yoy_3m_pct": m2.get("yoy_s"), "as_of": m2.get("latest"),
+                      "n_economies": m2.get("n_economies"),
+                      "note": "broad-money component, 47 economies (daily); a part of "
+                              "the Total Liquidity picture, not the headline"},
     }
 
 
