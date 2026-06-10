@@ -79,6 +79,21 @@ META = {
         "description": "Broad money summed in USD — the private-credit component of the "
                        "Total Liquidity Index."},
 
+    "total_liquidity.monetization.bank_securities": {
+        "title": "US bank securities held (deficit monetization)", "group": "Global Liquidity",
+        "role": "liquidity", "timing": "leading", "unit": "$ trillions", "progress": "higher",
+        "source": "FRED: TOTBKCR − TOTLL",
+        "description": "Treasury & agency securities held by US banks (total bank credit − "
+                       "loans, ~$5.7tn). Banks absorbing Treasury bill issuance — the "
+                       "deficit-monetization engine GMI expects to extend the cycle. Rising."},
+    "total_liquidity.monetization.reverse_repo": {
+        "title": "Fed reverse repo (RRP)", "group": "Global Liquidity",
+        "role": "liquidity", "timing": "leading", "unit": "$ trillions", "progress": "lower",
+        "source": "FRED:RRPONTSYD",
+        "description": "Overnight reverse-repo balance — the buffer that funded bill issuance "
+                       "in 2023-24. Now drained to ~zero, so the monetization baton has passed "
+                       "to the banking system."},
+
     # ---- US net liquidity ----------------------------------------------
     "us.series": {
         "title": "US net liquidity (weekly)", "group": "US Liquidity",

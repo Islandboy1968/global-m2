@@ -164,7 +164,7 @@
 
     <div class="chead"><span class="cnum">02</span><h2>GMI Total Global Liquidity</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity, USD ($BN)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity, USD ($BN)</span><span class="lg pink"><i class="sw pnk" style="border:1px dashed var(--pink);background:transparent"></i>incl. US bank securities (GMI 2025 flagship)</span></div>
       <div class="chartbox"><canvas id="levelChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src">Central-bank balance sheets (netted) + M2 across 10 major economies incl. China, converted to USD &middot; GMI method &middot; Global Macro Investor</div>
@@ -192,6 +192,14 @@
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
+    </div>
+
+    <div class="chead"><span class="cnum">06</span><h2>US deficit monetization &mdash; the bills engine</h2><span class="ccap" id="monetCap">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>Bank securities held ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Reverse repo / RRP ($BN)</span></div>
+      <div class="chartbox"><canvas id="monetChart"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div></div>
+      <div class="src">Banks absorbing Treasury issuance (securities = total bank credit &minus; loans, ~$5.7tn) as the RRP buffer drains to zero &mdash; the deficit-monetization channel GMI expects to carry the cycle into a super-cycle. FRED &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -1003,9 +1011,11 @@ const GLOBAL = (function(){
     {data:mom6,borderColor:"rgba(241,42,90,.4)",borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsMom()}));
 
-  // ---- 02 · Index (level only, full history) ----
+  // ---- 02 · Index (level) + GMI-2025 flagship variant (incl. US bank securities) ----
+  const plusBN=(TL.series_plus_banksec||[]).map(r=>({x:Date.parse(r.d), y:r.v*1000}));
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
+    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05},
+    {data:plusBN,borderColor:PINK,borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
 
   // ---- 03 · Year-on-year (demoted — base-effect distorted, see panel caveat) ----
@@ -1019,9 +1029,17 @@ const GLOBAL = (function(){
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
   charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
   charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
+  // ---- 06 · US deficit monetization — the bills engine ----
+  // Banks hoarding Treasuries (securities = total bank credit − loans) while the
+  // reverse-repo buffer is drained: the channel now extending the cycle.
+  const monetBN=key=>((TL.monetization&&TL.monetization[key])||[]).map(r=>({x:Date.parse(r.d), y:r.v*1000}));
+  charts.push(new Chart(monetChart,{type:"line",data:{datasets:[
+    {data:monetBN("bank_securities"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05},
+    {data:monetBN("reverse_repo"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
+  ]},options:opts(BLACK, fmtBN)}));
   charts.forEach((c,i)=>c.$auto=(i<3));
-  [momoChart,levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
-  controls(charts[0]); controls(charts[1]); controls(charts[2]);
+  [momoChart,levelChart,yoyChart,btcChart,ndxChart,monetChart].forEach((cv,i)=>attach(cv,charts[i]));
+  controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[5]);
   controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
   controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
   // open the momentum panel on a recent window so the % axis isn't compressed by early-history swings
