@@ -156,31 +156,31 @@
 
     <div class="chead"><span class="cnum">01</span><h2>Level &amp; momentum</h2><span class="ccap" id="cap-mom">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>Global M2 level ($BN)</span><span class="lg pink"><i class="sw pnk"></i>3m annualised %</span><span class="lg"><i class="sw" style="background:rgba(241,42,90,.4)"></i>6m annualised %</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity ($BN)</span><span class="lg pink"><i class="sw pnk"></i>3m annualised %</span><span class="lg"><i class="sw" style="background:rgba(241,42,90,.4)"></i>6m annualised %</span></div>
       <div class="chartbox"><canvas id="momoChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src">Annualised rate-of-change of the outright level, 30-day smoothed &middot; the base-effect-free read &middot; LSEG Datastream / Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">02</span><h2>Global M2 (outright)</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
+    <div class="chead"><span class="cnum">02</span><h2>GMI Total Global Liquidity</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>Global M2, USD ($BN)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity, USD ($BN)</span></div>
       <div class="chartbox"><canvas id="levelChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
-      <div class="src">Broad money (M2) across all economies, converted to USD at spot FX &middot; LSEG Datastream &middot; Global Macro Investor</div>
+      <div class="src">Central-bank balance sheets (netted) + M2 across 10 major economies incl. China, converted to USD &middot; GMI method &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">03</span><h2>Global M2 &mdash; Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
+    <div class="chead"><span class="cnum">03</span><h2>GMI Total Global Liquidity &mdash; Year-on-year</h2><span class="ccap" id="cap-yoy">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>Global M2 YoY %</span><span class="lg" style="color:var(--mut2)"><i class="sw" style="background:rgba(19,19,22,.42)"></i>3m avg</span></div>
+      <div class="legend"><span class="lg pink"><i class="sw pnk"></i>GMI Total Global Liquidity YoY %</span><span class="lg" style="color:var(--mut2)"><i class="sw" style="background:rgba(19,19,22,.42)"></i>3m avg</span></div>
       <div class="chartbox"><canvas id="yoyChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
-      <div class="src" style="color:var(--pink)">Base-effect distorted. Easy comps lift YoY into autumn 2026; hard Q1-2027 comps collapse it mechanically. Read Level &amp; momentum (01) for the true impulse.</div>
+      <div class="src">Year-on-year growth of the Total Liquidity Index &middot; reproduces GMI&rsquo;s ~8%/yr global liquidity growth. Read Level &amp; momentum (01) for the base-effect-free impulse.</div>
     </div>
 
     <div class="chead"><span class="cnum">04</span><h2>Liquidity leads Bitcoin</h2><span class="ccap" id="btcLead">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Bitcoin (RHS)</span></div>
       <div class="chartbox"><canvas id="btcChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
@@ -188,7 +188,7 @@
 
     <div class="chead"><span class="cnum">05</span><h2>Liquidity leads Nasdaq 100</h2><span class="ccap" id="ndxLead">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Liquidity Index ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Nasdaq 100 (RHS)</span></div>
       <div class="chartbox"><canvas id="ndxChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
@@ -961,11 +961,12 @@ function controlsFwdLeft(chart, lag){
 const GLOBAL = (function(){
   // Empty series / null summary means the pipeline's global build hit a missing
   // US or CN print and bailed out; sub-builds (US, Big, Cycle, FCI) still ship.
-  if(!DATA || !DATA.series || !DATA.series.length || !DATA.summary){
+  const TL=DATA && DATA.total_liquidity;
+  if(!TL || !TL.series || !TL.series.length || !TL.summary){
     document.getElementById("global-missing").hidden=false; return null;
   }
-  const S=DATA.series, su=DATA.summary;
-  descrGlobal="Broad money across "+su.n_economies+" economies, in US dollars · daily · updated "+monthYear(DATA.updated);
+  const S=TL.series, su=TL.summary;
+  descrGlobal="GMI Total Global Liquidity — central-bank balance sheets (netted) + M2 across "+su.n_economies+" major economies, USD · monthly · updated "+monthYear(DATA.updated);
   document.getElementById("footdate").textContent=monthYear(DATA.updated);
   document.getElementById("cap-lvl").textContent=bn(su.total_tn)+" $BN · "+monthYear(DATA.updated);
   document.getElementById("cap-yoy").textContent="12-month % change · "+su.yoy+"% (3m avg "+su.yoy_s+"%)";
@@ -1016,13 +1017,13 @@ const GLOBAL = (function(){
   const DEF=(DATA.lag_days||90);
   const tglPts=ptsBN("v");
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
-  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
-  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Liquidity Index ($BN)", DEF));
+  charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
+  charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
   charts.forEach((c,i)=>c.$auto=(i<3));
   [momoChart,levelChart,yoyChart,btcChart,ndxChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]);
-  controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
-  controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Liquidity Index ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
+  controls(charts[3],{asset:DATA.btc, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs BTC", leadEl:document.getElementById("btcLead"), def:DEF});
+  controls(charts[4],{asset:DATA.ndx, leftLabel:"GMI Total Global Liquidity ($BN)", pairLbl:"TGL vs NDX", leadEl:document.getElementById("ndxLead"), def:DEF});
   // open the momentum panel on a recent window so the % axis isn't compressed by early-history swings
   (function(){const c=charts[0]; const ext=xExtent(c);
     c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);

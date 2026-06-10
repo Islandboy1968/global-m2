@@ -154,8 +154,21 @@ def build_total_liquidity():
     tn = lambda d: [{"d": m + "-01", "v": round(d[m] / 1e12, 2)} for m in months]
     latest = months[-1]
     yoy = _yoy(total)
+    # YoY map + 3-month trailing average, so the headline series carries the same
+    # {d, v, y, ys} shape the front-end's Global tab expects (drop-in for the old
+    # Global M2 series); ys lets the YoY chart show a smoothed line.
+    yoy_map = {r["d"][:7]: r["v"] for r in yoy}
+    def _trail3(m):
+        ks = [k for k in sorted(yoy_map) if k <= m][-3:]
+        return round(sum(yoy_map[k] for k in ks) / len(ks), 2) if ks else None
+    series_pts = []
+    for m in months:
+        row = {"d": m + "-01", "v": round(total[m] / 1e12, 2)}
+        if m in yoy_map:
+            row["y"], row["ys"] = yoy_map[m], _trail3(m)
+        series_pts.append(row)
     block = {
-        "series": tn(total),                       # the headline index, $tn
+        "series": series_pts,                      # the headline index, $tn (with y/ys)
         "yoy": yoy,
         "components": {                            # decomposition of the ONE index
             "balance_sheets": tn(bs_tot),          # netted CB balance sheets (USD)
@@ -167,6 +180,7 @@ def build_total_liquidity():
             "latest": latest,
             "total_tn": round(total[latest] / 1e12, 2),
             "yoy": yoy[-1]["v"] if yoy else None,
+            "yoy_s": _trail3(latest),
             "n_economies": len(active),
             "balance_sheets_tn": round(bs_tot[latest] / 1e12, 2),
             "m2_tn": round(m2_tot[latest] / 1e12, 2),
