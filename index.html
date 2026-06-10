@@ -402,12 +402,12 @@
       <div class="src">Manufacturing is small in GDP but high-beta and turns first &mdash; the marginal cyclical signal that leads the broad cycle. Slide the lead to test the offset &middot; ISM (via TradingView) &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">04</span><h2>ISM vs Global Total Liquidity</h2><span class="ccap" id="cycIsmLiq">&mdash;</span></div>
+    <div class="chead"><span class="cnum">04</span><h2>ISM vs GMI Total Global Liquidity</h2><span class="ccap" id="cycIsmLiq">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Liquidity Index YoY% (RHS)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>GMI Total Global Liquidity YoY% (RHS)</span></div>
       <div class="chartbox"><canvas id="cycIsmLiqC"></canvas></div>
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
-      <div class="src">Source: ISM (via TradingView) &middot; GMI Total Liquidity Index &middot; Global Macro Investor</div>
+      <div class="src">Source: ISM (via TradingView) &middot; GMI Total Global Liquidity &middot; Global Macro Investor</div>
     </div>
 
     <div class="chead"><span class="cnum">05</span><h2>ISM vs ISM New Orders</h2><span class="ccap" id="cycIsmNo">&mdash;</span></div>
@@ -1134,8 +1134,9 @@ const CYCLE = (function(){
   if(!C || !C.ism || !C.ism.length){ document.getElementById("cycle-missing").hidden=false; return null; }
   const P = arr => (arr||[]).map(r=>({x:Date.parse(r.d), y:r.v}));
   const ism = P(C.ism);
-  // GMI Total Liquidity Index YoY (the global series' y field), reused here as the forward-lead asset
-  const liqYoY = (DATA.series||[]).filter(r=>r.y!=null).map(r=>({d:r.d, v:r.y}));
+  // GMI Total Global Liquidity YoY (3m-avg ys field — smoother than the FX-noisy
+  // daily y), reused here as the forward-lead vs the cycle.
+  const liqYoY = (((DATA.total_liquidity||{}).series)||[]).filter(r=>r.ys!=null).map(r=>({d:r.d, v:r.ys}));
   const fmtIsm = v=>Math.round(v);
   const fmtPctS = v=>(v>0?"+":"")+Math.round(v)+"%";
   const FCOL=PINK, FCOL2="rgba(241,42,90,.4)";   // FCI blend = hot pink, FCI ex-oil = faint pink (brand palette)
@@ -1236,7 +1237,7 @@ const CYCLE = (function(){
   */
   charts.forEach(c=>c.$auto=false);
   [cycIsmLiqC,cycIsmNoC,cycFciC,cycFciExC,cycGdpC,cycCapexC,cycCapexGC,cycSemiCapexC,cycIsmSvcC,cycSvcGdpC,cycBcCompC,cycImpulseC,cycSvcFciExC,cycSvcCapexGC].forEach((cv,i)=>attach(cv,charts[i]));
-  controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
+  controlsFwd(charts[0],{asset:liqYoY,            pairLbl:"ISM vs GMI Total Global Liquidity YoY", leadEl:document.getElementById("cycIsmLiq"), def:182});
   controlsFwd(charts[1],{asset:C.neworders,       pairLbl:"ISM New Orders vs ISM",          leadEl:document.getElementById("cycIsmNo"),  def:30});
   // 04 lead control — forward lead on the FCI blend line (default 12 months)
   controlsFwd(fciC,{asset:C.fci, pairLbl:"GMI FCI leads ISM", leadEl:document.getElementById("cycFci"), def:365});

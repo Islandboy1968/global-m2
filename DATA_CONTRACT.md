@@ -89,10 +89,12 @@ source, compares the latest complete month to what shipped, and stamps
   "title": "The Everything Code — global liquidity & cycle dashboard",
   "generated": "<iso>",          // when the digest was built
   "data_updated": "<iso>",       // mirrors data.json.updated
-  "headline": {                  // the dashboard centrepiece
-     "metric": "GMI Total Global Liquidity …",
-     "level": 135.8, "unit": "$ trillions",
-     "yoy_pct": 7.31, "yoy_3m_pct": 9.18, "as_of": "2026-06-07", "n_economies": 47
+  "headline": {                  // the dashboard centrepiece — the Total Liquidity Index
+     "metric": "GMI Total Global Liquidity Index (CB balance sheets netted + M2, 10 economies, USD)",
+     "level": 142.4, "unit": "$ trillions",
+     "yoy_pct": 7.7, "as_of": "<iso>", "n_economies": 10,
+     "components": {"balance_sheets_tn": …, "m2_tn": …},
+     "global_m2": { … }          // broad-money component (47-econ daily), carried as secondary
   },
   "indicators": {
      "<block.leaf>": {

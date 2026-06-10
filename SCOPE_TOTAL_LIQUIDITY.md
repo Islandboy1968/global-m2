@@ -56,13 +56,13 @@ measure per region (broad money OR bank credit), not stack overlapping ones.
 
 ## 4. Phased build
 
-- **v0 (today):** Global M2 headline. Best simple proxy; matches GMI's growth/ATH
-  narrative reasonably (+6.3% vs ~8%) and correlates 0.95/0.99 with BTC/NDX.
-- **v1 — Global Total Liquidity (tractable, GMI-aligned):**
-  `US Total Liquidity (full netting, have it) + Σ non-US broad money (M2, USD) + China explicit`.
-  Strictly richer than Global M2 on the US leg (adds netted Fed liquidity + US bank
-  credit); a defensible global aggregate from data we already pull. Keep **Global M2
-  as its own separate chart** alongside it.
+- **v0:** Global M2 headline. The original proxy.
+- **v1 — Global Total Liquidity (BUILT, `build_total_liquidity.py`):** per economy,
+  `(CB balance sheet − TGA/RRP for the US) + M2`, summed across 10 economies (incl.
+  China) in USD. **Daily grid:** monthly balance-sheet/M2 stocks forward-filled, FX
+  daily — so the line moves every day on the dollar, like the Global M2 line. It is
+  the Tab-1 headline; Global M2 stays computed and powers the US tab / risk monitor.
+  Validated: ~$142T, +7.7% YoY (3m-avg), leads BTC ~2mo at 0.96.
 - **v2 — regional Net Liquidity:** replace each major region's M2 leg with a netted
   Net Liquidity leg (CB balance sheet − gov cash + regional bank credit) as those
   inputs are sourced (ECB SDW, BoJ, BoE, PBoC/TSF). Moves it from proxy toward the

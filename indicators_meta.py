@@ -63,8 +63,9 @@ META = {
         "role": "liquidity", "timing": "leading", "unit": "$ trillions",
         "progress": "higher", "source": "TradingView ECONOMICS (CB balance sheets + M2) + FX",
         "description": "GMI-method Global Total Liquidity: central-bank balance sheets "
-                       "(netted) + M2 across 10 major economies in USD. The headline regime "
-                       "measure; reproduces GMI's ~8%/yr growth and leads risk assets."},
+                       "(netted) + M2 across 10 major economies in USD. Daily (FX-driven; "
+                       "monthly stocks forward-filled). The headline regime measure; "
+                       "reproduces GMI's ~8%/yr growth and leads risk assets."},
     "total_liquidity.components.balance_sheets": {
         "title": "Central-bank balance sheets (index component)", "group": "Global Liquidity",
         "role": "liquidity", "timing": "leading", "unit": "$ trillions", "progress": "higher",

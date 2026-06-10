@@ -15,36 +15,42 @@ deposits), but it does NOT capture central-bank balance sheets — a distinct fo
 shrinking under QT everywhere EXCEPT China. Reserves (the big balance-sheet item)
 sit outside M2, so summing the two does not double-count (GMI's own
 "Fed Net Liquidity + M2" recipe). Components are emitted as a DECOMPOSITION of the
-one index (balance-sheets vs M2, and per-economy legs) — never as standalone
-headline series.
+one index (balance-sheets vs M2), never as standalone headline series.
+
+DAILY GRID (like the Global M2 headline): the balance-sheet and M2 inputs are
+monthly and are forward-filled between prints; FX is daily. So the index updates
+EVERY DAY, and the daily moves are driven by the dollar (spot FX revaluing the
+non-US legs) — the laggy monthly stocks only step on each new print. This matches
+how update_data builds the Global M2 line.
 
 Validated against GMI's published characterisation (live data, 2026-03):
   level ~$142T · YoY +7.7% (GMI quotes ~8%/yr) · leads BTC ~2mo at 0.96 corr
-  (beats Global M2's coincident 0.95) — i.e. it reproduces both the growth rate
-  AND the "liquidity leads risk assets" property. Raw CB-balance-sheets-only fails
-  this (−0.2% YoY); Global M2 alone misses the balance-sheet + China dynamics.
+  (beats Global M2's coincident 0.95). Raw CB-balance-sheets-only fails this
+  (−0.2% YoY); Global M2 alone misses the balance-sheet + China dynamics.
 
 v1 scope / known simplifications (flagged on the chart):
   - US leg netted (− TGA − RRP); other regions use gross balance sheet (no
-    netting feed abroad).
+    netting feed abroad). Netting inputs forward-filled monthly.
   - Private layer = M2 everywhere; bank credit is a v2 refinement for the three
     economies that publish clean credit levels (US/EU/NZ).
   - NZ excluded: its M2 feed is dead (ends 2017-01).
   - China M2 via ECONOMICS:CNM2 (feed-first; see update_data.reconcile_china_override).
-  - Monthly cadence (balance-sheet inputs are monthly).
   - Formula version is FNL + M2 (reproduces +8%); FNL + M2 + bank securities is a
     Raoul sign-off away (see SCOPE_TOTAL_LIQUIDITY.md §6).
 
 Fail-safe: each economy's leg is independent; a failed pull drops that leg (logged)
-rather than breaking the index. A leg whose data goes stale (>STALE_MONTHS behind
-the others) is dropped so it can't truncate the whole series (the NZ failure mode).
+rather than breaking the index. A leg whose monthly data goes stale (> STALE_MONTHS
+behind the others) is dropped so a dead feed can't forward-fill a flat line forever
+(the NZ failure mode).
 """
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 from tv_pull import pull_series
 
-BARS = 200            # monthly history (~16yr)
-STALE_MONTHS = 6      # drop a leg whose latest month trails the median by > this
+START = dt.date(2011, 1, 1)   # daily-grid start (composite emits once all legs begin)
+M2_BARS = 220                 # monthly balance-sheet / M2 / netting history (~18yr)
+FX_BARS = 6200                # daily FX history (~17yr)
+STALE_MONTHS = 6              # drop a leg whose latest monthly print trails the median by > this
 
 # economy -> central-bank balance sheet, M2 (broad money), FX (USD per local; None
 # for USD), and US-only netting series (government cash + reverse-repo drain).
@@ -67,135 +73,195 @@ def _ym(t):
     return dt.datetime.utcfromtimestamp(int(t)).strftime("%Y-%m")
 
 
-def _monthly(sym):
-    """sym -> {YYYY-MM: value} or {} on failure (fail-safe)."""
+def _pull(spec):
+    """(sym, resolution, bars) -> sorted [(epoch, value)] or [] on failure."""
+    sym, res, bars = spec
     try:
-        return {_ym(t): v for t, v in pull_series(sym, "1M", BARS, retries=3)}
+        return sym, pull_series(sym, res, bars, retries=3)
     except Exception as e:
         print(f"  total_liquidity: {sym} pull failed: {str(e)[:60]}")
-        return {}
+        return sym, []
 
 
 def _pull_all():
-    syms = set()
+    """Pull balance sheets / M2 / netting MONTHLY and FX DAILY, in parallel."""
+    specs = []
     for c in ECONS.values():
-        syms.add(c["bs"]); syms.add(c["m2"])
+        specs.append((c["bs"], "1M", M2_BARS))
+        specs.append((c["m2"], "1M", M2_BARS))
         if c["fx"]:
-            syms.add(c["fx"])
+            specs.append((c["fx"], "1D", FX_BARS))
         for s in c.get("net", []):
-            syms.add(s)
+            specs.append((s, "1M", M2_BARS))
+    seen, uniq = set(), []
+    for s in specs:
+        if s[0] not in seen:
+            seen.add(s[0]); uniq.append(s)
     with ThreadPoolExecutor(max_workers=6) as ex:
-        return dict(zip(syms, ex.map(_monthly, syms)))
+        return dict(ex.map(_pull, uniq))
 
 
-def _yoy(series):
-    """{YYYY-MM: level} -> [{d, v}] YoY %% on a same-month-last-year basis."""
-    out = []
-    for m in sorted(series):
-        y, mo = m.split("-")
-        prev = f"{int(y) - 1}-{mo}"
-        if prev in series and series[prev]:
-            out.append({"d": m + "-01", "v": round((series[m] / series[prev] - 1) * 100, 2)})
+# ----------------------------------------------------------------- ffill
+def _grid(today):
+    return [START + dt.timedelta(days=k) for k in range((today - START).days + 1)]
+
+
+def _month_ffill(points, grid):
+    """Monthly (epoch, val) points -> daily array, forward-filled by month."""
+    mp = {_ym(t): v for t, v in points}
+    if not mp:
+        return [None] * len(grid)
+    allm = sorted({d.strftime("%Y-%m") for d in grid} | set(mp))
+    ff, last = {}, None
+    for m in allm:
+        if m in mp:
+            last = mp[m]
+        ff[m] = last
+    return [ff.get(d.strftime("%Y-%m")) for d in grid]
+
+
+def _sanitize_fx(points):
+    """Drop garbage FX bars (some illiquid pairs return inverted/zero early bars)."""
+    vals = sorted(v for _, v in points if v)
+    if not vals:
+        return points
+    med = vals[len(vals) // 2]
+    lo, hi = med / 100.0, med * 100.0
+    return [(t, v) for t, v in points if v and lo <= v <= hi]
+
+
+def _day_ffill(points, grid):
+    """Daily (epoch, val) points -> daily array forward-filled onto the grid."""
+    pts = sorted((dt.datetime.utcfromtimestamp(int(t)).date(), v)
+                 for t, v in _sanitize_fx(points))
+    out = [None] * len(grid)
+    j, cur = 0, None
+    for i, day in enumerate(grid):
+        while j < len(pts) and pts[j][0] <= day:
+            cur = pts[j][1]; j += 1
+        out[i] = cur
     return out
 
 
-def build_total_liquidity():
-    """Return the TGL_DATA['total_liquidity'] block: the composite index plus its
-    balance-sheet / M2 decomposition and per-economy legs. Components are parts of
-    the one index, not standalone series."""
-    D = _pull_all()
-
-    def leg_series(code):
-        """Monthly {YYYY-MM: USD level} for one economy's Net Liquidity leg, plus
-        its balance-sheet and M2 sub-parts (USD)."""
-        c = ECONS[code]
-        bs, m2 = D.get(c["bs"], {}), D.get(c["m2"], {})
-        fx = None if c["fx"] is None else D.get(c["fx"], {})
-        nets = [D.get(s, {}) for s in c.get("net", [])]
-        leg, bs_usd, m2_usd = {}, {}, {}
-        for m in set(bs) & set(m2):
-            rate = 1.0 if fx is None else fx.get(m)
-            if rate is None:
-                continue
-            drain = sum(n.get(m, 0.0) or 0.0 for n in nets)
-            bs_usd[m] = (bs[m] - drain) * rate
-            m2_usd[m] = m2[m] * rate
-            leg[m] = bs_usd[m] + m2_usd[m]
-        return leg, bs_usd, m2_usd
-
-    legs, bs_parts, m2_parts = {}, {}, {}
-    for code in ECONS:
-        l, b, m = leg_series(code)
-        if l:
-            legs[code], bs_parts[code], m2_parts[code] = l, b, m
-        else:
-            print(f"  total_liquidity: {code} leg empty — dropped")
-
-    if not legs:
-        return None
-
-    # Drop stale legs (latest month trails the median by > STALE_MONTHS) so a dead
-    # feed can't truncate the whole index (the NZ M2 failure mode).
-    last_ix = {c: max(legs[c]) for c in legs}
-    ordered = sorted(last_ix.values())
-    median_last = ordered[len(ordered) // 2]
-    active = []
-    for c in legs:
-        if _months_between(last_ix[c], median_last) > STALE_MONTHS:
-            print(f"  total_liquidity: {c} stale (last {last_ix[c]} vs median {median_last}) — dropped")
-        else:
-            active.append(c)
-
-    months = sorted(set.intersection(*[set(legs[c]) for c in active]))
-    total = {m: sum(legs[c][m] for c in active) for m in months}
-    bs_tot = {m: sum(bs_parts[c][m] for c in active) for m in months}
-    m2_tot = {m: sum(m2_parts[c][m] for c in active) for m in months}
-
-    tn = lambda d: [{"d": m + "-01", "v": round(d[m] / 1e12, 2)} for m in months]
-    latest = months[-1]
-    yoy = _yoy(total)
-    # YoY map + 3-month trailing average, so the headline series carries the same
-    # {d, v, y, ys} shape the front-end's Global tab expects (drop-in for the old
-    # Global M2 series); ys lets the YoY chart show a smoothed line.
-    yoy_map = {r["d"][:7]: r["v"] for r in yoy}
-    def _trail3(m):
-        ks = [k for k in sorted(yoy_map) if k <= m][-3:]
-        return round(sum(yoy_map[k] for k in ks) / len(ks), 2) if ks else None
-    series_pts = []
-    for m in months:
-        row = {"d": m + "-01", "v": round(total[m] / 1e12, 2)}
-        if m in yoy_map:
-            row["y"], row["ys"] = yoy_map[m], _trail3(m)
-        series_pts.append(row)
-    block = {
-        "series": series_pts,                      # the headline index, $tn (with y/ys)
-        "yoy": yoy,
-        "components": {                            # decomposition of the ONE index
-            "balance_sheets": tn(bs_tot),          # netted CB balance sheets (USD)
-            "m2": tn(m2_tot),                      # broad money (USD)
-        },
-        "legs_latest": {c: round(legs[c][latest] / 1e12, 2)
-                        for c in active if latest in legs[c]},
-        "summary": {
-            "latest": latest,
-            "total_tn": round(total[latest] / 1e12, 2),
-            "yoy": yoy[-1]["v"] if yoy else None,
-            "yoy_s": _trail3(latest),
-            "n_economies": len(active),
-            "balance_sheets_tn": round(bs_tot[latest] / 1e12, 2),
-            "m2_tn": round(m2_tot[latest] / 1e12, 2),
-        },
-    }
-    s = block["summary"]
-    print(f"  total_liquidity: ${s['total_tn']}T  YoY {s['yoy']}%  "
-          f"({s['n_economies']} economies; CB ${s['balance_sheets_tn']}T + M2 ${s['m2_tn']}T) "
-          f"| {s['latest']}")
-    return block
+def _trail(arr, n):
+    out = [None] * len(arr)
+    for i in range(len(arr)):
+        w = [v for v in arr[max(0, i - n + 1):i + 1] if v is not None]
+        out[i] = sum(w) / len(w) if w else None
+    return out
 
 
 def _months_between(a, b):
     ya, ma = map(int, a.split("-")); yb, mb = map(int, b.split("-"))
     return abs((ya - yb) * 12 + (ma - mb))
+
+
+# ----------------------------------------------------------------- build
+def build_total_liquidity():
+    """Return the TGL_DATA['total_liquidity'] block: the daily composite index plus
+    its (monthly) balance-sheet / M2 decomposition and per-economy legs."""
+    D = _pull_all()
+    today = dt.datetime.utcnow().date()
+    grid = _grid(today)
+    N = len(grid)
+
+    # Stale-leg guard on the monthly stocks (a dead feed must not forward-fill flat).
+    last_month = {}
+    for code, c in ECONS.items():
+        bs, m2 = D.get(c["bs"], []), D.get(c["m2"], [])
+        if bs and m2:
+            last_month[code] = min(_ym(bs[-1][0]), _ym(m2[-1][0]))
+    if not last_month:
+        return None
+    median_last = sorted(last_month.values())[len(last_month) // 2]
+
+    legs, bs_parts, m2_parts = {}, {}, {}
+    for code, c in ECONS.items():
+        bs, m2 = D.get(c["bs"], []), D.get(c["m2"], [])
+        if not bs or not m2:
+            print(f"  total_liquidity: {code} leg empty — dropped"); continue
+        if _months_between(last_month[code], median_last) > STALE_MONTHS:
+            print(f"  total_liquidity: {code} stale ({last_month[code]} vs {median_last}) — dropped"); continue
+        bs_arr = _month_ffill(bs, grid)
+        m2_arr = _month_ffill(m2, grid)
+        net_arr = [0.0] * N
+        for s in c.get("net", []):
+            na = _month_ffill(D.get(s, []), grid)
+            net_arr = [(net_arr[i] + (na[i] or 0.0)) for i in range(N)]
+        fx_arr = [1.0] * N if c["fx"] is None else _day_ffill(D.get(c["fx"], []), grid)
+        leg, bsd, m2d = [None] * N, [None] * N, [None] * N
+        for i in range(N):
+            if bs_arr[i] is None or m2_arr[i] is None or fx_arr[i] is None:
+                continue
+            bsd[i] = (bs_arr[i] - net_arr[i]) * fx_arr[i]
+            m2d[i] = m2_arr[i] * fx_arr[i]
+            leg[i] = bsd[i] + m2d[i]
+        legs[code], bs_parts[code], m2_parts[code] = leg, bsd, m2d
+
+    if not legs:
+        return None
+    active = list(legs)
+
+    total = [None] * N; bstot = [None] * N; m2tot = [None] * N
+    for i in range(N):
+        if all(legs[c][i] is not None for c in active):
+            total[i] = sum(legs[c][i] for c in active)
+            bstot[i] = sum(bs_parts[c][i] for c in active)
+            m2tot[i] = sum(m2_parts[c][i] for c in active)
+
+    # YoY on a 365-day offset; 91-day trailing average ("3m") — same as Global M2.
+    yoy = [None] * N
+    for i in range(N):
+        j = i - 365
+        if j >= 0 and total[i] and total[j]:
+            yoy[i] = (total[i] / total[j] - 1) * 100
+    yoy_s = _trail(yoy, 91)
+
+    series = []
+    for i, day in enumerate(grid):
+        if total[i] is None:
+            continue
+        row = {"d": day.strftime("%Y-%m-%d"), "v": round(total[i] / 1e12, 2)}
+        if yoy[i] is not None:
+            row["y"] = round(yoy[i], 2)
+        if yoy_s[i] is not None:
+            row["ys"] = round(yoy_s[i], 2)
+        series.append(row)
+    if not series:
+        return None
+
+    # Components as a MONTHLY decomposition (month-end snapshot) to keep the payload
+    # small — the headline series is daily, the breakdown only needs to step monthly.
+    def month_end(arr):
+        out = {}
+        for i, day in enumerate(grid):
+            if arr[i] is not None:
+                out[day.strftime("%Y-%m")] = arr[i]   # last day of month wins
+        return [{"d": m + "-01", "v": round(v / 1e12, 2)} for m, v in sorted(out.items())]
+
+    li = max(i for i in range(N) if total[i] is not None)   # latest complete day
+    block = {
+        "series": series,                                   # daily, $tn, with y/ys
+        "components": {
+            "balance_sheets": month_end(bstot),
+            "m2": month_end(m2tot),
+        },
+        "legs_latest": {c: round(legs[c][li] / 1e12, 2) for c in active if legs[c][li] is not None},
+        "summary": {
+            "latest": series[-1]["d"],
+            "total_tn": series[-1]["v"],
+            "yoy": series[-1].get("y"),
+            "yoy_s": series[-1].get("ys"),
+            "n_economies": len(active),
+            "balance_sheets_tn": round(bstot[li] / 1e12, 2),
+            "m2_tn": round(m2tot[li] / 1e12, 2),
+        },
+    }
+    s = block["summary"]
+    print(f"  total_liquidity: ${s['total_tn']}T  YoY {s['yoy']}%  "
+          f"({s['n_economies']} economies; CB ${s['balance_sheets_tn']}T + M2 ${s['m2_tn']}T) "
+          f"| {s['latest']} | {len(series)} daily pts")
+    return block
 
 
 if __name__ == "__main__":
