@@ -25,6 +25,7 @@ from build_rates import build_rates
 from build_housing import build_housing
 from build_credit import build_credit
 from build_china import build_china
+from build_total_liquidity import build_total_liquidity
 
 # Bump on any breaking change to the data.json / summary.json shape so a
 # downstream AI consumer can detect drift (DATA_CONTRACT.md §6). Shared scheme
@@ -412,6 +413,10 @@ def build():
     housing = _safe("HOUSING", build_housing)
     credit  = _safe("CREDIT",  build_credit)
     china   = _safe("CHINA",   build_china)
+    # Global Total Liquidity Index — the GMI-method headline (CB balance sheets
+    # netted + M2, summed across 10 economies in USD). Components are emitted as a
+    # decomposition of the one index, not standalone series. Fail-safe like the rest.
+    total_liquidity = _safe("TGL", build_total_liquidity)
 
     # China M2 freshness banner. Feed-first: the CN leg's true data frontier is
     # the newer of the live CNM2 feed and any still-active override month, so the
@@ -532,7 +537,7 @@ def build():
 
     blocks = {"series": series, "us": us, "big": big, "cycle": cycle, "exp": exp,
               "infl": infl, "labor": labor, "rates": rates, "housing": housing,
-              "credit": credit, "china": china}
+              "credit": credit, "china": china, "total_liquidity": total_liquidity}
     freshness = {}
     for name, blk in blocks.items():
         if not blk:
@@ -553,6 +558,7 @@ def build():
             "btc": assets["btc"], "ndx": assets["ndx"], "us": us, "big": big,
             "cycle": cycle, "exp": exp, "infl": infl, "labor": labor, "rates": rates,
             "housing": housing, "credit": credit, "china": china,
+            "total_liquidity": total_liquidity,
             "china_override": china_override, "freshness": freshness}
 
     os.makedirs(os.path.join(HERE, "data"), exist_ok=True)

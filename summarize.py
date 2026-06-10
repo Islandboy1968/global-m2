@@ -173,6 +173,16 @@ def _iter_leaves(data):
     us = data.get("us")
     if isinstance(us, dict) and isinstance(us.get("series"), list):
         yield "us.series", us["series"]
+    # Global Total Liquidity Index + its decomposition (components are parts of the
+    # one index, surfaced so an AI sees the balance-sheet vs M2 split).
+    tl = data.get("total_liquidity")
+    if isinstance(tl, dict):
+        if isinstance(tl.get("series"), list):
+            yield "total_liquidity.series", tl["series"]
+        comps = tl.get("components") or {}
+        for ck in ("balance_sheets", "m2"):
+            if isinstance(comps.get(ck), list):
+                yield f"total_liquidity.components.{ck}", comps[ck]
     for blk in BLOCKS:
         b = data.get(blk)
         if isinstance(b, dict):
@@ -232,17 +242,26 @@ def _summarize_leaf(path, points):
 
 
 def _headline(data):
-    """The dashboard centrepiece: GMI Total Global Liquidity."""
-    s = data.get("summary") or {}
+    """The dashboard centrepiece: the GMI Total Global Liquidity Index (CB balance
+    sheets netted + M2, 10 economies). Global M2 is carried as a secondary
+    component read, not a competing headline."""
+    tl = (data.get("total_liquidity") or {}).get("summary") or {}
+    m2 = data.get("summary") or {}
     return {
-        "metric": "GMI Total Global Liquidity (broad money across 47 economies, "
-                  "USD at spot FX, summed)",
-        "level": s.get("total_tn"),
+        "metric": "GMI Total Global Liquidity Index (central-bank balance sheets "
+                  "netted + M2, summed across the major economies in USD; see n_economies)",
+        "level": tl.get("total_tn"),
         "unit": "$ trillions",
-        "yoy_pct": s.get("yoy"),
-        "yoy_3m_pct": s.get("yoy_s"),
-        "as_of": s.get("latest"),
-        "n_economies": s.get("n_economies"),
+        "yoy_pct": tl.get("yoy"),
+        "as_of": tl.get("latest"),
+        "n_economies": tl.get("n_economies"),
+        "components": {"balance_sheets_tn": tl.get("balance_sheets_tn"),
+                       "m2_tn": tl.get("m2_tn")},
+        "global_m2": {"level_tn": m2.get("total_tn"), "yoy_pct": m2.get("yoy"),
+                      "yoy_3m_pct": m2.get("yoy_s"), "as_of": m2.get("latest"),
+                      "n_economies": m2.get("n_economies"),
+                      "note": "broad-money component, 47 economies (daily); a part of "
+                              "the Total Liquidity picture, not the headline"},
     }
 
 
@@ -273,6 +292,79 @@ def _build_status(data):
     }
 
 
+def _month_map(points, key):
+    """{YYYY-MM: value} from a series, month-end (last value in each month)."""
+    out = {}
+    for p in points or []:
+        if isinstance(p, dict) and p.get("d") and p.get(key) is not None:
+            out[p["d"][:7]] = p[key]
+    return out
+
+
+def _add_months(m, k):
+    y, mo = map(int, m.split("-")); mo += k; y += (mo - 1) // 12; mo = (mo - 1) % 12 + 1
+    return f"{y:04d}-{mo:02d}"
+
+
+def _xcorr(driver, target, maxlead=12, logd=False, logt=False, minn=24):
+    """Best (lead_months, correlation) where driver[t] leads target[t+lead]."""
+    def tx(d, lg):
+        if not lg:
+            return dict(d)
+        return {k: math.log(v) for k, v in d.items() if v > 0}
+    dd, tt = tx(driver, logd), tx(target, logt)
+    best = (0, None)
+    for L in range(maxlead + 1):
+        xs, ys = [], []
+        for m in dd:
+            t = _add_months(m, L)
+            if t in tt:
+                xs.append(dd[m]); ys.append(tt[t])
+        n = len(xs)
+        if n < minn:
+            continue
+        mx, my = sum(xs) / n, sum(ys) / n
+        cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+        vx = sum((x - mx) ** 2 for x in xs); vy = sum((y - my) ** 2 for y in ys)
+        if vx > 0 and vy > 0:
+            r = cov / (vx * vy) ** 0.5
+            if best[1] is None or r > best[1]:
+                best = (L, r)
+    return best
+
+
+def _signals(data):
+    """Computed lead/lag relationships — the machine-readable SIGNAL layer. An AI
+    reads these instead of re-deriving them: each is recomputed from the raw series
+    (best lead + correlation), so it gets the regime signal AND its strength."""
+    tl = (data.get("total_liquidity") or {}).get("series") or []
+    cyc = data.get("cycle") or {}
+    liq_lvl, liq_yoy = _month_map(tl, "v"), _month_map(tl, "ys")
+    ism = _month_map(cyc.get("ism"), "v")
+    btc, ndx = _month_map(data.get("btc"), "p"), _month_map(data.get("ndx"), "p")
+    out = []
+    def add(name, driver, target, logd, logt, read):
+        lead, r = _xcorr(driver, target, logd=logd, logt=logt)
+        if r is None:
+            return
+        out.append({
+            "relationship": name, "best_lead_months": lead,
+            "correlation": round(r, 3), "r2": round(r * r, 3),
+            "method": "max cross-correlation, monthly, " + ("log-levels" if (logd or logt) else "levels"),
+            "read": read,
+        })
+    add("total_liquidity_leads_btc", liq_lvl, btc, True, True,
+        "GMI Total Global Liquidity leads Bitcoin")
+    add("total_liquidity_leads_ndx", liq_lvl, ndx, True, True,
+        "GMI Total Global Liquidity leads the Nasdaq 100")
+    add("total_liquidity_yoy_leads_ism", liq_yoy, ism, False, False,
+        "Total Liquidity YoY (3m) leads the ISM manufacturing cycle")
+    # NB: fci -> ism deliberately omitted — the FCI reconstruction has its own
+    # sign/transform convention, so a naive level cross-correlation understates the
+    # ~9mo lead and would ship a misleading signal. Add once the transform is specced.
+    return out
+
+
 def build_summary(data):
     """Build the summary.json digest from the assembled data.json payload."""
     indicators = {}
@@ -295,6 +387,7 @@ def build_summary(data):
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "data_updated": data.get("updated"),
         "headline": _headline(data),
+        "signals": _signals(data),
         "indicators": indicators,
         "build": _build_status(data),
     }

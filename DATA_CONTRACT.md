@@ -48,8 +48,13 @@ keeps the data trustworthy and the insight layer swappable.
   "schema_version": "1.0",
   "dashboard": "tec",
   "updated": "<YYYY-MM-DD HH:MM UTC>",
-  "summary": { latest, total_tn, yoy, yoy_s, n_economies },   // headline
-  "series":  [ {d, v, y, ys} … ],                              // global liquidity, daily
+  "total_liquidity": {                                         // THE HEADLINE — GMI Total Global Liquidity Index
+      series:[ {d, v, y, ys} … ],                              //   daily (FX-driven), $tn
+      components:{ balance_sheets:[ {d,v} … ], m2:[ {d,v} … ] },  // monthly decomposition of the one index
+      legs_latest:{ <ISO2>: v_tn … },                          //   per-economy contribution
+      summary:{ latest, total_tn, yoy, yoy_s, n_economies, balance_sheets_tn, m2_tn } },
+  "summary": { latest, total_tn, yoy, yoy_s, n_economies },   // Global M2 (47-econ) — now a COMPONENT, not the headline
+  "series":  [ {d, v, y, ys} … ],                              // Global M2, daily (component / overlay source)
   "btc": [ {d, p} … ], "ndx": [ {d, p} … ],                    // overlays
   "us":   { summary, series:[ {d, v, y, ys, vo, yo, yos} … ] },
   "big" | "cycle" | "exp" | "infl" | "labor" | "rates"
@@ -89,11 +94,18 @@ source, compares the latest complete month to what shipped, and stamps
   "title": "The Everything Code — global liquidity & cycle dashboard",
   "generated": "<iso>",          // when the digest was built
   "data_updated": "<iso>",       // mirrors data.json.updated
-  "headline": {                  // the dashboard centrepiece
-     "metric": "GMI Total Global Liquidity …",
-     "level": 135.8, "unit": "$ trillions",
-     "yoy_pct": 7.31, "yoy_3m_pct": 9.18, "as_of": "2026-06-07", "n_economies": 47
+  "headline": {                  // the dashboard centrepiece — the Total Liquidity Index
+     "metric": "GMI Total Global Liquidity Index (CB balance sheets netted + M2, 10 economies, USD)",
+     "level": 142.4, "unit": "$ trillions",
+     "yoy_pct": 7.7, "as_of": "<iso>", "n_economies": 10,
+     "components": {"balance_sheets_tn": …, "m2_tn": …},
+     "global_m2": { … }          // broad-money component (47-econ daily), carried as secondary
   },
+  "signals": [                   // computed lead/lag relationships — the SIGNAL layer
+     { "relationship": "total_liquidity_leads_btc", "best_lead_months": …,
+       "correlation": …, "r2": …, "method": "max cross-correlation, monthly, …",
+       "read": "plain-English read" }, …
+  ],
   "indicators": {
      "<block.leaf>": {
         "title","group","role","timing","unit","progress","source","description",

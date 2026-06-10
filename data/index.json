@@ -9,8 +9,8 @@
   "browser_payload": "data/data.js"
  },
  "reading_order": [
-  "1. data/summary.json — dense per-indicator digest with units, trend, source-verified freshness (read first)",
-  "2. data/data.json — full raw series (the 6,000-point daily liquidity line + ~45 macro leaves) when you need the shape of a specific curve"
+  "1. data/summary.json — headline (GMI Total Global Liquidity Index), a computed `signals` block (lead/lag relationships with correlations), and a dense per-indicator digest with units, trend, source-verified freshness (read first)",
+  "2. data/data.json — full raw series (the daily Total Liquidity line, daily Global M2, + ~45 macro leaves) when you need the shape of a specific curve"
  ],
  "contract": "DATA_CONTRACT.md",
  "companion": {

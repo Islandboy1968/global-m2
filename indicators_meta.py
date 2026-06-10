@@ -57,6 +57,28 @@ META = {
         "source": "TradingView NASDAQ:NDX",
         "description": "Risk-asset overlay layered against the liquidity line."},
 
+    # ---- Global Total Liquidity Index (the GMI-method headline) ---------
+    "total_liquidity.series": {
+        "title": "GMI Total Global Liquidity", "group": "Global Liquidity",
+        "role": "liquidity", "timing": "leading", "unit": "$ trillions",
+        "progress": "higher", "source": "TradingView ECONOMICS (CB balance sheets + M2) + FX",
+        "description": "GMI-method Global Total Liquidity: central-bank balance sheets "
+                       "(netted) + M2 across 10 major economies in USD. Daily (FX-driven; "
+                       "monthly stocks forward-filled). The headline regime measure; "
+                       "reproduces GMI's ~8%/yr growth and leads risk assets."},
+    "total_liquidity.components.balance_sheets": {
+        "title": "Central-bank balance sheets (index component)", "group": "Global Liquidity",
+        "role": "liquidity", "timing": "leading", "unit": "$ trillions", "progress": "higher",
+        "source": "TradingView ECONOMICS …CBBS + FX",
+        "description": "Netted central-bank balance sheets summed in USD — a component of the "
+                       "Total Liquidity Index (shrinking under QT everywhere except China)."},
+    "total_liquidity.components.m2": {
+        "title": "Broad money M2 (index component)", "group": "Global Liquidity",
+        "role": "liquidity", "timing": "leading", "unit": "$ trillions", "progress": "higher",
+        "source": "TradingView ECONOMICS …M2 + FX",
+        "description": "Broad money summed in USD — the private-credit component of the "
+                       "Total Liquidity Index."},
+
     # ---- US net liquidity ----------------------------------------------
     "us.series": {
         "title": "US net liquidity (weekly)", "group": "US Liquidity",
