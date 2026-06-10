@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GMI Risk Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0d14; background-image: radial-gradient(1200px 600px at 70% -10%, #131a26, #0a0d14 55%); background-attachment: fixed; color: #e9ecf3; font-family: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; font-variant-numeric: tabular-nums lining-nums; font-feature-settings: "tnum" 1, "lnum" 1; -webkit-font-smoothing: antialiased; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.mono { font-family: inherit; font-variant-numeric: tabular-nums lining-nums; letter-spacing: 0.01em; }
+.tag { font-size: 9px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #c3f53c; background: rgba(195,245,60,0.08); padding: 4px 10px; border-radius: 99px; border: 1px solid rgba(195,245,60,0.22); display: inline-block; white-space: nowrap; }
+.tab-btn { padding: 10px 18px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; background: transparent; color: #aab3c4; border-bottom: 2px solid transparent; transition: all 0.18s cubic-bezier(0.22,1,0.36,1); font-family: inherit; white-space: nowrap; }
+.tab-btn.active { background: transparent; color: #c3f53c; border-bottom: 2px solid #c3f53c; }
+.signal-dot { border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.signal-dot.green { background: #34c759; box-shadow: 0 0 9px rgba(52,199,89,0.5); }
+.signal-dot.red { background: #f04f5f; box-shadow: 0 0 9px rgba(240,79,95,0.5); }
+.trend-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; }
+.trend-badge.green { background: rgba(52,199,89,0.08); border: 1px solid rgba(52,199,89,0.25); }
+.trend-badge.red { background: rgba(240,79,95,0.08); border: 1px solid rgba(240,79,95,0.25); }
+.trend-badge-text { font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+.trend-badge.green .trend-badge-text { color: #34c759; }
+.trend-badge.red .trend-badge-text { color: #f04f5f; }
+.change-badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; background: rgba(245,196,81,0.1); border: 1px solid rgba(245,196,81,0.3); animation: pulse 2s ease-in-out infinite; }
+.change-badge-text { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: #f5c451; }
+table { width: 100%; border-collapse: separate; border-spacing: 0 1px; }
+th { text-align: left; padding: 9px 14px; font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #c3f53c; border-bottom: 1px solid rgba(255,255,255,0.10); white-space: nowrap; }
+td { padding: 10px 14px; font-size: 13px; font-weight: 500; color: #e9ecf3; border-bottom: 1px solid rgba(255,255,255,0.06); }
+tr.even { background: rgba(255,255,255,0.03); }
+tr.changed { background: rgba(245,196,81,0.06); border-left: 3px solid #f5c451; }
+.count-box { width: 24px; height: 24px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+.count-box.green { background: rgba(52,199,89,0.08); border: 1px solid rgba(52,199,89,0.2); color: #34c759; }
+.count-box.red { background: rgba(240,79,95,0.08); border: 1px solid rgba(240,79,95,0.2); color: #f04f5f; }
+.hidden { display: none; }
+.accent-bar { height: 3px; width: 100%; background: linear-gradient(90deg, #c3f53c, #22d3ee 60%, transparent); opacity: 0.9; }
+::selection { background: rgba(195,245,60,0.25); color: #e9ecf3; }
+a#proUpgradeLink:hover { opacity: 0.9; transform: translateY(-1px); }
+.tab-btn:hover { color: #e9ecf3; }
+</style>
+</head>
+<body>
+<div class="accent-bar"></div>
+
+<!-- Header -->
+<div style="padding: 24px 32px 0; background: transparent;">
+  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+        <span class="tag" id="tierTag">RV ALPHA</span>
+        <span class="tag">GMI</span>
+      </div>
+      <h1 style="font-size: 31px; font-weight: 800; color: #e9ecf3; margin: 8px 0 0 0; letter-spacing: -0.022em; line-height: 1.04;">GMI Risk Monitor</h1>
+      <p style="font-size: 11.5px; color: #aab3c4; margin: 5px 0 0 0;">GMI Proprietary Medium-Term Risk Indicator &middot; Weekly Update</p>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 10px; color: #aab3c4;">Last Updated</div>
+      <div id="lastUpdated" style="font-size: 13px; color: #e9ecf3; font-weight: 500; margin-top: 3px;">Friday, February 27, 2026</div>
+    </div>
+  </div>
+  <div style="display: flex; margin-top: 20px; gap: 4px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+    <button class="tab-btn active" id="tabAlpha" onclick="switchTab('alpha')">RV Alpha Trends</button>
+    <button class="tab-btn" id="tabPro" onclick="switchTab('pro')">RV Pro Positions</button>
+    <button class="tab-btn" id="tabGuide" onclick="switchTab('guide')">How To Use This</button>
+  </div>
+</div>
+
+<!-- Content -->
+<div style="padding: 32px 32px;">
+
+  <!-- Executive Status Bar — one-line summary of what changed this week -->
+  <div id="statusBar" style="margin-bottom: 20px; padding: 12px 20px; background: #10141d; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;"></div>
+
+  <!-- Cycle Regime Banner -->
+  <div id="cycleRegime" style="margin-bottom: 28px;">
+    <!-- Regime top — dynamically styled by JS -->
+    <div id="regimeBox" style="border-radius: 16px 16px 0 0; padding: 24px 24px; border-bottom: none;">
+      <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #aab3c4; margin-bottom: 10px;">GMI Macro Regime</div>
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px;">
+        <div id="regimeDot" style="width: 14px; height: 14px; border-radius: 50%;"></div>
+        <span id="regimeLabel" style="font-size: 20px; font-weight: 700; letter-spacing: -0.01em;"></span>
+      </div>
+      <p id="regimeDesc" style="font-size: 12px; color: #aab3c4; line-height: 1.6; margin: 0; max-width: 700px;"></p>
+    </div>
+
+    <!-- Two indicator columns -->
+    <div style="display: flex; gap: 0; border-radius: 0 0 16px 16px; overflow: hidden;">
+
+      <!-- LEFT: Liquidity Trend -->
+      <div id="m2Box" style="flex: 1; background: #0d1119; border-right: none; border-top: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 0 16px;">
+        <div style="padding: 16px 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #aab3c4; margin-bottom: 6px;">Liquidity Trend</div>
+              <div id="m2Signal" style="display: flex; align-items: center; gap: 8px;"></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #aab3c4; margin-bottom: 2px;">Signal Since</div>
+              <span id="m2Since" style="font-size: 13px; font-weight: 500; color: #e9ecf3;"></span>
+            </div>
+          </div>
+          <!-- Rate of Change -->
+          <div id="m2RocRow" style="display: flex; gap: 16px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.05);"></div>
+        </div>
+        <!-- M2 Chart -->
+        <div style="padding: 4px 12px 12px 12px;">
+          <svg id="m2Chart" width="100%" height="185" style="display: block;"></svg>
+        </div>
+      </div>
+
+      <!-- RIGHT: Business Cycle Trend -->
+      <div id="ismBox" style="flex: 1; background: #0d1119; border-top: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 16px 0;">
+        <div style="padding: 16px 24px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #aab3c4; margin-bottom: 6px;">Business Cycle Trend</div>
+              <div id="ismSignal" style="display: flex; align-items: center; gap: 8px;"></div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #aab3c4; margin-bottom: 2px;">Signal Since</div>
+              <span id="ismSince" style="font-size: 13px; font-weight: 500; color: #e9ecf3;"></span>
+            </div>
+          </div>
+        </div>
+        <!-- ISM Chart -->
+        <div style="padding: 4px 12px 12px 12px;">
+          <svg id="ismChart" width="100%" height="215" style="display: block;"></svg>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Editorial footnote -->
+    <div style="margin-top: 24px; padding: 12px 20px; background: rgba(255,255,255,0.02); border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); border-left: 3px solid #c3f53c;">
+      <p style="font-size: 11px; color: #aab3c4; margin: 0; line-height: 1.65; font-style: italic;">The core value of GMI research is anticipating turns in the global liquidity cycle and the business cycle in advance, using our proprietary macro framework. GMI is a full-cycle investor: we position for the dominant trend and hold the best assets for the majority of the cycle, rather than trading moves within it. The weekly trend indicators below help subscribers manage their own volatility tolerance around our strategic positioning.</p>
+      <p style="font-size: 10px; color: #e4e9f2; margin: 8px 0 0 0; line-height: 1.5;">*This is a proxy for the GMI Global Liquidity Index which is more accurate and is featured in our research.</p>
+    </div>
+  </div>
+
+  <!-- Pro Tab -->
+  <div id="proContent" class="hidden" style="position: relative;">
+    <h2 style="font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #c3f53c; margin: 0 0 14px 0;">GMI Overview &mdash; Position Trends</h2>
+    <div style="overflow-x: auto;"><table id="proTable"></table></div>
+    <div style="margin-top: 14px; padding: 10px 16px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+      <p style="font-size: 10.5px; color: #aab3c4; margin: 0; line-height: 1.6;">To use the proprietary trend signal on TradingView search for &ldquo;GMI Weekly Trend Signal&rdquo; in the list of indicators on TradingView.</p>
+    </div>
+    <!-- Paywall overlay — shown for non-Pro subscribers -->
+    <div id="proPaywall" style="display:none; position:absolute; top:120px; left:0; right:0; bottom:0; background:linear-gradient(to bottom, rgba(10,13,20,0.6) 0%, rgba(10,13,20,0.95) 30%); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); border-radius:0 0 14px 14px; z-index:10; flex-direction:column; align-items:center; justify-content:center; gap:16px;">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" style="opacity:0.7"><rect x="3" y="11" width="18" height="11" rx="2" stroke="#c3f53c" stroke-width="1.5"/><path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="#c3f53c" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="16.5" r="1.5" fill="#c3f53c"/></svg>
+      <div style="font-size:18px; font-weight:700; color:#e9ecf3; letter-spacing:0.02em;">Unlock GMI Pro Signals</div>
+      <div style="font-size:12.5px; color:#aab3c4; max-width:360px; text-align:center; line-height:1.65;">Weekly trend signals, signal change alerts, secular trend analysis, and volatility data for all GMI portfolio positions.</div>
+      <a id="proUpgradeLink" href="#" style="display:inline-block; margin-top:4px; padding:12px 36px; background:#c3f53c; color:#0a0d14; font-size:12px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; text-decoration:none; border-radius:99px; transition:all 0.18s cubic-bezier(0.22,1,0.36,1); box-shadow:none;">Subscribe to RV Pro</a>
+      <div style="font-size:10px; color:#e4e9f2; margin-top:4px;">First 3 rows visible as preview</div>
+    </div>
+  </div>
+
+  <!-- Alpha Tab -->
+  <div id="alphaContent">
+    <h2 style="font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #c3f53c; margin: 0 0 14px 0;">Key Asset Trends</h2>
+    <div style="overflow-x: auto;"><table id="alphaTable"></table></div>
+    <div style="margin-top: 14px; padding: 10px 16px; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.06);">
+      <p style="font-size: 10.5px; color: #aab3c4; margin: 0; line-height: 1.6;">To use the proprietary trend signal on TradingView search for &ldquo;GMI Weekly Trend Signal&rdquo; in the list of indicators on TradingView.</p>
+    </div>
+  </div>
+
+  <!-- Guide Tab -->
+  <div id="guideContent" class="hidden">
+    <h2 style="font-size: 13px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #c3f53c; margin: 0 0 20px 0;">How To Use The GMI Risk Monitor</h2>
+
+    <div style="display: flex; flex-direction: column; gap: 20px; max-width: 720px;">
+
+      <!-- Important context -->
+      <div style="padding: 18px 20px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.10); border-left: 3px solid #c3f53c; border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #c3f53c; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">Before You Start</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">This is not a trading model. It is a guide to help you make more informed decisions using a range of tools that you may already use yourself.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">At GMI, we do not use this tool for trading assets around swings in liquidity during a cycle. We use it as one of the many tools we use to help us at the beginning or end of a cycle.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">This also does not replace the GMI Seasons or asset allocation model which is much more rigorous and nuanced. This model is all about trend and is to help you manage volatility in your portfolio.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">No system is perfect. All trend-following approaches will experience whipsaws, false signals, and periods of underperformance. Use this alongside your own judgement.</p>
+      </div>
+
+      <!-- The Hierarchy of Trend -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">The Hierarchy of Trend</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">There is a deliberate hierarchy to the information on this page. Start at the top and work down.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">First, what is the <span style="color: #e9ecf3; font-weight: 600;">Secular Trend</span>? Is the long-term structural direction in your favour? If it is, the odds are with you.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">Next, what is <span style="color: #e9ecf3; font-weight: 600;">Liquidity</span> doing? Global liquidity is the single most important driver of asset prices across the cycle.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">Then the <span style="color: #e9ecf3; font-weight: 600;">Business Cycle</span>: is the real economy confirming or diverging from liquidity? Together these give you the Macro Regime.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">Finally, the <span style="color: #e9ecf3; font-weight: 600;">Weekly Trend</span> is the tactical layer. It helps you manage volatility within the larger move. It is not a trading signal. It tells you when an asset's medium-term momentum has shifted, so you can decide how much volatility you are personally comfortable sitting through.</p>
+      </div>
+
+      <!-- The Macro Regime Box -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">The Macro Regime Box</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">This is the most important signal on the page. It combines two inputs: the direction of global liquidity (M2) and the business cycle (ISM Manufacturing).</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">When both are rising, we are in a <span style="color: #34c759; font-weight: 600;">Full Cycle Expansion</span>. GMI holds positions with conviction.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">When liquidity leads but the economy hasn't confirmed, we are in <span style="color: #60a5fa; font-weight: 600;">Early Cycle</span> accumulation.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">When liquidity fades but the economy is still strong, it's <span style="color: #f5c451; font-weight: 600;">Late Cycle</span> and caution is warranted.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">When both are falling, it's <span style="color: #f04f5f; font-weight: 600;">Contraction</span>.</p>
+      </div>
+
+      <!-- Weekly Trend -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">Weekly Trend (Rising / Falling)</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">Each asset has a weekly trend signal based on the GMI Proprietary Medium-Term Risk Indicator.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #34c759; font-weight: 600;">Green / Rising</span> means price is above the trend line and the asset is in a confirmed uptrend.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #f04f5f; font-weight: 600;">Red / Falling</span> means price has broken below.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">These are not trading signals for intraday moves. They help you manage volatility around GMI's strategic positions.</p>
+      </div>
+
+      <!-- Secular Trend -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">Secular Trend (Rising / Falling)</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">This is the long-term structural trend. For traditional assets it uses a 60-month (5-year) moving average. For crypto and crypto-adjacent equities it uses log regression channels.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #34c759; font-weight: 600;">Rising</span> means the asset is in a long-term structural bull market. <span style="color: #f04f5f; font-weight: 600;">Falling</span> means the opposite.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">An asset can be in a secular uptrend but a weekly downtrend. That simply means it's pulling back within a larger bull move.</p>
+      </div>
+
+      <!-- Signal Change -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">Signal Change</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">When an asset flips from uptrend to downtrend (or vice versa) that week, it will be highlighted with a pulsing <span style="color: #f5c451; font-weight: 600;">New Buy</span> or <span style="color: #f5c451; font-weight: 600;">New Sell</span> badge.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">This is the key alert to pay attention to each week. No signal change means the existing trend is intact and no action is needed.</p>
+      </div>
+
+      <!-- RV Pro vs RV Alpha -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">RV Pro vs RV Alpha</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #e9ecf3; font-weight: 600;">RV Pro Positions</span> tracks the weekly trend for every asset in the current GMI portfolio. This is the tab most subscribers should focus on.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;"><span style="color: #e9ecf3; font-weight: 600;">RV Alpha Trends</span> tracks broader macro assets (gold, copper, oil, yields, the dollar) that inform the overall macro picture but are not necessarily GMI positions.</p>
+      </div>
+
+      <!-- Volatility & Position Sizing -->
+      <div style="padding: 16px 20px; background: #10141d; border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">30-Day Volatility &amp; Position Sizing</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">Each asset in the table now shows its <span style="color: #e9ecf3; font-weight: 600;">30-day realised volatility</span> (annualised). This tells you how much the asset has been moving recently.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">The colour coding classifies risk: <span style="color: #34c759; font-weight: 600;">green (under 20%)</span> is Normal Risk, <span style="color: #f5c451; font-weight: 600;">amber (20&ndash;40%)</span> is Risky, and <span style="color: #f0884f; font-weight: 600;">orange (above 40%)</span> is High Risk. Crypto and crypto-adjacent equities will almost always sit in the Risky or High Risk bands. That is the nature of the asset class.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">Assets with higher long-term volatility tend to deliver higher long-term returns. But they also fall significantly more in down markets. There is no way around this.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;">If drawdowns in assets like crypto are more than you can stomach, consider volatility-adjusting your position sizes. Smaller positions in higher-volatility assets will reduce your peak-to-trough drawdowns at the cost of some upside.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;">The goal is to find a level of exposure that lets you stay in the trade through the full cycle rather than panic-selling at the worst possible moment. The best returns come from those who can hold through the volatility, and position sizing is how you make that possible.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div style="margin-top: 32px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <p style="font-size: 10px; color: #e4e9f2; margin: 0; max-width: 560px; line-height: 1.5;">Global M2 composite (US + Eurozone + Japan + UK + Canada + China + Korea + Australia converted to USD, 3-month smoothed FX) is the GMI liquidity pulse. Secular Trend uses log regression channels for crypto, crypto-adjacent equities, and EU carbon (post-first-cycle OLS on log price, within &plusmn;2&sigma; = trend intact) and 60-month SMA for traditional assets. EU Carbon (EUA) sourced via WisdomTree Carbon ETC (CARB.L), tracking ICE EUA futures from 2013 Phase 3 reform. For the full GMI Global Liquidity framework, refer to the monthly GMI research publications. Business cycle status is derived from the ISM Manufacturing PMI using the GMI monthly trend model. Weekly asset trends are not intended for intraday decisions.</p>
+    <div style="font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255,255,255,0.16);">Global Macro Investor &copy; 2026</div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// LIVE DATA — auto-injected by pipeline
+// ═══════════════════════════════════════════════════
+// __PIPELINE_DATA_START__
+
+// P&E: replace with your real auth check (Pro = true, free/Alpha = false).
+var isProSubscriber = false;
+
+var lastUpdatedStr = "Saturday, June 6, 2026";
+
+var m2Roc = {"yoy": 6.2, "mom6": 6.0};
+
+var m2ChartData = [{"d": "2022-06", "c": 112.57, "s": 115.65, "g": 0}, {"d": "2022-07", "c": 112.23, "s": 115.12, "g": 0}, {"d": "2022-08", "c": 110.35, "s": 113.61, "g": 0}, {"d": "2022-09", "c": 108.59, "s": 112.14, "g": 0}, {"d": "2022-10", "c": 107.39, "s": 111.0, "g": 0}, {"d": "2022-11", "c": 112.09, "s": 107.19, "g": 1}, {"d": "2022-12", "c": 113.49, "s": 108.59, "g": 1}, {"d": "2023-01", "c": 116.8, "s": 111.23, "g": 1}, {"d": "2023-02", "c": 114.4, "s": 111.23, "g": 1}, {"d": "2023-03", "c": 115.74, "s": 111.23, "g": 1}, {"d": "2023-04", "c": 115.22, "s": 111.23, "g": 1}, {"d": "2023-05", "c": 113.98, "s": 111.23, "g": 1}, {"d": "2023-06", "c": 113.82, "s": 111.23, "g": 1}, {"d": "2023-07", "c": 114.28, "s": 111.23, "g": 1}, {"d": "2023-08", "c": 113.04, "s": 111.23, "g": 1}, {"d": "2023-09", "c": 112.41, "s": 111.23, "g": 1}, {"d": "2023-10", "c": 111.97, "s": 111.23, "g": 1}, {"d": "2023-11", "c": 115.16, "s": 111.23, "g": 1}, {"d": "2023-12", "c": 117.03, "s": 112.17, "g": 1}, {"d": "2024-01", "c": 116.15, "s": 112.17, "g": 1}, {"d": "2024-02", "c": 116.04, "s": 112.17, "g": 1}, {"d": "2024-03", "c": 116.37, "s": 112.43, "g": 1}, {"d": "2024-04", "c": 115.69, "s": 112.43, "g": 1}, {"d": "2024-05", "c": 116.36, "s": 112.72, "g": 1}, {"d": "2024-06", "c": 116.36, "s": 113.08, "g": 1}, {"d": "2024-07", "c": 117.11, "s": 113.9, "g": 1}, {"d": "2024-08", "c": 119.62, "s": 115.85, "g": 1}, {"d": "2024-09", "c": 121.29, "s": 117.31, "g": 1}, {"d": "2024-10", "c": 119.38, "s": 117.31, "g": 1}, {"d": "2024-11", "c": 118.85, "s": 117.31, "g": 1}, {"d": "2024-12", "c": 117.87, "s": 117.31, "g": 1}, {"d": "2025-01", "c": 119.34, "s": 117.31, "g": 1}, {"d": "2025-02", "c": 120.13, "s": 117.31, "g": 1}, {"d": "2025-03", "c": 122.33, "s": 118.01, "g": 1}, {"d": "2025-04", "c": 124.28, "s": 119.71, "g": 1}, {"d": "2025-05", "c": 125.82, "s": 121.17, "g": 1}, {"d": "2025-06", "c": 127.88, "s": 122.97, "g": 1}, {"d": "2025-07", "c": 127.18, "s": 122.97, "g": 1}, {"d": "2025-08", "c": 128.49, "s": 123.84, "g": 1}, {"d": "2025-09", "c": 129.47, "s": 124.94, "g": 1}, {"d": "2025-10", "c": 128.9, "s": 124.94, "g": 1}, {"d": "2025-11", "c": 129.91, "s": 125.71, "g": 1}, {"d": "2025-12", "c": 131.87, "s": 127.4, "g": 1}, {"d": "2026-01", "c": 134.11, "s": 129.3, "g": 1}, {"d": "2026-02", "c": 134.83, "s": 130.25, "g": 1}, {"d": "2026-03", "c": 134.79, "s": 130.66, "g": 1}, {"d": "2026-04", "c": 136.31, "s": 132.06, "g": 1}, {"d": "2026-05", "c": 136.43, "s": 132.56, "g": 1}, {"d": "2026-06", "c": 135.8, "s": 132.56, "g": 1}];
+
+var ismChartData = [{"d": "2023-06", "c": 46.0, "s": 49.42, "g": 0}, {"d": "2023-07", "c": 46.4, "s": 49.42, "g": 0}, {"d": "2023-08", "c": 47.6, "s": 49.42, "g": 0}, {"d": "2023-09", "c": 49.0, "s": 49.42, "g": 0}, {"d": "2023-10", "c": 46.7, "s": 49.42, "g": 0}, {"d": "2023-11", "c": 46.6, "s": 49.42, "g": 0}, {"d": "2023-12", "c": 47.1, "s": 49.42, "g": 0}, {"d": "2024-01", "c": 49.1, "s": 49.42, "g": 0}, {"d": "2024-02", "c": 47.8, "s": 49.42, "g": 0}, {"d": "2024-03", "c": 50.3, "s": 45.98, "g": 1}, {"d": "2024-04", "c": 49.2, "s": 45.98, "g": 1}, {"d": "2024-05", "c": 48.7, "s": 45.98, "g": 1}, {"d": "2024-06", "c": 48.5, "s": 45.98, "g": 1}, {"d": "2024-07", "c": 46.8, "s": 45.98, "g": 1}, {"d": "2024-08", "c": 47.2, "s": 45.98, "g": 1}, {"d": "2024-09", "c": 47.2, "s": 45.98, "g": 1}, {"d": "2024-10", "c": 46.5, "s": 45.98, "g": 1}, {"d": "2024-11", "c": 48.4, "s": 45.98, "g": 1}, {"d": "2024-12", "c": 49.2, "s": 45.98, "g": 1}, {"d": "2025-01", "c": 50.9, "s": 47.17, "g": 1}, {"d": "2025-02", "c": 50.3, "s": 47.17, "g": 1}, {"d": "2025-03", "c": 49.0, "s": 47.17, "g": 1}, {"d": "2025-04", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-05", "c": 48.5, "s": 47.17, "g": 1}, {"d": "2025-06", "c": 49.0, "s": 47.17, "g": 1}, {"d": "2025-07", "c": 48.0, "s": 47.17, "g": 1}, {"d": "2025-08", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-09", "c": 49.1, "s": 47.17, "g": 1}, {"d": "2025-10", "c": 48.7, "s": 47.17, "g": 1}, {"d": "2025-11", "c": 48.2, "s": 47.17, "g": 1}, {"d": "2025-12", "c": 47.9, "s": 47.17, "g": 1}, {"d": "2026-01", "c": 52.6, "s": 48.76, "g": 1}, {"d": "2026-02", "c": 52.4, "s": 48.88, "g": 1}, {"d": "2026-03", "c": 52.7, "s": 49.42, "g": 1}, {"d": "2026-04", "c": 52.7, "s": 49.75, "g": 1}, {"d": "2026-05", "c": 54.0, "s": 50.89, "g": 1}];
+
+var proPositions = [{"asset": "Bitcoin", "ticker": "BTC", "trend": "red", "trendChange": true, "price": 60943.17, "category": "Crypto", "since": "Jun 2026", "secular": "rising", "vol30d": 32.4, "regime": "Normal", "annVol": 39.6}, {"asset": "Ethereum", "ticker": "ETH", "trend": "red", "trendChange": false, "price": 1562.67, "category": "Crypto", "since": "May 2026", "secular": "rising", "vol30d": 47.2, "regime": "Normal", "annVol": 56.2}, {"asset": "Solana", "ticker": "SOL", "trend": "red", "trendChange": false, "price": 62.61, "category": "Crypto", "since": "Feb 2026", "secular": "rising", "vol30d": 44.6, "regime": "Normal", "annVol": 59.6}, {"asset": "Sui", "ticker": "SUI", "trend": "green", "trendChange": false, "price": 0.7034, "category": "Crypto", "since": "May 2026", "secular": "falling", "vol30d": 58.7, "regime": "Extreme", "annVol": 78.2}, {"asset": "DeepBook", "ticker": "DEEP", "trend": "green", "trendChange": false, "price": 0.0162, "category": "Crypto", "since": "Mar 2026", "secular": null, "vol30d": 96.0, "regime": "Normal", "annVol": 85.1}, {"asset": "Nasdaq 100", "ticker": "QQQ", "trend": "green", "trendChange": false, "price": 705.06, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 23.1, "regime": "Normal", "annVol": 16.7}, {"asset": "Apple", "ticker": "AAPL", "trend": "green", "trendChange": false, "price": 307.34, "category": "Equity", "since": "Feb 2026", "secular": "rising", "vol30d": 18.1, "regime": "Normal", "annVol": 22.3}, {"asset": "Tesla", "ticker": "TSLA", "trend": "green", "trendChange": false, "price": 391.0, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 48.1, "regime": "Normal", "annVol": 47.0}, {"asset": "Coinbase", "ticker": "COIN", "trend": "green", "trendChange": false, "price": 152.4, "category": "Equity", "since": "Mar 2026", "secular": "rising", "vol30d": 69.8, "regime": "Extreme", "annVol": 70.0}, {"asset": "Robinhood", "ticker": "HOOD", "trend": "green", "trendChange": false, "price": 82.47, "category": "Equity", "since": "Apr 2026", "secular": "rising", "vol30d": 80.1, "regime": "Extreme", "annVol": 68.7}, {"asset": "Invesco Solar", "ticker": "TAN", "trend": "green", "trendChange": false, "price": 64.05, "category": "Equity", "since": "Jan 2026", "secular": "rising", "vol30d": 53.9, "regime": "Normal", "annVol": 38.3}, {"asset": "EU Carbon (EUA)", "ticker": "EUA", "trend": "green", "trendChange": false, "price": 27.93, "category": "Commodity", "since": "Apr 2026", "secular": "rising", "vol30d": 25.2, "regime": "Normal", "annVol": 29.9}];
+
+var alphaAssets = [{"asset": "Bitcoin", "ticker": "BTC", "trend": "red", "trendChange": true, "price": 60934.33, "category": "Risk Asset", "since": "Jun 2026", "secular": "rising", "vol30d": 32.4, "regime": "Normal", "annVol": 39.6}, {"asset": "Nasdaq 100", "ticker": "NDX", "trend": "green", "trendChange": false, "price": 28957.5991, "category": "Risk Asset", "since": "Apr 2026", "secular": "rising", "vol30d": 23.1, "regime": "Normal", "annVol": 16.8}, {"asset": "Gold", "ticker": "XAU", "trend": "red", "trendChange": false, "price": 4328.92, "category": "Safe Haven", "since": "Mar 2026", "secular": "rising", "vol30d": 19.0, "regime": "Normal", "annVol": 26.2}, {"asset": "Copper", "ticker": "HG", "trend": "green", "trendChange": false, "price": 6.2845, "category": "Cyclical", "since": "Sep 2025", "secular": "rising", "vol30d": 32.9, "regime": "Normal", "annVol": 39.1}, {"asset": "US Dollar Index", "ticker": "DXY", "trend": "green", "trendChange": false, "price": 100.071, "category": "Currency", "since": "Mar 2026", "secular": "falling", "vol30d": 4.5, "regime": "Normal", "annVol": 5.9}, {"asset": "2-Year Yields", "ticker": "US2Y", "trend": "green", "trendChange": false, "price": 4.145, "category": "Rates", "since": "Mar 2026", "secular": "rising", "vol30d": 18.8, "regime": "Normal", "annVol": 19.1}, {"asset": "10-Year Yields", "ticker": "US10Y", "trend": "green", "trendChange": false, "price": 4.532, "category": "Rates", "since": "Mar 2026", "secular": "rising", "vol30d": 16.3, "regime": "Normal", "annVol": 15.7}, {"asset": "Crude Oil", "ticker": "CL", "trend": "green", "trendChange": false, "price": 90.24, "category": "Cyclical", "since": "Feb 2026", "secular": "rising", "vol30d": 45.4, "regime": "Normal", "annVol": 48.2}];
+
+var m2Trend = "green";
+var ismTrend = "green";
+var m2Since = "Nov 2022";
+var ismSince = "Mar 2024";
+var ismValue = 54.0;
+
+// __PIPELINE_DATA_END__
+
+// ── Update header date ──
+(function() { var el = document.getElementById("lastUpdated"); if (el) el.textContent = lastUpdatedStr; })();
+
+function formatPrice(p) {
+  if (p === null) return "\u2014";
+  if (p >= 10000) return "$" + p.toLocaleString("en-US", {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  if (p >= 100) return "$" + p.toLocaleString("en-US", {minimumFractionDigits: 0, maximumFractionDigits: 0});
+  if (p >= 1) return "$" + p.toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  return "$" + p.toLocaleString("en-US", {minimumFractionDigits: 4, maximumFractionDigits: 4});
+}
+
+function volColor(v) {
+  if (v === null || v === undefined) return { color: "#aab3c4", bg: "transparent", border: "transparent", label: "" };
+  if (v >= 40) return { color: "#f0884f", bg: "rgba(240,136,79,0.06)", border: "rgba(240,136,79,0.15)", label: "High Risk" };
+  if (v >= 20) return { color: "#f5c451", bg: "rgba(245,196,81,0.06)", border: "rgba(245,196,81,0.15)", label: "Risky" };
+  return { color: "#34c759", bg: "rgba(52,199,89,0.06)", border: "rgba(52,199,89,0.15)", label: "Normal" };
+}
+
+function buildTable(data, tableEl) {
+  var headers = ["Asset", "Ticker", "Price", "30d Vol", "Risk", "Secular Trend", "Weekly Trend", "Signal Change", "Since"];
+
+  var html = "<thead><tr>";
+  headers.forEach(function(h, idx) {
+    var align = idx >= 5 ? "center" : (idx === 2 || idx === 3 || idx === 4) ? "right" : "left";
+    html += '<th style="text-align:' + align + '">' + h + '</th>';
+  });
+  html += "</tr></thead><tbody>";
+
+  data.forEach(function(row, i) {
+    var cls = row.trendChange ? "changed" : (i % 2 === 0 ? "even" : "");
+    html += '<tr class="' + cls + '">';
+    html += '<td>' + row.asset + '</td>';
+    html += '<td class="mono" style="font-size:11.5px;font-weight:600;color:#e9ecf3">' + row.ticker + '</td>';
+    var isYield = (row.category === "Rates");
+    html += '<td class="mono" style="text-align:right">' + (isYield ? row.price.toFixed(2) + '%' : formatPrice(row.price)) + '</td>';
+    // 30d Realised Vol
+    var vc = volColor(row.vol30d);
+    if (row.vol30d !== null && row.vol30d !== undefined) {
+      html += '<td style="text-align:right"><span class="mono" style="font-size:11px;font-weight:600;color:' + vc.color + ';background:' + vc.bg + ';border:1px solid ' + vc.border + ';padding:2px 7px;border-radius:4px">' + row.vol30d.toFixed(1) + '%</span></td>';
+      html += '<td style="text-align:right"><span style="font-size:9.5px;font-weight:600;letter-spacing:0.03em;color:' + vc.color + '">' + vc.label + '</span></td>';
+    } else {
+      html += '<td style="text-align:right"><span style="font-size:10px;color:rgba(170,179,196,0.3);">\u2014</span></td>';
+      html += '<td style="text-align:right"><span style="font-size:10px;color:rgba(170,179,196,0.3);">\u2014</span></td>';
+    }
+    // Secular Trend (60-month MA)
+    if (row.secular) {
+      var secColor, secBg, secBorder, secLabel;
+      if (row.secular === "rising") {
+        secColor = "#34c759"; secBg = "rgba(52,199,89,0.08)"; secBorder = "rgba(52,199,89,0.25)"; secLabel = "\u2191 Rising";
+      } else if (row.secular === "ranging") {
+        secColor = "#f5c451"; secBg = "rgba(245,196,81,0.08)"; secBorder = "rgba(245,196,81,0.25)"; secLabel = "\u2194 Ranging";
+      } else {
+        secColor = "#f04f5f"; secBg = "rgba(240,79,95,0.08)"; secBorder = "rgba(240,79,95,0.25)"; secLabel = "\u2193 Falling";
+      }
+      html += '<td style="text-align:center"><span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:' + secBg + ';border:1px solid ' + secBorder + '"><span style="font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:' + secColor + '">' + secLabel + '</span></span></td>';
+    } else {
+      html += '<td style="text-align:center"><span style="font-size:10px;color:rgba(170,179,196,0.3);font-style:italic">N/A</span></td>';
+    }
+    // Weekly Trend badge (with directional arrow for colorblind accessibility)
+    var bc = row.trend === "green" ? "green" : "red";
+    var dotColor = row.trend === "green" ? "green" : "red";
+    var label = row.trend === "green" ? "Rising" : "Falling";
+    var arrow = row.trend === "green" ? "\u2191" : "\u2193";
+    html += '<td style="text-align:center"><span class="trend-badge ' + bc + '"><span class="signal-dot ' + dotColor + '" style="width:7px;height:7px"></span><span class="trend-badge-text">' + arrow + ' ' + label + '</span></span></td>';
+    // Signal change
+    if (row.trendChange) {
+      var chgLabel = row.trend === "red" ? "New Sell" : "New Buy";
+      html += '<td style="text-align:center"><span class="change-badge"><span style="font-size:10px"></span><span class="change-badge-text">' + chgLabel + '</span></span></td>';
+    } else {
+      html += '<td style="text-align:center"><span style="font-size:12px;color:rgba(170,179,196,0.2)">\u2014</span></td>';
+    }
+    html += '<td class="mono" style="text-align:center;font-size:11px;color:#aab3c4">' + (row.since || "\u2014") + '</td>';
+    html += '</tr>';
+  });
+  html += "</tbody>";
+  tableEl.innerHTML = html;
+}
+
+function switchTab(tab) {
+  document.getElementById("proContent").classList.toggle("hidden", tab !== "pro");
+  document.getElementById("alphaContent").classList.toggle("hidden", tab !== "alpha");
+  document.getElementById("guideContent").classList.toggle("hidden", tab !== "guide");
+  document.getElementById("cycleRegime").classList.toggle("hidden", tab === "guide");
+  document.getElementById("tabPro").classList.toggle("active", tab === "pro");
+  document.getElementById("tabAlpha").classList.toggle("active", tab === "alpha");
+  document.getElementById("tabGuide").classList.toggle("active", tab === "guide");
+  var tags = { pro: "RV ALPHA", alpha: "RV ALPHA", guide: "GUIDE" };
+  document.getElementById("tierTag").textContent = tags[tab] || "RV ALPHA";
+}
+
+// ── Render indicator boxes from data ──
+(function() {
+  var trends = { green: { color: "#34c759", label: "Rising", dot: "green" }, red: { color: "#f04f5f", label: "Falling", dot: "red" } };
+
+  // M2 box
+  var m2t = trends[m2Trend] || trends.green;
+  var m2Sig = document.getElementById("m2Signal");
+  if (m2Sig) m2Sig.innerHTML = '<span class="signal-dot ' + m2t.dot + '" style="width:9px;height:9px"></span>' +
+    '<span style="font-size:15px;font-weight:500;color:' + m2t.color + '">' + m2t.label + '</span>' +
+    '<span class="mono" style="font-size:11px;font-weight:500;color:#e9ecf3;margin-left:4px;opacity:0.7">(Global M2*)</span>';
+  var m2S = document.getElementById("m2Since");
+  if (m2S) m2S.textContent = m2Since;
+  var m2Box = document.getElementById("m2Box");
+  if (m2Box) m2Box.style.border = "1px solid " + (m2Trend === "green" ? "rgba(52,199,89,0.5)" : "rgba(240,79,95,0.5)");
+
+  // ISM box
+  var ismt = trends[ismTrend] || trends.green;
+  var ismSig = document.getElementById("ismSignal");
+  if (ismSig) ismSig.innerHTML = '<span class="signal-dot ' + ismt.dot + '" style="width:9px;height:9px"></span>' +
+    '<span style="font-size:15px;font-weight:500;color:' + ismt.color + '">' + ismt.label + '</span>' +
+    '<span class="mono" style="font-size:11px;font-weight:500;color:#e9ecf3;margin-left:4px;opacity:0.7">(ISM ' + ismValue + ')</span>';
+  var ismS = document.getElementById("ismSince");
+  if (ismS) ismS.textContent = ismSince;
+  var ismBox = document.getElementById("ismBox");
+  if (ismBox) ismBox.style.border = "1px solid " + (ismTrend === "green" ? "rgba(52,199,89,0.5)" : "rgba(240,79,95,0.5)");
+})();
+
+// ── 2x2 Macro Regime Matrix ──
+(function() {
+  var regimes = {
+    "green_green": {
+      label: "Full Cycle Expansion",
+      color: "#34c759",
+      bg: "rgba(52,199,89,0.05)",
+      border: "rgba(52,199,89,0.2)",
+      desc: "Liquidity and the real economy are both rising. GMI: hold positions with conviction through shorter-term volatility. Use the Weekly Trend table below to manage your own portfolio volatility."
+    },
+    "green_red": {
+      label: "Early Cycle \u2014 Liquidity Leads",
+      color: "#60a5fa",
+      bg: "rgba(96,165,250,0.05)",
+      border: "rgba(96,165,250,0.2)",
+      desc: "Liquidity is rising but the real economy has not yet confirmed. Accumulation phase where crypto and tech tend to front-run the recovery. Expect volatility but direction favours risk assets."
+    },
+    "red_green": {
+      label: "Late Cycle \u2014 Liquidity Fading",
+      color: "#f5c451",
+      bg: "rgba(245,196,81,0.05)",
+      border: "rgba(245,196,81,0.2)",
+      desc: "Real economy still rising but liquidity deteriorating. Caution phase. Respect weekly trend signals more closely and consider reducing exposure on red flips."
+    },
+    "red_red": {
+      label: "Contraction",
+      color: "#f04f5f",
+      bg: "rgba(240,79,95,0.05)",
+      border: "rgba(240,79,95,0.2)",
+      desc: "Both liquidity and the real economy falling. Defensive positioning warranted. Weekly trend signals should be followed with higher conviction."
+    }
+  };
+
+  var key = m2Trend + "_" + ismTrend;
+  var r = regimes[key] || regimes["green_green"];
+
+  var box = document.getElementById("regimeBox");
+  if (box) {
+    box.style.background = r.bg;
+    box.style.border = "1px solid " + r.border;
+    box.style.borderBottom = "none";
+  }
+  var dot = document.getElementById("regimeDot");
+  if (dot) {
+    dot.style.background = r.color;
+    dot.style.boxShadow = "0 0 14px " + r.color.replace(")", ",0.3)").replace("rgb", "rgba");
+  }
+  var label = document.getElementById("regimeLabel");
+  if (label) {
+    label.style.color = r.color;
+    label.textContent = r.label;
+  }
+  var desc = document.getElementById("regimeDesc");
+  if (desc) desc.textContent = r.desc;
+
+  // Also style the indicator boxes border color to match their individual trends
+  // (green border for rising, red border for falling)
+})();
+
+// Render M2 RoC row
+(function() {
+  var el = document.getElementById("m2RocRow");
+  if (!el) return;
+  function rocChip(label, val) {
+    if (val === null || val === undefined) return "";
+    var color = val >= 0 ? "#34c759" : "#f04f5f";
+    var bg = val >= 0 ? "rgba(52,199,89,0.06)" : "rgba(240,79,95,0.06)";
+    var border = val >= 0 ? "rgba(52,199,89,0.15)" : "rgba(240,79,95,0.15)";
+    var sign = val >= 0 ? "+" : "";
+    return '<div style="display:flex;align-items:center;gap:6px;padding:4px 0">' +
+      '<span style="font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#aab3c4">' + label + '</span>' +
+      '<span style="font-size:12px;font-weight:600;color:' + color + ';background:' + bg + ';border:1px solid ' + border + ';padding:2px 8px;border-radius:4px;">' + sign + val.toFixed(1) + '%</span>' +
+      '</div>';
+  }
+  el.innerHTML = rocChip("YoY", m2Roc.yoy) + rocChip("6m/6m", m2Roc.mom6);
+})();
+
+// ── Inline SVG chart renderer ──
+function renderTrendChart(svgId, data, opts) {
+  var svg = document.getElementById(svgId);
+  if (!svg || !data || data.length < 2) return;
+
+  opts = opts || {};
+  var W = svg.getBoundingClientRect().width || 400;
+  var H = parseInt(svg.getAttribute("height")) || 100;
+  var pad = { t: 5, r: 8, b: 20, l: 8 };
+  var cW = W - pad.l - pad.r;
+  var cH = H - pad.t - pad.b;
+
+  // Value range — asymmetric padding (less headroom up top so the line reads bigger)
+  var padTop = opts.padTop != null ? opts.padTop : 0.05;
+  var padBot = opts.padBot != null ? opts.padBot : 0.05;
+  var allVals = data.map(function(d){ return d.c; }).concat(data.map(function(d){ return d.s; }));
+  var minV = Math.min.apply(null, allVals);
+  var maxV = Math.max.apply(null, allVals);
+  var range = maxV - minV || 1;
+  minV -= range * padBot;
+  maxV += range * padTop;
+  range = maxV - minV;
+
+  function x(i) { return pad.l + (i / (data.length - 1)) * cW; }
+  function y(v) { return pad.t + (1 - (v - minV) / range) * cH; }
+
+  var ns = "http://www.w3.org/2000/svg";
+  svg.innerHTML = "";
+
+  // Horizontal hairline gridlines (RV chart treatment)
+  for (var gi = 0; gi <= 4; gi++) {
+    var gy = pad.t + (gi / 4) * cH;
+    var gl = document.createElementNS(ns, "line");
+    gl.setAttribute("x1", pad.l); gl.setAttribute("x2", pad.l + cW);
+    gl.setAttribute("y1", gy); gl.setAttribute("y2", gy);
+    gl.setAttribute("stroke", "rgba(255,255,255,0.05)");
+    gl.setAttribute("stroke-width", "1");
+    gl.setAttribute("stroke-dasharray", "2,4");
+    svg.appendChild(gl);
+  }
+
+  // Fill area under close line (subtle)
+  var areaPath = "M" + x(0) + "," + y(data[0].c);
+  for (var i = 1; i < data.length; i++) areaPath += "L" + x(i) + "," + y(data[i].c);
+  areaPath += "L" + x(data.length-1) + "," + (pad.t + cH) + "L" + x(0) + "," + (pad.t + cH) + "Z";
+  var area = document.createElementNS(ns, "path");
+  area.setAttribute("d", areaPath);
+  area.setAttribute("fill", "rgba(34,211,238,0.06)");
+  svg.appendChild(area);
+
+  // SuperTrend lines — separate red (above/resistance) and green (below/support)
+  // Don't connect across flip points — Bloomberg style
+  for (var i = 1; i < data.length; i++) {
+    // Only draw segment if same direction as previous bar
+    if (data[i].g !== data[i-1].g) continue;
+    var line = document.createElementNS(ns, "line");
+    line.setAttribute("x1", x(i-1)); line.setAttribute("y1", y(data[i-1].s));
+    line.setAttribute("x2", x(i));   line.setAttribute("y2", y(data[i].s));
+    var col = data[i].g ? "rgba(52,199,89,0.6)" : "rgba(240,79,95,0.6)";
+    line.setAttribute("stroke", col);
+    line.setAttribute("stroke-width", "2");
+    line.setAttribute("stroke-dasharray", "4,3");
+    svg.appendChild(line);
+  }
+  // Dots at each SuperTrend point for visibility
+  for (var i = 0; i < data.length; i++) {
+    var stDot = document.createElementNS(ns, "circle");
+    stDot.setAttribute("cx", x(i)); stDot.setAttribute("cy", y(data[i].s));
+    stDot.setAttribute("r", "1.5");
+    stDot.setAttribute("fill", data[i].g ? "rgba(52,199,89,0.5)" : "rgba(240,79,95,0.5)");
+    svg.appendChild(stDot);
+  }
+
+  // Close price line
+  var closePath = "M" + x(0) + "," + y(data[0].c);
+  for (var i = 1; i < data.length; i++) closePath += "L" + x(i) + "," + y(data[i].c);
+  var cl = document.createElementNS(ns, "path");
+  cl.setAttribute("d", closePath);
+  cl.setAttribute("fill", "none");
+  cl.setAttribute("stroke", "#22d3ee");
+  cl.setAttribute("stroke-width", "1.75");
+  cl.setAttribute("stroke-linejoin", "round");
+  svg.appendChild(cl);
+
+  // Current price dot
+  var lastI = data.length - 1;
+  var dot = document.createElementNS(ns, "circle");
+  dot.setAttribute("cx", x(lastI)); dot.setAttribute("cy", y(data[lastI].c));
+  dot.setAttribute("r", "3.5");
+  dot.setAttribute("fill", data[lastI].g ? "#34c759" : "#f04f5f");
+  dot.setAttribute("stroke", "#0a0d14");
+  dot.setAttribute("stroke-width", "1.5");
+  svg.appendChild(dot);
+
+  // X-axis date labels (first, mid, last)
+  var labelIdxs = [0, Math.floor(data.length/2), data.length - 1];
+  labelIdxs.forEach(function(idx) {
+    var t = document.createElementNS(ns, "text");
+    t.setAttribute("x", x(idx));
+    t.setAttribute("y", H - 2);
+    t.setAttribute("text-anchor", idx === 0 ? "start" : idx === data.length - 1 ? "end" : "middle");
+    t.setAttribute("fill", "#b4bccc");
+    t.setAttribute("font-size", "10");
+    t.setAttribute("font-family", "'Hanken Grotesk',sans-serif");
+    t.textContent = data[idx].d;
+    svg.appendChild(t);
+  });
+
+  // (ST label removed — cleaner without it)
+}
+
+// Render charts
+renderTrendChart("m2Chart", m2ChartData, {padTop: 0.20, padBot: 0.16});
+renderTrendChart("ismChart", ismChartData, {padTop: 0.20, padBot: 0.16});
+
+// Init
+buildTable(proPositions, document.getElementById("proTable"));
+buildTable(alphaAssets, document.getElementById("alphaTable"));
+
+// ── Pro Paywall Gate (with preview rows) ──
+// P&E: Replace isProSubscriber with your real auth check.
+// Everything else works automatically.
+(function() {
+  if (!isProSubscriber) {
+    var wall = document.getElementById("proPaywall");
+    if (wall) wall.style.display = "flex";
+    // P&E: Set this href to your upgrade/pricing page
+    var link = document.getElementById("proUpgradeLink");
+    if (link) link.href = "https://www.realvision.com/pricing";
+    // Blur rows beyond the first 3 (preview rows)
+    var rows = document.querySelectorAll("#proTable tbody tr");
+    for (var i = 3; i < rows.length; i++) {
+      rows[i].style.filter = "blur(6px)";
+      rows[i].style.pointerEvents = "none";
+      rows[i].style.userSelect = "none";
+    }
+    // Align the overlay with the first blurred row (row 4). Must be measured
+    // while the Pro tab is visible, so re-run on every switch to it.
+    window.positionProPaywall = function() {
+      var content = document.getElementById("proContent");
+      if (!content || content.classList.contains("hidden") || rows.length <= 3) return;
+      var top = rows[3].getBoundingClientRect().top - content.getBoundingClientRect().top;
+      wall.style.top = Math.max(0, Math.round(top)) + "px";
+    };
+    var origSwitchTab = switchTab;
+    switchTab = function(tab) {
+      origSwitchTab(tab);
+      if (tab === "pro") window.positionProPaywall();
+    };
+  }
+})();
+
+// ── Executive Status Bar ──
+(function() {
+  var bar = document.getElementById("statusBar");
+  if (!bar) return;
+  var items = [];
+
+  // Count signal changes — dedupe by ticker (BTC is in both Pro & Alpha, but a
+  // flip is one event, not two).
+  var changedSet = {};
+  proPositions.concat(alphaAssets).forEach(function(d){ if (d.trendChange) changedSet[d.ticker] = true; });
+  var changedTickers = Object.keys(changedSet);
+  var totalChanges = changedTickers.length;
+
+  // Regime summary
+  var key = m2Trend + "_" + ismTrend;
+  var regimeNames = { "green_green": "Full Expansion", "green_red": "Early Cycle", "red_green": "Late Cycle", "red_red": "Contraction" };
+  var regimeColors = { "green_green": "#34c759", "green_red": "#60a5fa", "red_green": "#f5c451", "red_red": "#f04f5f" };
+  items.push('<span style="font-size:10px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#aab3c4">Regime:</span> <span style="font-size:11px;font-weight:700;color:' + (regimeColors[key]||"#e9ecf3") + '">' + (regimeNames[key]||"Unknown") + '</span>');
+
+  // Signal changes
+  if (totalChanges > 0) {
+    var changeNames = changedTickers.join(", ");
+    items.push('<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;background:rgba(245,196,81,0.1);border:1px solid rgba(245,196,81,0.3);animation:pulse 2s ease-in-out infinite"><span style="font-size:10px"></span><span style="font-size:10px;font-weight:700;color:#f5c451;letter-spacing:0.03em">' + totalChanges + ' signal change' + (totalChanges > 1 ? 's' : '') + ': ' + changeNames + '</span></span>');
+  } else {
+    items.push('<span style="font-size:10px;color:#e4e9f2">No signal changes this week</span>');
+  }
+
+  bar.innerHTML = items.join('<span style="color:rgba(255,255,255,0.10);margin:0 4px">\u2502</span>');
+})();
+</script>
+</body>
+</html>
