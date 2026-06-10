@@ -1,0 +1,136 @@
+#!/usr/bin/env node
+// ===========================================================================
+//  ANALYSIS EMITTER — machine-readable insights for the Compounding Machine.
+//
+//  Runs the SAME lib/compute.js the dashboard shells execute in the browser
+//  (compute.js exports for Node — see its footer), against the same baked
+//  data/data.js, and writes data/analysis.json: every insight the page shows
+//  (current sigma, zone, trend, frozen-regression readouts, the full buy/sell
+//  signal history, and the default-parameter portfolio stats), fetchable as
+//  one JSON URL by any scraper or AI — no JS execution, no headless browser.
+//
+//  One source of math truth: nothing here re-implements the regression or the
+//  simulation; if compute.js changes, this output changes with it.
+//
+//  Run from anywhere: node dashboard-template/build_analysis.js
+//  (invoked by build_dashboard_template_data.py after each data refresh).
+// ===========================================================================
+"use strict";
+const fs = require("fs");
+const path = require("path");
+
+const HERE = __dirname;
+const COMPUTE = require(path.join(HERE, "lib", "compute.js"));
+
+// Default parameters — must match the shells' useState defaults and the QA
+// check-cases in HANDOFF_Compounding-Machine.md §8.
+const DEFAULTS = {
+  startDate: "2017-09-01",
+  freezeDate: "2025-12-31",
+  initialStake: 100000,
+  buyThreshold: 1.0,
+  buyAmount: 25000,
+  sellThreshold: 1.0,
+  sellPct: 20,
+};
+
+// Invert compute.js's ts(): ms (local midnight) -> "YYYY-MM-DD".
+function iso(ms) {
+  const d = new Date(ms);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") +
+    "-" + String(d.getDate()).padStart(2, "0");
+}
+const r2 = (v) => Math.round(v * 100) / 100;
+
+// data/data.js is `window.DASHBOARD_DATA = {...};` between pipeline markers —
+// extract the JSON object the same way build_dashboard_template_data.py does.
+const txt = fs.readFileSync(path.join(HERE, "data", "data.js"), "utf8");
+const payload = JSON.parse(txt.slice(txt.indexOf("{"), txt.lastIndexOf("}") + 1));
+
+// sources.js registers GMI_SOURCES on globalThis (no module.exports);
+// requiring it runs the IIFE. It reads DASHBOARD_DATA off the same global.
+globalThis.DASHBOARD_DATA = payload;
+require(path.join(HERE, "lib", "sources.js"));
+const REGISTRY = globalThis.GMI_SOURCES.ASSET_REGISTRY;
+
+const assets = {};
+for (const meta of REGISTRY) {
+  const series = ((payload.assets || {})[meta.key] || {}).series || [];
+  const a = COMPUTE.analyse(series, Object.assign({ projectToYear: meta.projectToYear }, DEFAULTS));
+  if (!a) {
+    console.error(meta.key + ": no analysis (series has " + series.length + " points) — skipped");
+    continue;
+  }
+  const { reg, run, channel } = a;
+  const s = run.stats;
+  const zone = a.currentSigma < -DEFAULTS.buyThreshold ? "buy"
+    : a.currentSigma > DEFAULTS.sellThreshold ? "sell" : "neutral";
+
+  // Forward channel sampled at each Jan-1 to the horizon — the band of
+  // possible prices (NOT a forecast), same caveat the dashboard renders.
+  const projection = channel.proj
+    .filter((p, i, arr) => {
+      const y = new Date(p.date).getFullYear();
+      return i === 0 || y !== new Date(arr[i - 1].date).getFullYear();
+    })
+    .map((p) => ({
+      date: iso(p.date), trend: r2(p.trend),
+      upper1: r2(p.upper1), lower1: r2(p.lower1),
+      upper2: r2(p.upper2), lower2: r2(p.lower2),
+    }));
+
+  assets[meta.key] = {
+    name: meta.name, ticker: meta.ticker, unit: meta.unit,
+    lastDate: iso(a.lastDate),
+    lastPrice: a.lastPrice,
+    trend: {
+      value: r2(a.trendNow),
+      currentSigma: r2(a.currentSigma),
+      distanceToTrendPct: r2((a.lastPrice / a.trendNow - 1) * 100),
+      zone: zone,
+    },
+    regression: {
+      frozen: true,
+      startDate: DEFAULTS.startDate,
+      freezeDate: DEFAULTS.freezeDate,
+      impliedCAGRPct: reg.impliedCAGR,
+      sigma1Pct: reg.sd1pct,
+    },
+    signals: {
+      buys: run.buys.map((b) => ({ date: iso(b.date), price: r2(b.price), amount: b.amount })),
+      sells: run.sells.map((x) => ({ date: iso(x.date), price: r2(x.price), amount: r2(x.amount) })),
+    },
+    statsAtDefaultParams: {
+      totalDeployed: r2(s.totalDeployed),
+      outOfPocket: r2(s.outOfPocket),
+      inMarket: r2(s.btcVal),
+      cashFromSells: r2(s.cash),
+      strategyValue: r2(s.curS),
+      hodlValue: r2(s.curH),
+      noSellsValue: r2(s.curPure),
+      noSellsInvested: r2(s.pureCap),
+    },
+    projection: projection,
+    projectToYear: meta.projectToYear,
+  };
+  console.log(meta.key + ": sigma " + r2(a.currentSigma) + " (" + zone + "), " +
+    run.buys.length + " buys / " + run.sells.length + " sells, CAGR " +
+    reg.impliedCAGR + "%, 1-sigma " + reg.sd1pct + "%");
+}
+
+if (!Object.keys(assets).length) {
+  console.error("no assets analysed; not writing analysis.json");
+  process.exit(1);
+}
+
+const out = {
+  updated: payload.updated,
+  source: "GMI Compounding Machine — generated by build_analysis.js from data/data.js via lib/compute.js (the same module the dashboard runs)",
+  methodology: "Frozen log-linear regression on weekly closes (startDate..freezeDate); sigma = stdev of log residuals. Buys: fixed-dollar add below -buyThreshold sigma (re-armed past -buyThreshold/2). Sells: trim sellPct of holdings above +sellThreshold sigma. Projection = trend +/- sigma bands, not a price forecast.",
+  disclaimer: "Demonstration only — not investment advice. Past performance and modelled projections do not guarantee future results.",
+  defaultParams: DEFAULTS,
+  assets: assets,
+};
+const outPath = path.join(HERE, "data", "analysis.json");
+fs.writeFileSync(outPath, JSON.stringify(out, null, 2) + "\n");
+console.log("wrote", outPath);

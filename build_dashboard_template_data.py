@@ -10,7 +10,7 @@ The dashboard reads this baked-in data via the `injected` adapter — no live
 browser fetch, no CORS, no hang. Run hourly by the workflow; the in-progress
 weekly bar carries the latest (delayed) price, so each run refreshes "now".
 """
-import json, os, time, datetime as dt
+import json, os, subprocess, time, datetime as dt
 import tv_pull
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -86,6 +86,7 @@ def main():
     print("wrote", data_path, "updated", updated)
 
     build_beta(banner + body)
+    build_analysis()
 
 
 def build_beta(data_js):
@@ -110,6 +111,18 @@ def build_beta(data_js):
         out = os.path.join(TPL, out_name)
         open(out, "w").write(shell)
         print("rebuilt", out)
+
+
+def build_analysis():
+    """Emit data/analysis.json — the machine-readable insight feed. Runs the
+    SAME lib/compute.js the dashboard executes (under Node) so the JSON can
+    never drift from what the page shows. Fail-soft: a Node failure keeps the
+    previous analysis.json (its own `updated` stamp exposes the staleness) and
+    never blocks the data refresh."""
+    try:
+        subprocess.run(["node", os.path.join(TPL, "build_analysis.js")], check=True)
+    except Exception as ex:
+        print("WARNING: analysis.json refresh failed (%r) — keeping previous file" % (ex,))
 
 
 if __name__ == "__main__":

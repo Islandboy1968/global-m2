@@ -16,6 +16,14 @@
 > Everything Code dashboard). Both read the same `data/data.js` + `lib/compute.js`
 > + `lib/sources.js`; the hourly pipeline bakes a self-contained beta of each.
 > The four-layer split (§10) is what makes the second skin a shell-only file.
+>
+> **Machine-readable insight feed:** the pipeline also emits
+> `data/analysis.json` — every insight the page shows (current σ, zone, trend,
+> frozen-regression readouts, full buy/sell history, default-param portfolio
+> stats, the forward channel at year-ends), computed by running the SAME
+> `lib/compute.js` under Node (`build_analysis.js`), so the JSON can never
+> drift from the page. One GET, no JS execution needed:
+> https://islandboy1968.github.io/global-m2/dashboard-template/data/analysis.json
 
 ---
 
