@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GMI Live Positions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root{
+  --gmi-magenta:#F12A5A;
+  --gmi-ink:#2C4C6B;
+  --gmi-ink-2:#6b86a0;
+  --gmi-line:#d8e0e8;
+  --gmi-bg:#ffffff;
+  --gmi-tint:#f4f7fa;
+  --pos:#1f8a5b;
+  --neg:#c0392b;
+  --warn:#b8860b;
+  --warn-bg:#fbf3df;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--gmi-bg);color:var(--gmi-ink);
+  font-family:"Helvetica Neue",Arial,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{padding:0 0 80px}
+.hairline{height:4px;background:var(--gmi-magenta);width:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+header.lockup{display:flex;align-items:baseline;justify-content:space-between;padding:18px 0 10px;border-bottom:1px solid var(--gmi-line)}
+.wordmark{font-family:"Teko",sans-serif;font-weight:700;font-size:42px;line-height:1;letter-spacing:1px;color:var(--gmi-ink)}
+.subline{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:600}
+.titlebar{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;margin:22px 0 6px}
+h1{font-family:"Teko",sans-serif;font-weight:600;font-size:54px;line-height:.95;margin:0;letter-spacing:.5px}
+.asof{font-size:12.5px;color:var(--gmi-ink-2);text-align:right;line-height:1.6}
+.asof b{color:var(--gmi-ink)}
+.legendbar{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--gmi-ink-2);margin:10px 0 4px;padding:10px 0;border-top:1px solid var(--gmi-line);border-bottom:1px solid var(--gmi-line)}
+.legendbar span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;display:inline-block}
+.dot.live{background:var(--pos)}
+.dot.stale{background:var(--warn)}
+.dot.manual{background:var(--gmi-ink-2)}
+.dot.flag{background:var(--gmi-magenta)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+.controls input,.controls select{font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--gmi-line);background:#fff;color:var(--gmi-ink)}
+.controls .filterbtn{cursor:pointer;background:#fff;border:1px solid var(--gmi-line);padding:7px 12px;font-size:12.5px;color:var(--gmi-ink-2)}
+.controls .filterbtn.active{background:var(--gmi-ink);color:#fff;border-color:var(--gmi-ink)}
+section.bucket{margin:40px 0 0}
+.sec-head{font-family:"Teko",sans-serif;font-weight:600;font-size:34px;letter-spacing:.5px;border-bottom:2px solid var(--gmi-ink);padding-bottom:4px;display:flex;justify-content:space-between;align-items:flex-end}
+.sec-head .secstat{font-family:"Helvetica Neue",Arial,sans-serif;font-size:13px;font-weight:600;color:var(--gmi-ink-2)}
+.editblock{margin:12px 0;border:1px dashed var(--gmi-line);background:var(--gmi-tint);padding:14px 16px}
+.editblock .lbl{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;margin-bottom:6px}
+.editblock [contenteditable]{outline:none;font-size:14px;line-height:1.6;color:var(--gmi-ink);min-height:20px}
+.editblock [contenteditable]:empty:before{content:attr(data-ph);color:#aab8c4;font-style:italic}
+.editblock.ai{border-color:#cdd9e4;background:#fff}
+.editblock.ai .lbl{color:var(--gmi-magenta)}
+table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--gmi-line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;cursor:pointer;user-select:none;border-bottom:1.5px solid var(--gmi-ink)}
+th:hover{color:var(--gmi-ink)}
+td.inst{font-weight:600}
+td.tkr{color:var(--gmi-ink-2);font-size:12px}
+.pos{color:var(--pos);font-weight:600}
+.neg{color:var(--neg);font-weight:600}
+.src{font-size:11px;color:var(--gmi-ink-2)}
+.badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;padding:1px 6px;border:1px solid currentColor;text-transform:uppercase}
+.badge.flag{color:var(--gmi-magenta)}
+.badge.stale{color:var(--warn)}
+tr.flagged{background:var(--warn-bg)}
+.priceedit{width:78px;font:inherit;font-size:12.5px;text-align:right;border:1px solid var(--gmi-line);padding:3px 5px;background:#fff;color:var(--gmi-ink)}
+.priceedit.manual{border-color:var(--gmi-magenta)}
+tr.noterow td{padding:0 10px 9px 26px;border-bottom:1px solid var(--gmi-line);text-align:left}
+tr.noterow.flagged td{background:var(--warn-bg)}
+.notecell{font-size:11.5px;color:var(--warn);line-height:1.45;text-align:left;font-style:italic}
+.footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--gmi-line);font-size:11.5px;color:var(--gmi-ink-2);line-height:1.7}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 0}
+.toolbar button{cursor:pointer;font:inherit;font-size:12.5px;padding:8px 14px;border:1px solid var(--gmi-ink);background:#fff;color:var(--gmi-ink)}
+.toolbar button:hover{background:var(--gmi-ink);color:#fff}
+.subtle{color:var(--gmi-ink-2)}
+details.adden{margin-top:10px}
+details.adden summary{cursor:pointer;font-size:12.5px;color:var(--gmi-ink-2);padding:6px 0}
+.fontnote{font-size:11px;color:#aab8c4;font-style:italic;margin-top:4px}
+.rowact{cursor:pointer;font:inherit;font-size:10.5px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;padding:2px 7px;border:1px solid var(--gmi-line);background:#fff;color:var(--gmi-ink-2)}
+.rowact:hover{border-color:var(--gmi-ink);color:var(--gmi-ink)}
+.viewtoggle{display:flex;align-items:center;gap:0;margin:18px 0 4px;flex-wrap:wrap}
+.vbtn{cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;padding:8px 16px;border:1px solid var(--gmi-ink);background:#fff;color:var(--gmi-ink)}
+.vbtn+.vbtn{border-left:none}
+.vbtn.active{background:var(--gmi-ink);color:#fff}
+.vhint{font-size:11.5px;color:var(--gmi-ink-2);margin-left:14px;font-style:italic}
+.pubdef{margin:10px 0 0;font-size:14px;line-height:1.6;color:var(--gmi-ink)}
+.pubcomment{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--gmi-line);font-size:13.5px;line-height:1.6;color:var(--gmi-ink-2)}
+.pubcomment .lbl{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;margin-bottom:5px;display:block}
+.pubcommentbody{display:block}
+.editable{outline:none;cursor:text;padding:6px 10px;margin:0 -10px;border-radius:0;transition:background .12s}
+.editable:hover{background:var(--gmi-tint)}
+.editable:focus{background:#fff;box-shadow:inset 0 0 0 1px var(--gmi-line);outline:none}
+[contenteditable].editable:empty:before{content:attr(data-ph);color:#aab8c4;font-style:italic}
+.rowact.accent{color:var(--gmi-magenta);border-color:var(--gmi-magenta)}
+.rowact.accent:hover{background:var(--gmi-magenta);color:#fff}
+body.client .sec-head .secstat{display:none}
+body.exporting .viewtoggle,body.exporting .legendbar,body.exporting .controls,body.exporting .toolbar,body.exporting .footer,body.exporting details.adden summary{display:none!important}
+.summarybar{display:flex;flex-wrap:wrap;border:1px solid var(--gmi-line);border-top:3px solid var(--gmi-magenta);margin:16px 0 2px;background:#fff}
+.sumcell{flex:1;min-width:150px;padding:14px 20px 12px;border-left:1px solid var(--gmi-line)}
+.sumcell:first-child{border-left:none}
+.sumcell .num{font-family:"Teko",sans-serif;font-weight:600;font-size:44px;line-height:.9;color:var(--gmi-ink)}
+.sumcell .num.pos{color:var(--pos)}
+.sumcell .num.neg{color:var(--neg)}
+.sumcell .lab{font-size:10.5px;letter-spacing:2px;text-transform:uppercase;color:var(--gmi-ink-2);font-weight:700;margin-top:4px}
+.sumcell .sub{font-size:11px;color:var(--gmi-ink-2);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="hairline"></div>
+<div class="wrap">
+  <header class="lockup">
+    <div class="wordmark">GMI</div>
+    <div class="subline">Global Macro Investor</div>
+  </header>
+
+  <div class="titlebar">
+    <h1>Live Positions</h1>
+    <div class="asof">
+      Source book: <b id="src-pub">GMI June 2026 Monthly + Flash Update 09 Jun</b><br/>
+      Prices as of: <b id="src-asof">10 Jun 2026, 15:06 UTC</b><br/>
+      <span class="subtle">Crypto live (Crypto.com) · Equities live (Yahoo) · Carbon derived (CARB.L) · Basket &amp; NAVs at monthly/manual mark</span>
+    </div>
+  </div>
+
+  <div class="summarybar" id="summarybar"></div>
+
+  <div class="viewtoggle">
+    <button class="vbtn active" data-v="internal">Internal — working view</button>
+    <button class="vbtn" data-v="client">Client — published view</button>
+    <span class="vhint" id="vhint">Your inputs, sources and flags are visible. Switch to Client for the clean copy-paste version.</span>
+  </div>
+
+  <div class="legendbar" id="legendbar">
+    <span><i class="dot live"></i> Live price</span>
+    <span><i class="dot stale"></i> Stale (last monthly mark)</span>
+    <span><i class="dot manual"></i> Manual entry needed</span>
+    <span><i class="dot flag"></i> Needs your decision (table vs body conflict)</span>
+  </div>
+
+  <div class="controls" id="controls">
+    <input id="search" type="text" placeholder="Search instrument or ticker…" />
+    <select id="assetfilter">
+      <option value="">All asset classes</option>
+      <option value="crypto">Crypto</option>
+      <option value="equity">Equity</option>
+      <option value="etf">ETF</option>
+      <option value="index">Index</option>
+      <option value="future">Future</option>
+      <option value="option">Option</option>
+      <option value="basket">Basket / Fund</option>
+      <option value="fund">Fund</option>
+    </select>
+    <span class="filterbtn active" data-f="all">All</span>
+    <span class="filterbtn" data-f="winners">Winners</span>
+    <span class="filterbtn" data-f="losers">Losers</span>
+    <span class="filterbtn" data-f="flagged">Flagged</span>
+  </div>
+
+  <div id="sections"></div>
+
+  <div class="toolbar" id="toolbar">
+    <button id="btn-refresh-note">How refresh works</button>
+    <button id="btn-export">Export machine-readable JSON</button>
+    <button id="btn-copy">Copy JSON to clipboard</button>
+    <button id="btn-copytable">Copy table for GMI</button>
+    <button id="btn-images">Download images for GMI</button>
+  </div>
+
+  <div class="footer" id="footer">
+    <p><b>Reading this page.</b> Each section carries an editable definition block above (write what Tactical / Core / Long-term mean) and an AI-commentary block below (refreshed weekly). Click any column header to sort. Use the filter chips for winners, losers, or items that need your decision. Where a price can't be fetched, type it into the price cell and it is marked as a manual override.</p>
+    <p><b>Machine-readable.</b> The full position set is embedded as JSON in <span class="subtle">&lt;script id="gmi-data"&gt;</span> and exportable via the button above, ready to feed the compressed-intelligence page.</p>
+    <p class="fontnote">Brand note: body type substitutes Helvetica Neue for At Aero (the licensed GMI body face isn't bundled in this environment). Display type is Teko, per the GMI system. Swap At Aero back in for production.</p>
+  </div>
+</div>
+
+<script id="gmi-data" type="application/json">
+{
+  "schema_version":"1.0",
+  "source_publication":"GMI June 2026 Monthly + Flash Update 09 Jun",
+  "as_of_prices":"2026-06-10T15:06:00Z",
+  "sections":{
+    "tactical":{"name":"Tactical",
+      "definition":"The shorter-horizon rotation book - 1 to 6 month in duration. Smaller sized positions to add a bit of juice or to hedge. Trades expressed with a defined catalyst or relative-value setup, sized to be added and cut on the technicals rather than held through the cycle.",
+      "ai_commentary":"The stink bids filled on the flush — ETH at 1,650, SOL at 65 and SUI at 0.75 per the 09 Jun Flash Update, bought ~2sd oversold into the SpaceX/Google supply distortion as 1-6 month trades, all roughly flat at today's marks. They join MSFT from 464 (-13% against a 402.70 tape; rotation thesis unchanged) and the April SUI lot (-66%, beta on the core call). QQQ closed at +68% per the June book.",
+      "positions":[
+        {"id":"tac-msft","instrument":"Microsoft","ticker":"MSFT","asset_class":"equity","entry_date":"Jun '26","entry_price":464,"current_price":402.7,"price_source":"Yahoo live","state":"live","itd_pct":-13.2,"status":"open"},
+        {"id":"tac-eth-stink","instrument":"Ethereum","ticker":"ETH","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":1650,"current_price":1641.38,"price_source":"Crypto.com live","state":"live","itd_pct":-0.5,"status":"open"},
+        {"id":"tac-sol-stink","instrument":"Solana","ticker":"SOL","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":65,"current_price":64.87,"price_source":"Crypto.com live","state":"live","itd_pct":-0.2,"status":"open"},
+        {"id":"tac-sui-stink","instrument":"SUI (stink bid)","ticker":"SUI","asset_class":"crypto","entry_date":"08 Jun '26","entry_price":0.75,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":0.5,"status":"open"},
+        {"id":"tac-qqq","instrument":"QQQ","ticker":"QQQ","asset_class":"etf","entry_date":"22 Apr '25","entry_price":438.82,"current_price":738.1,"price_source":"closed (GMI Jun '26)","state":"live","itd_pct":68.2,"status":"closed","close_price":738.1,"close_date":"2026-06-01","realized_itd":68.2},
+        {"id":"tac-sui","instrument":"SUI (tactical)","ticker":"SUI","asset_class":"crypto","entry_date":"22 Apr '25","entry_price":2.2,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":-65.7,"status":"open"}
+      ]},
+    "core":{"name":"Core",
+      "definition":"The actively managed conviction book — structural Exponential Age and Universal Code positions held with intent but actioned on the technicals (DeMark exhaustion, regression bands). Usually full cycle trades (2 years to 5 years) Trimmed, closed, or added as the charts dictate while the thesis stands. These are the bulk of the risk taking and are sized as such (larger, high conviction but adjust for volatility of underlying to meet your risk tolerance).",
+      "ai_commentary":"The June actions are all banked: Google closed at +255%, TSMC at +203%, Rocket Lab at 132.4 for +610%, and SCF cut at -93%. What remains is barbelled — SOL (+143%), NDX (+128%), COIN (+99%) and Circle (+45%) against the crypto drawdown lots: core SUI -57%, DOGE -60%, DEEP -92%. The COIN 400 calls expired worthless and are closed at -100%.",
+      "positions":[
+        {"id":"core-eth","instrument":"Ethereum","ticker":"ETH","asset_class":"crypto","entry_date":"05 Jul '22","entry_price":1426.41,"current_price":1641.38,"price_source":"Crypto.com live","state":"live","itd_pct":15.1,"status":"open"},
+        {"id":"core-sol","instrument":"Solana","ticker":"SOL","asset_class":"crypto","entry_date":"05 Jul '22","entry_price":26.74,"current_price":64.87,"price_source":"Crypto.com live","state":"live","itd_pct":142.6,"status":"open"},
+        {"id":"core-carbon","instrument":"EU Carbon Allowance Futures","ticker":"MO1","asset_class":"future","entry_date":"30 Jan '23","entry_price":75.71,"current_price":78.64,"price_source":"derived (CARB.L)","state":"live","itd_pct":3.9,"status":"open","note":"EUA derived daily from CARB.L moves (Risk Monitor source), anchored to EUA €80.10 on 03 Jun. Re-anchors on each fresh EUA print."},
+        {"id":"core-ndx","instrument":"NASDAQ 100","ticker":"NDX","asset_class":"index","entry_date":"02 Feb '23","entry_price":12655.18,"current_price":28861.44,"price_source":"Yahoo live","state":"live","itd_pct":128.1,"status":"open"},
+        {"id":"core-googl","instrument":"Google","ticker":"GOOGL","asset_class":"equity","entry_date":"02 Feb '23","entry_price":105.8,"current_price":375.7,"price_source":"closed (you)","state":"live","itd_pct":255.1,"status":"closed","close_price":375.7,"close_date":"2026-06-01","realized_itd":255.1},
+        {"id":"core-msft","instrument":"Microsoft","ticker":"MSFT","asset_class":"equity","entry_date":"02 Feb '23","entry_price":258.82,"current_price":402.7,"price_source":"Yahoo live","state":"live","itd_pct":55.6,"status":"open"},
+        {"id":"core-aapl","instrument":"Apple","ticker":"AAPL","asset_class":"equity","entry_date":"29 May '23","entry_price":176.96,"current_price":289.86,"price_source":"Yahoo live","state":"live","itd_pct":63.8,"status":"open"},
+        {"id":"core-tsla","instrument":"Tesla","ticker":"TSLA","asset_class":"equity","entry_date":"29 May '23","entry_price":200.1,"current_price":385.23,"price_source":"Yahoo live","state":"live","itd_pct":92.5,"status":"open"},
+        {"id":"core-coin","instrument":"Coinbase","ticker":"COIN","asset_class":"equity","entry_date":"03 Jul '23","entry_price":79.93,"current_price":158.64,"price_source":"Yahoo live","state":"live","itd_pct":98.5,"status":"open"},
+        {"id":"core-doge","instrument":"Dogecoin","ticker":"DOGE","asset_class":"crypto","entry_date":"01 Apr '24","entry_price":0.21,"current_price":0.084404,"price_source":"Crypto.com live","state":"live","itd_pct":-59.8,"status":"open"},
+        {"id":"core-tsmc","instrument":"TSMC","ticker":"TSM","asset_class":"equity","entry_date":"06 May '24","entry_price":140.47,"current_price":425.6,"price_source":"closed (you)","state":"live","itd_pct":203,"status":"closed","close_price":425.6,"close_date":"2026-06-01","realized_itd":203},
+        {"id":"core-sui","instrument":"SUI","ticker":"SUI","asset_class":"crypto","entry_date":"30 Sep '24","entry_price":1.76,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":-57.2,"status":"open"},
+        {"id":"core-scf","instrument":"Smoking Chicken Fish","ticker":"SCF","asset_class":"crypto","entry_date":"02 Dec '24","entry_price":0.03,"current_price":0.002,"price_source":"closed (you)","state":"live","itd_pct":-93.3,"status":"closed","close_price":0.002,"close_date":"2026-06-01","realized_itd":-93.3},
+        {"id":"core-deep","instrument":"DEEP","ticker":"DEEP","asset_class":"crypto","entry_date":"17 Jan '25","entry_price":0.2,"current_price":0.016062,"price_source":"CoinGecko live","state":"live","itd_pct":-92,"status":"open"},
+        {"id":"core-rklb","instrument":"Rocket Lab","ticker":"RKLB","asset_class":"equity","entry_date":"03 Mar '25","entry_price":18.66,"current_price":132.4,"price_source":"closed (GMI Jun '26)","state":"live","itd_pct":609.5,"status":"closed","close_price":132.4,"close_date":"2026-06-01","realized_itd":609.5},
+        {"id":"core-tan","instrument":"TAN ETF","ticker":"TAN","asset_class":"etf","entry_date":"02 Sep '25","entry_price":40.16,"current_price":59.88,"price_source":"Yahoo live","state":"live","itd_pct":49.1,"status":"open"},
+        {"id":"core-coin-calls","instrument":"COIN Jun '26 400 Calls","ticker":"COIN C400","asset_class":"option","entry_date":"01 Dec '25","entry_price":18,"current_price":0,"price_source":"closed (expired)","state":"live","itd_pct":-100,"status":"closed","close_price":0,"close_date":"2026-06-10","realized_itd":-100},
+        {"id":"core-hims","instrument":"Hims & Hers","ticker":"HIMS","asset_class":"equity","entry_date":"30 Mar '26","entry_price":18.78,"current_price":28.6,"price_source":"Yahoo live","state":"live","itd_pct":52.3,"status":"open"},
+        {"id":"core-circle","instrument":"Circle Internet Group","ticker":"CRCL","asset_class":"equity","entry_date":"09 Feb '26","entry_price":56.33,"current_price":81.82,"price_source":"Yahoo live","state":"live","itd_pct":45.3,"status":"open"}
+      ]},
+    "long_term":{"name":"Long-term",
+      "definition":"The permanent conviction holds — the structural backbone for multi-cycle buy and holds. These are held for 3 to 10 years. Due to the cyclical nature, these are medium sized. Significant drawdowns in negative liquidity cycles are expected and we will often add in those times. This is where GMI compounds gains over time.",
+      "ai_commentary":"The backbone holds — BTC +616% and ETH +572% from the 2019/2020 entries even after the pullback. The June book retired two five-year lines, now booked: XRP closed at +123% with the thesis fully played out, and KR1 at -86%, the venture bet that never delivered. At live marks the Horsemen are flat: HOOD +21% the only green, COIN and TSLA fractionally red. SOL's 2021 lot (-41%) stays — the rest is held through the cycle by design.",
+      "positions":[
+        {"id":"lt-btc","instrument":"Bitcoin","ticker":"BTC","asset_class":"crypto","entry_date":"23 Jun '19","entry_price":8665,"current_price":62061.1,"price_source":"Crypto.com live","state":"live","itd_pct":616.2,"status":"open"},
+        {"id":"lt-eth","instrument":"Ethereum","ticker":"ETH","asset_class":"crypto","entry_date":"21 Jul '20","entry_price":244.12,"current_price":1641.38,"price_source":"Crypto.com live","state":"live","itd_pct":572.4,"status":"open"},
+        {"id":"lt-sol","instrument":"Solana","ticker":"SOL","asset_class":"crypto","entry_date":"30 Aug '21","entry_price":110.29,"current_price":64.87,"price_source":"Crypto.com live","state":"live","itd_pct":-41.2,"status":"open"},
+        {"id":"lt-kr1","instrument":"KR1 PLC","ticker":"KR1","asset_class":"equity","entry_date":"28 Jun '21","entry_price":83.38,"current_price":12.1,"price_source":"closed (you)","state":"live","itd_pct":-85.5,"status":"closed","close_price":12.1,"close_date":"2026-06-01","realized_itd":-85.5},
+        {"id":"lt-xrp","instrument":"XRP","ticker":"XRP","asset_class":"crypto","entry_date":"28 Jun '21","entry_price":0.6,"current_price":1.338,"price_source":"closed (you)","state":"live","itd_pct":123,"status":"closed","close_price":1.338,"close_date":"2026-06-01","realized_itd":123},
+        {"id":"lt-eab","instrument":"Exponential Age Basket","ticker":"EAB","asset_class":"basket","entry_date":"28 Mar '22","entry_price":78.46,"current_price":184.5,"price_source":"GMI Jun '26","state":"stale","itd_pct":135.1,"status":"open","note":"Composite — see addendum below."},
+        {"id":"lt-eadaf","instrument":"Exponential Age Digital Asset Fund","ticker":"EADAF","asset_class":"fund","entry_date":"04 Jul '22","entry_price":null,"current_price":null,"price_source":"manual","state":"manual","itd_pct":-35.4,"status":"open","note":"Fund NAV — manual entry."},
+        {"id":"lt-sui","instrument":"SUI (conviction add)","ticker":"SUI","asset_class":"crypto","entry_date":"08 Feb '26","entry_price":0.97,"current_price":0.75365,"price_source":"Crypto.com live","state":"live","itd_pct":-22.3,"status":"open"},
+        {"id":"lt-coin","instrument":"Coinbase","ticker":"COIN","asset_class":"equity","entry_date":"09 Feb '26","entry_price":160.1,"current_price":158.64,"price_source":"Yahoo live","state":"live","itd_pct":-0.9,"status":"open"},
+        {"id":"lt-hood","instrument":"Robinhood","ticker":"HOOD","asset_class":"equity","entry_date":"02 Mar '26","entry_price":73.49,"current_price":88.63,"price_source":"Yahoo live","state":"live","itd_pct":20.6,"status":"open"},
+        {"id":"lt-tsla","instrument":"Tesla","ticker":"TSLA","asset_class":"equity","entry_date":"02 Mar '26","entry_price":390.6,"current_price":385.23,"price_source":"Yahoo live","state":"live","itd_pct":-1.4,"status":"open"}
+      ]}
+  },
+  "addendum_basket":{"name":"Addendum — Exponential Age Basket constituents",
+    "positions":[
+      {"instrument":"Apple","ticker":"AAPL","entry_date":"28 Mar '22","entry_price":155.1,"itd_pct":101.2},
+      {"instrument":"ARKK","ticker":"ARKK","entry_date":"28 Mar '22","entry_price":48.3,"itd_pct":69.8},
+      {"instrument":"Coinbase","ticker":"COIN","entry_date":"28 Mar '22","entry_price":101.6,"itd_pct":86.1},
+      {"instrument":"Meta","ticker":"META","entry_date":"28 Mar '22","entry_price":189.9,"itd_pct":233.1},
+      {"instrument":"Galaxy","ticker":"GLXY","entry_date":"28 Mar '22","entry_price":18.8,"itd_pct":57.2},
+      {"instrument":"SMH ETF","ticker":"SMH","entry_date":"28 Mar '22","entry_price":122.7,"itd_pct":388.0},
+      {"instrument":"SMT LN","ticker":"SMT","entry_date":"28 Mar '22","entry_price":10.5,"itd_pct":94.3},
+      {"instrument":"Tesla","ticker":"TSLA","entry_date":"28 Mar '22","entry_price":249.2,"itd_pct":74.9},
+      {"instrument":"BITB ETF","ticker":"BITB","entry_date":"05 Feb '23","entry_price":23.6,"itd_pct":68.8},
+      {"instrument":"AMZN","ticker":"AMZN","entry_date":"05 Feb '23","entry_price":170.2,"itd_pct":59.0},
+      {"instrument":"CIBR ETF","ticker":"CIBR","entry_date":"05 Feb '23","entry_price":56.2,"itd_pct":58.3},
+      {"instrument":"RKLB","ticker":"RKLB","entry_date":"27 Jan '25","entry_price":29.4,"itd_pct":387.5},
+      {"instrument":"NVDA","ticker":"NVDA","entry_date":"27 Jan '25","entry_price":118.4,"itd_pct":78.3}
+    ]}
+}
+</script>
+
+<script>
+const DATA = JSON.parse(document.getElementById('gmi-data').textContent);
+const SEC_ORDER = ['tactical','core','long_term'];
+let activeFilter = 'all';
+let sortState = {};
+let view = 'internal';
+
+function fmtPrice(v){
+  if(v===null||v===undefined) return '<span class="subtle">—</span>';
+  if(v<1) return v.toFixed(4);
+  if(v<100) return v.toFixed(2);
+  return v.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function fmtPct(v){
+  if(v===null||v===undefined) return '<span class="subtle">n/a</span>';
+  const cls = v>=0?'pos':'neg';
+  const s = (v>=0?'+':'')+v.toFixed(1)+'%';
+  return '<span class="'+cls+'">'+s+'</span>';
+}
+function recompute(p){
+  if(p.entry_price && p.current_price){
+    p.itd_pct = (p.current_price/p.entry_price - 1)*100;
+  }
+}
+function stateBadge(p){
+  if(p.state==='flag') return '<span class="badge flag">decide</span>';
+  if(p.state==='stale') return '<span class="badge stale">stale</span>';
+  return '';
+}
+function passFilter(p){
+  if(activeFilter==='winners') return p.itd_pct!==null && p.itd_pct>0;
+  if(activeFilter==='losers') return p.itd_pct!==null && p.itd_pct<0;
+  if(activeFilter==='flagged') return p.status==='pending_action';
+  return true;
+}
+function passSearch(p){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  if(!q) return true;
+  return (p.instrument+' '+p.ticker).toLowerCase().includes(q);
+}
+function passAsset(p){
+  const a = document.getElementById('assetfilter').value;
+  if(!a) return true;
+  return p.asset_class===a;
+}
+
+function summaryStats(){
+  const all=[];
+  const yr=currentYear();
+  SEC_ORDER.forEach(key=>DATA.sections[key].positions.forEach(p=>{
+    if(p.status==='closed'){
+      if(p.realized_itd!=null && p.close_date && new Date(p.close_date).getFullYear()===yr) all.push(p.realized_itd);
+    } else if(p.itd_pct!=null) all.push(p.itd_pct);
+  }));
+  const n=all.length;
+  const w=all.filter(v=>v>0).length;
+  const avg=n?all.reduce((s,v)=>s+v,0)/n:null;
+  return {n,w,avg};
+}
+function renderSummary(){
+  const {n,w,avg}=summaryStats();
+  const bar=document.getElementById('summarybar');
+  if(!n){bar.innerHTML='';return;}
+  const pct=w/n*100;
+  bar.innerHTML=`
+    <div class="sumcell"><div class="num">${n}</div><div class="lab">Positions</div><div class="sub">open + closed ${currentYear()}</div></div>
+    <div class="sumcell"><div class="num ${pct>=50?'pos':'neg'}">${pct.toFixed(0)}%</div><div class="lab">Winners</div><div class="sub">${w} of ${n} in profit</div></div>
+    <div class="sumcell"><div class="num ${avg>=0?'pos':'neg'}">${avg>=0?'+':''}${avg.toFixed(1)}%</div><div class="lab">Average ITD</div><div class="sub">avg performance since inception</div></div>`;
+}
+
+function render(){
+  renderSummary();
+  const root = document.getElementById('sections');
+  root.innerHTML='';
+  const client = view==='client';
+  SEC_ORDER.forEach(key=>{
+    const sec = DATA.sections[key];
+    let rows = sec.positions.filter(p=>passSearch(p)&&passAsset(p)&&p.status!=='closed');
+    if(!client) rows = rows.filter(passFilter);
+    // client view hides positions not yet confirmed (pending action with no entry price)
+    if(client) rows = rows.filter(p=>!(p.status==='pending_action'&&(p.entry_price===null||p.entry_price===undefined)));
+    const sort = sortState[key];
+    if(sort){
+      rows = rows.slice().sort((a,b)=>{
+        let av=a[sort.col], bv=b[sort.col];
+        if(av===null||av===undefined) av = sort.dir>0?Infinity:-Infinity;
+        if(bv===null||bv===undefined) bv = sort.dir>0?Infinity:-Infinity;
+        if(typeof av==='string') return sort.dir*av.localeCompare(bv);
+        return sort.dir*(av-bv);
+      });
+    }
+    const open = sec.positions.filter(p=>p.itd_pct!==null);
+    const avg = open.length? (open.reduce((s,p)=>s+p.itd_pct,0)/open.length):null;
+    const flags = sec.positions.filter(p=>p.status==='pending_action').length;
+
+    const el = document.createElement('section');
+    el.className='bucket';
+
+    const ed = client ? '' : ` editable" contenteditable="true" data-key="${key}`;
+    const defBlock = `<div class="pubdef${ed}" data-field="definition" data-ph="Write what ${sec.name} means…">${sec.definition||''}</div>`;
+    const commentBlock = `<div class="pubcomment"><span class="lbl">Commentary</span><div class="pubcommentbody${ed}" data-field="commentary" data-ph="Weekly read on this bucket…">${sec.ai_commentary||''}</div></div>`;
+    const headCols = client
+      ? `${th(key,'instrument','Position')}${th(key,'ticker','Ticker')}${th(key,'entry_date','Entry')}${th(key,'entry_price','Entry Px')}${th(key,'current_price','Current')}${th(key,'itd_pct','ITD %')}`
+      : `${th(key,'instrument','Position')}${th(key,'ticker','Ticker')}${th(key,'entry_date','Entry')}${th(key,'entry_price','Entry Px')}${th(key,'current_price','Current')}${th(key,'itd_pct','ITD %')}<th style="cursor:default">Source</th><th style="cursor:default">Flag</th>`;
+
+    el.innerHTML = `
+      <div class="sec-head">${sec.name}
+        <span class="secstat">${sec.positions.length} positions${flags?` · <span style="color:var(--gmi-magenta)">${flags} to decide</span>`:''}${avg!==null?` · avg ITD ${avg>=0?'+':''}${avg.toFixed(0)}%`:''}</span>
+      </div>
+      ${defBlock}
+      <table>
+        <thead><tr>${headCols}</tr></thead>
+        <tbody>${rows.map(p=>rowHtml(key,p)).join('')}</tbody>
+      </table>
+      ${commentBlock}`;
+    root.appendChild(el);
+  });
+  // closed YTD
+  renderClosed(root, client);
+  // addendum
+  const ad = DATA.addendum_basket;
+  const det = document.createElement('details');
+  det.className='adden';
+  det.innerHTML = `<summary>${ad.name} (${ad.positions.length}) — show detail</summary>
+    <table><thead><tr><th>Constituent</th><th>Ticker</th><th>Entry</th><th>Entry Px</th><th>ITD %</th></tr></thead>
+    <tbody>${ad.positions.map(p=>`<tr><td class="inst">${p.instrument}</td><td class="tkr">${p.ticker}</td><td>${p.entry_date}</td><td>${fmtPrice(p.entry_price)}</td><td>${fmtPct(p.itd_pct)}</td></tr>`).join('')}</tbody></table>`;
+  document.getElementById('sections').appendChild(det);
+  bindEdits();
+}
+function th(key,col,label){
+  const s = sortState[key];
+  const arrow = s&&s.col===col?(s.dir>0?' ▲':' ▼'):'';
+  return `<th data-key="${key}" data-col="${col}">${label}${arrow}</th>`;
+}
+function rowHtml(key,p){
+  if(view==='client'){
+    return `<tr>
+      <td class="inst">${p.instrument}</td>
+      <td class="tkr">${p.ticker}</td>
+      <td>${p.entry_date}</td>
+      <td>${fmtPrice(p.entry_price)}</td>
+      <td>${fmtPrice(p.current_price)}</td>
+      <td>${fmtPct(p.itd_pct)}</td>
+    </tr>`;
+  }
+  const flagged = p.status==='pending_action'?'flagged':'';
+  const dot = `<i class="dot ${p.state==='flag'?'flag':p.state==='manual'?'manual':p.state==='stale'?'stale':'live'}"></i>`;
+  const priceCell = (p.current_price===null||p.current_price===undefined||p.state==='manual'||p.state==='flag')
+    ? `<input class="priceedit ${p.manual_override?'manual':''}" data-id="${p.id}" data-key="${key}" placeholder="enter" value="${p.current_price!==null&&p.current_price!==undefined?p.current_price:''}"/>`
+    : fmtPrice(p.current_price);
+  const noteRow = p.note?`<tr class="noterow ${flagged}"><td colspan="8"><span class="notecell">${p.note}</span></td></tr>`:'';
+  let actBtn;
+  if(p.status==='pending_action' && p.pending_kind==='buy')
+    actBtn = `<button class="rowact accent" data-act="confirmbuy" data-key="${key}" data-id="${p.id}">Confirm buy</button>`;
+  else if(p.status==='pending_action')
+    actBtn = `<button class="rowact accent" data-act="close" data-key="${key}" data-id="${p.id}">Confirm close</button>`;
+  else
+    actBtn = `<button class="rowact" data-act="close" data-key="${key}" data-id="${p.id}">Close</button>`;
+  return `<tr class="${flagged}">
+    <td class="inst">${dot} ${p.instrument}</td>
+    <td class="tkr">${p.ticker}</td>
+    <td>${p.entry_date}</td>
+    <td>${fmtPrice(p.entry_price)}</td>
+    <td>${priceCell}</td>
+    <td>${fmtPct(p.itd_pct)}</td>
+    <td class="src">${p.price_source}</td>
+    <td>${stateBadge(p)} ${actBtn}</td>
+  </tr>${noteRow}`;
+}
+function currentYear(){ return new Date(DATA.as_of_prices).getFullYear(); }
+function renderClosed(root, client){
+  const yr = currentYear();
+  let closed=[];
+  SEC_ORDER.forEach(key=>DATA.sections[key].positions.forEach(p=>{
+    if(p.status==='closed' && p.close_date && new Date(p.close_date).getFullYear()===yr)
+      closed.push(Object.assign({_key:key},p));
+  }));
+  if(!closed.length) return;
+  closed.sort((a,b)=> new Date(b.close_date)-new Date(a.close_date));
+  const realized = closed.filter(p=>p.realized_itd!=null);
+  const avg = realized.length? realized.reduce((s,p)=>s+p.realized_itd,0)/realized.length : null;
+  const el=document.createElement('section');
+  el.className='bucket';
+  const actHead = client?'':'<th style="cursor:default"></th>';
+  el.innerHTML=`
+    <div class="sec-head">Closed ${yr}
+      <span class="secstat">${closed.length} closed this year${avg!==null?` · avg realised ${avg>=0?'+':''}${avg.toFixed(0)}%`:''}</span>
+    </div>
+    <div class="pubdef">
+      ${client?'Positions closed since 1 January, realised at exit. Resets each year.':'<span class="subtle" style="font-size:12.5px">Positions closed since 1 Jan '+yr+'. Resets automatically on 1 January. Use “Reopen” to undo a mistaken close.</span>'}
+    </div>
+    <table>
+      <thead><tr>
+        <th>Position</th><th>Ticker</th><th>Entry</th><th>Entry Px</th><th>Closed</th><th>Close Px</th><th>Realised ITD</th>${actHead}
+      </tr></thead>
+      <tbody>
+        ${closed.map(p=>`<tr>
+          <td class="inst">${p.instrument}</td>
+          <td class="tkr">${p.ticker}</td>
+          <td>${p.entry_date}</td>
+          <td>${fmtPrice(p.entry_price)}</td>
+          <td>${p.close_date}</td>
+          <td>${fmtPrice(p.close_price)}</td>
+          <td>${fmtPct(p.realized_itd)}</td>
+          ${client?'':`<td><button class="rowact" data-act="reopen" data-key="${p._key}" data-id="${p.id}">Reopen</button></td>`}
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  root.appendChild(el);
+}
+function bindEdits(){
+  document.querySelectorAll('th[data-col]').forEach(th=>{
+    th.onclick=()=>{
+      const key=th.dataset.key, col=th.dataset.col;
+      const s=sortState[key];
+      sortState[key] = (s&&s.col===col)?{col,dir:-s.dir}:{col,dir:1};
+      render();
+    };
+  });
+  document.querySelectorAll('.priceedit').forEach(inp=>{
+    inp.onchange=()=>{
+      const id=inp.dataset.id, key=inp.dataset.key;
+      const p=DATA.sections[key].positions.find(x=>x.id===id);
+      const v=parseFloat(inp.value);
+      if(!isNaN(v)){
+        p.current_price=v; p.manual_override=true; p.price_source='manual (you)'; p.state='live';
+        recompute(p); render();
+      }
+    };
+  });
+  document.querySelectorAll('.rowact').forEach(btn=>{
+    btn.onclick=()=>{
+      const key=btn.dataset.key, id=btn.dataset.id, act=btn.dataset.act;
+      const p=DATA.sections[key].positions.find(x=>x.id===id);
+      if(act==='close'){
+        const suggested = (p.current_price!=null)?p.current_price:'';
+        const cp = prompt('Closing price for '+p.instrument+'  (enter 0 if the option expired worthless):', suggested);
+        if(cp===null) return;
+        const v=parseFloat(cp); if(isNaN(v)){alert('Not a number.');return;}
+        const d = prompt('Close date (YYYY-MM-DD):', DATA.as_of_prices.slice(0,10));
+        if(d===null) return;
+        p.status='closed'; p.close_price=v; p.close_date=d;
+        p.realized_itd = (p.entry_price)?(v/p.entry_price-1)*100:null;
+        p.price_source='closed (you)'; delete p.pending_kind;
+      } else if(act==='confirmbuy'){
+        const ep = prompt('Entry price for '+p.instrument+':','');
+        if(ep===null) return; const e=parseFloat(ep); if(isNaN(e)){alert('Not a number.');return;}
+        const cpv = prompt('Current price (leave blank to use entry):', e);
+        let c = parseFloat(cpv); if(isNaN(c)) c=e;
+        p.entry_price=e; p.current_price=c; p.manual_override=true;
+        p.itd_pct=(c/e-1)*100; p.status='open'; p.state='live';
+        p.price_source='manual (you)'; delete p.pending_kind; p.note='';
+      } else if(act==='reopen'){
+        p.status='open'; delete p.close_price; delete p.close_date; delete p.realized_itd;
+      }
+      render();
+    };
+  });
+  document.querySelectorAll('[contenteditable].editable').forEach(d=>{
+    d.onblur=()=>{
+      const key=d.dataset.key, field=d.dataset.field;
+      if(!key||!DATA.sections[key])return;
+      if(field==='commentary') DATA.sections[key].ai_commentary=d.innerText;
+      else DATA.sections[key].definition=d.innerText;
+    };
+  });
+}
+document.querySelectorAll('.filterbtn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.filterbtn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); activeFilter=b.dataset.f; render();
+  };
+});
+document.getElementById('search').oninput=render;
+document.getElementById('assetfilter').onchange=render;
+document.getElementById('btn-export').onclick=()=>{
+  const blob=new Blob([JSON.stringify(DATA,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gmi-positions-'+DATA.as_of_prices.slice(0,10)+'.json'; a.click();
+};
+document.getElementById('btn-copy').onclick=()=>{
+  navigator.clipboard.writeText(JSON.stringify(DATA,null,2));
+  document.getElementById('btn-copy').textContent='Copied ✓';
+  setTimeout(()=>document.getElementById('btn-copy').textContent='Copy JSON to clipboard',1500);
+};
+document.getElementById('btn-refresh-note').onclick=()=>{
+  alert('Daily refresh (when automation is live):\n\n1. Pull latest close for every ticker (crypto live now; equities via Refinitiv LSEG once wired).\n2. Check for a new GMI monthly. If found, scan the BODY for trade recs not in the end positions table (closes, rotations, new buys) and stage them.\n3. Check each entry/exit level; alert if hit.\n4. Anything ambiguous (table vs body conflict) is flagged "decide" for you, not auto-applied.\n5. Any price it cannot fetch is left for manual entry.');
+};
+function copyTableForGMI(){
+  const lines=[];
+  SEC_ORDER.forEach(key=>{
+    const s=DATA.sections[key];
+    lines.push(s.name.toUpperCase());
+    lines.push(['Position','Ticker','Entry','Entry Px','Current','ITD %'].join('\t'));
+    s.positions.filter(p=>p.status!=='closed').forEach(p=>{
+      lines.push([p.instrument,p.ticker,p.entry_date,p.entry_price??'',p.current_price??'',
+        p.itd_pct!=null?(p.itd_pct>=0?'+':'')+p.itd_pct.toFixed(1)+'%':''].join('\t'));
+    });
+    lines.push('');
+  });
+  const yr=currentYear(); const closed=[];
+  SEC_ORDER.forEach(key=>DATA.sections[key].positions.forEach(p=>{
+    if(p.status==='closed'&&p.close_date&&new Date(p.close_date).getFullYear()===yr) closed.push(p);
+  }));
+  if(closed.length){
+    lines.push('CLOSED '+yr);
+    lines.push(['Position','Ticker','Entry','Entry Px','Closed','Close Px','Realised ITD'].join('\t'));
+    closed.forEach(p=>lines.push([p.instrument,p.ticker,p.entry_date,p.entry_price??'',p.close_date,p.close_price??'',
+      p.realized_itd!=null?(p.realized_itd>=0?'+':'')+p.realized_itd.toFixed(1)+'%':''].join('\t')));
+  }
+  navigator.clipboard.writeText(lines.join('\n'));
+  const b=document.getElementById('btn-copytable'); b.textContent='Copied ✓';
+  setTimeout(()=>b.textContent='Copy table for GMI',1500);
+}
+document.getElementById('btn-copytable').onclick=copyTableForGMI;
+async function downloadImagesForGMI(){
+  const btn=document.getElementById('btn-images');
+  if(typeof html2canvas==='undefined'){alert('Image library not loaded — check your internet connection and reload the page.');return;}
+  btn.textContent='Rendering…';
+  const wasInternal = view==='internal';
+  if(wasInternal) setView('client');
+  document.body.classList.add('exporting');
+  await new Promise(r=>setTimeout(r,400));
+  const date=DATA.as_of_prices.slice(0,10);
+  const secEls=[...document.querySelectorAll('#sections section.bucket')];
+  const secNames=['tactical','core','long-term'];
+  const targets=[];
+  const sb=document.querySelector('.summarybar');
+  if(sb) targets.push({el:sb,name:'summary'});
+  secEls.forEach((el,i)=>targets.push({el,name:secNames[i]||('closed-'+currentYear())}));
+  try{
+    for(const t of targets){
+      const canvas=await html2canvas(t.el,{scale:2,backgroundColor:'#ffffff',
+        onclone:(doc,el)=>{el.style.padding='28px 32px';el.style.background='#fff';}});
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download='gmi-positions-'+t.name+'-'+date+'.png';
+      a.click();
+      await new Promise(r=>setTimeout(r,350));
+    }
+  }catch(e){
+    alert('Image capture failed: '+e.message);
+  }finally{
+    document.body.classList.remove('exporting');
+    if(wasInternal) setView('internal');
+    btn.textContent='Download images for GMI';
+  }
+}
+document.getElementById('btn-images').onclick=downloadImagesForGMI;
+function setView(v){
+  view=v;
+  document.body.classList.toggle('client', v==='client');
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('active', b.dataset.v===v));
+  const hide = v==='client';
+  document.getElementById('legendbar').style.display = hide?'none':'';
+  document.getElementById('controls').style.display = hide?'none':'';
+  document.getElementById('footer').style.display = hide?'none':'';
+  ['btn-refresh-note','btn-export','btn-copy'].forEach(id=>document.getElementById(id).style.display=hide?'none':'');
+  document.getElementById('btn-copytable').style.display = hide?'':'none';
+  document.getElementById('vhint').textContent = hide
+    ? 'Read-only. Exactly what clients see and what you copy into GMI — no inputs, sources or flags.'
+    : 'Your inputs, sources and flags are visible. Switch to Client for the clean copy-paste version.';
+  render();
+}
+document.querySelectorAll('.vbtn').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+setView('internal');
+</script>
+</body>
+</html>
