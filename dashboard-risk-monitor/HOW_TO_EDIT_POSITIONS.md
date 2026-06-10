@@ -1,5 +1,10 @@
 # How to Edit Positions — GMI Risk Monitor
 
+> **Note:** this file governs the RV pages (`index.html` / `alpha.html`) only.
+> The GMI-branded edition (`gmi.html`) auto-syncs its position list from the
+> GMI Positions dashboard's `positions.json` on Google Drive — no editing
+> here. See `HANDOFF_GMI-edition.md`.
+
 You control which assets appear in the dashboard by editing **one file**:
 `dashboard-risk-monitor/positions.py`. It has two lists — `PRO_POSITIONS` (the RV Pro
 table) and `ALPHA_ASSETS` (the RV Alpha table). The pipeline reads this file on every
