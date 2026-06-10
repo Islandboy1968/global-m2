@@ -49,10 +49,13 @@ keeps the data trustworthy and the insight layer swappable.
   "dashboard": "tec",
   "updated": "<YYYY-MM-DD HH:MM UTC>",
   "total_liquidity": {                                         // THE HEADLINE — GMI Total Global Liquidity Index
-      series:[ {d, v, y, ys} … ],                              //   daily (FX-driven), $tn
+      series:[ {d, v, y, ys} … ],                              //   daily (FX-driven), $tn (FNL+M2)
+      series_plus_banksec:[ {d, v, y, ys} … ],                 //   GMI 2025 flagship: + US bank securities
       components:{ balance_sheets:[ {d,v} … ], m2:[ {d,v} … ] },  // monthly decomposition of the one index
+      monetization:{ bank_securities, bank_credit, reverse_repo, tga },  // US deficit-monetization watch series (monthly $tn)
       legs_latest:{ <ISO2>: v_tn … },                          //   per-economy contribution
-      summary:{ latest, total_tn, yoy, yoy_s, n_economies, balance_sheets_tn, m2_tn } },
+      summary:{ latest, total_tn, total_plus_banksec_tn, yoy, yoy_s, n_economies,
+                balance_sheets_tn, m2_tn, us_bank_securities_tn } },
   "summary": { latest, total_tn, yoy, yoy_s, n_economies },   // Global M2 (47-econ) — now a COMPONENT, not the headline
   "series":  [ {d, v, y, ys} … ],                              // Global M2, daily (component / overlay source)
   "btc": [ {d, p} … ], "ndx": [ {d, p} … ],                    // overlays

@@ -70,6 +70,13 @@ ECONS = {
     "NO": {"bs": "ECONOMICS:NOCBBS", "m2": "ECONOMICS:NOM2", "fx": "FX_IDC:NOKUSD"},
 }
 
+# US deficit-monetization extras (FRED, USD, no FX). Bank securities held by banks
+# = total bank credit − loans (reliable derivation; ~$5.7T, matches GMI's ~$5tn).
+# Used for (A) the GMI "FNL + M2 + bank securities" US-leg variant and (B) the
+# deficit-monetization watch series. RRP / TGA reuse the US netting symbols.
+US_EXTRA = {"bank_credit": "FRED:TOTBKCR", "loans": "FRED:TOTLL",
+            "rrp": "FRED:RRPONTSYD", "tga": "FRED:WTREGEN"}
+
 
 def _ym(t):
     return dt.datetime.utcfromtimestamp(int(t)).strftime("%Y-%m")
@@ -95,6 +102,8 @@ def _pull_all():
             specs.append((c["fx"], "1D", FX_BARS))
         for s in c.get("net", []):
             specs.append((s, "1M", M2_BARS))
+    for s in US_EXTRA.values():
+        specs.append((s, "1M", M2_BARS))
     seen, uniq = set(), []
     for s in specs:
         if s[0] not in seen:
@@ -158,6 +167,42 @@ def _months_between(a, b):
     return abs((ya - yb) * 12 + (ma - mb))
 
 
+def _ffill_monthmap(mp, grid):
+    """{YYYY-MM: value} -> daily array, forward-filled by month onto the grid."""
+    if not mp:
+        return [None] * len(grid)
+    allm = sorted({d.strftime("%Y-%m") for d in grid} | set(mp))
+    ff, last = {}, None
+    for m in allm:
+        if m in mp:
+            last = mp[m]
+        ff[m] = last
+    return [ff.get(d.strftime("%Y-%m")) for d in grid]
+
+
+def _daily_series(total_arr, grid):
+    """A daily [{d, v, y, ys}] series from a daily USD total array: $tn level, YoY
+    on a 365-day offset, 91-day trailing-average YoY — same shape as Global M2."""
+    n = len(total_arr)
+    yoy = [None] * n
+    for i in range(n):
+        j = i - 365
+        if j >= 0 and total_arr[i] and total_arr[j]:
+            yoy[i] = (total_arr[i] / total_arr[j] - 1) * 100
+    ys = _trail(yoy, 91)
+    out = []
+    for i, day in enumerate(grid):
+        if total_arr[i] is None:
+            continue
+        row = {"d": day.strftime("%Y-%m-%d"), "v": round(total_arr[i] / 1e12, 2)}
+        if yoy[i] is not None:
+            row["y"] = round(yoy[i], 2)
+        if ys[i] is not None:
+            row["ys"] = round(ys[i], 2)
+        out.append(row)
+    return out
+
+
 # ----------------------------------------------------------------- build
 def build_total_liquidity():
     """Return the TGL_DATA['total_liquidity'] block: the daily composite index plus
@@ -211,26 +256,24 @@ def build_total_liquidity():
             bstot[i] = sum(bs_parts[c][i] for c in active)
             m2tot[i] = sum(m2_parts[c][i] for c in active)
 
-    # YoY on a 365-day offset; 91-day trailing average ("3m") — same as Global M2.
-    yoy = [None] * N
-    for i in range(N):
-        j = i - 365
-        if j >= 0 and total[i] and total[j]:
-            yoy[i] = (total[i] / total[j] - 1) * 100
-    yoy_s = _trail(yoy, 91)
-
-    series = []
-    for i, day in enumerate(grid):
-        if total[i] is None:
-            continue
-        row = {"d": day.strftime("%Y-%m-%d"), "v": round(total[i] / 1e12, 2)}
-        if yoy[i] is not None:
-            row["y"] = round(yoy[i], 2)
-        if yoy_s[i] is not None:
-            row["ys"] = round(yoy_s[i], 2)
-        series.append(row)
+    series = _daily_series(total, grid)
     if not series:
         return None
+
+    # --- US deficit monetization: bank securities = total bank credit − loans -----
+    # (A) GMI's "FNL + M2 + bank securities" flagship: add US bank securities to the
+    #     US leg (US has no FX, so it adds 1:1 in USD) -> series_plus_banksec.
+    # (B) the watch series for the monetization-engine chart (banks hoarding
+    #     Treasuries while RRP is drained).
+    def _mm(sym):
+        return {_ym(t): v for t, v in D.get(sym, [])}
+    cr, ln = _mm(US_EXTRA["bank_credit"]), _mm(US_EXTRA["loans"])
+    banksec_m = {m: cr[m] - ln[m] for m in (set(cr) & set(ln))}
+    banksec_arr = _ffill_monthmap(banksec_m, grid)
+    total_plus = [(total[i] + banksec_arr[i])
+                  if (total[i] is not None and banksec_arr[i] is not None) else None
+                  for i in range(N)]
+    series_plus = _daily_series(total_plus, grid)
 
     # Components as a MONTHLY decomposition (month-end snapshot) to keep the payload
     # small — the headline series is daily, the breakdown only needs to step monthly.
@@ -241,28 +284,45 @@ def build_total_liquidity():
                 out[day.strftime("%Y-%m")] = arr[i]   # last day of month wins
         return [{"d": m + "-01", "v": round(v / 1e12, 2)} for m, v in sorted(out.items())]
 
+    def month_series(mp):
+        return [{"d": m + "-01", "v": round(mp[m] / 1e12, 2)} for m in sorted(mp)]
+
     li = max(i for i in range(N) if total[i] is not None)   # latest complete day
+    banksec_tn = round(banksec_arr[li] / 1e12, 2) if banksec_arr[li] is not None else None
     block = {
         "series": series,                                   # daily, $tn, with y/ys
+        # (A) GMI's current-flagship variant: US leg + bank securities. Front-end toggle.
+        "series_plus_banksec": series_plus,
         "components": {
             "balance_sheets": month_end(bstot),
             "m2": month_end(m2tot),
+        },
+        # (B) US deficit-monetization watch series — banks hoarding Treasuries while
+        # the RRP buffer is drained: the engine extending the cycle.
+        "monetization": {
+            "bank_securities": month_series(banksec_m),         # TOTBKCR − TOTLL
+            "bank_credit": month_series(_mm(US_EXTRA["bank_credit"])),
+            "reverse_repo": month_series(_mm(US_EXTRA["rrp"])),
+            "tga": month_series(_mm(US_EXTRA["tga"])),
         },
         "legs_latest": {c: round(legs[c][li] / 1e12, 2) for c in active if legs[c][li] is not None},
         "summary": {
             "latest": series[-1]["d"],
             "total_tn": series[-1]["v"],
+            "total_plus_banksec_tn": series_plus[-1]["v"] if series_plus else None,
             "yoy": series[-1].get("y"),
             "yoy_s": series[-1].get("ys"),
             "n_economies": len(active),
             "balance_sheets_tn": round(bstot[li] / 1e12, 2),
             "m2_tn": round(m2tot[li] / 1e12, 2),
+            "us_bank_securities_tn": banksec_tn,
         },
     }
     s = block["summary"]
-    print(f"  total_liquidity: ${s['total_tn']}T  YoY {s['yoy']}%  "
-          f"({s['n_economies']} economies; CB ${s['balance_sheets_tn']}T + M2 ${s['m2_tn']}T) "
-          f"| {s['latest']} | {len(series)} daily pts")
+    print(f"  total_liquidity: ${s['total_tn']}T (+banksec ${s['total_plus_banksec_tn']}T)  "
+          f"YoY {s['yoy']}%  ({s['n_economies']} econ; CB ${s['balance_sheets_tn']}T + "
+          f"M2 ${s['m2_tn']}T + US banksec ${s['us_bank_securities_tn']}T) | {s['latest']} | "
+          f"{len(series)} daily pts")
     return block
 
 

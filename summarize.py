@@ -183,6 +183,10 @@ def _iter_leaves(data):
         for ck in ("balance_sheets", "m2"):
             if isinstance(comps.get(ck), list):
                 yield f"total_liquidity.components.{ck}", comps[ck]
+        monet = tl.get("monetization") or {}
+        for mk in ("bank_securities", "reverse_repo"):
+            if isinstance(monet.get(mk), list):
+                yield f"total_liquidity.monetization.{mk}", monet[mk]
     for blk in BLOCKS:
         b = data.get(blk)
         if isinstance(b, dict):
@@ -257,6 +261,8 @@ def _headline(data):
         "n_economies": tl.get("n_economies"),
         "components": {"balance_sheets_tn": tl.get("balance_sheets_tn"),
                        "m2_tn": tl.get("m2_tn")},
+        "flagship_plus_banksec_tn": tl.get("total_plus_banksec_tn"),  # GMI FNL+M2+bank securities
+        "us_bank_securities_tn": tl.get("us_bank_securities_tn"),     # deficit-monetization gauge
         "global_m2": {"level_tn": m2.get("total_tn"), "yoy_pct": m2.get("yoy"),
                       "yoy_3m_pct": m2.get("yoy_s"), "as_of": m2.get("latest"),
                       "n_economies": m2.get("n_economies"),

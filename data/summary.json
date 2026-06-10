@@ -2,19 +2,21 @@
  "schema_version": "1.0",
  "dashboard": "tec",
  "title": "The Everything Code \u2014 global liquidity & cycle dashboard",
- "generated": "2026-06-10T12:17:57Z",
+ "generated": "2026-06-10T17:30:29Z",
  "data_updated": "2026-06-09 16:47 UTC",
  "headline": {
   "metric": "GMI Total Global Liquidity Index (central-bank balance sheets netted + M2, summed across the major economies in USD; see n_economies)",
-  "level": 141.93,
+  "level": 141.99,
   "unit": "$ trillions",
-  "yoy_pct": 5.7,
+  "yoy_pct": 5.69,
   "as_of": "2026-06-10",
   "n_economies": 10,
   "components": {
-   "balance_sheets_tn": 29.16,
-   "m2_tn": 112.77
+   "balance_sheets_tn": 29.18,
+   "m2_tn": 112.81
   },
+  "flagship_plus_banksec_tn": 147.74,
+  "us_bank_securities_tn": 5.76,
   "global_m2": {
    "level_tn": 135.93,
    "yoy_pct": 7.36,
@@ -158,7 +160,7 @@
    "progress": "higher",
    "latest": {
     "x": "2026-06-10",
-    "value": 141.93
+    "value": 141.99
    },
    "best": {
     "value": 143.04
@@ -170,10 +172,10 @@
    "n_points": 5640,
    "span_years": 15.44,
    "range_factor": 2.429,
-   "yoy_pct": 5.7,
+   "yoy_pct": 5.69,
    "trend": {
     "window_years": 12.0,
-    "log10_per_year": 0.025,
+    "log10_per_year": 0.0251,
     "doubling_years": 12.02,
     "halving_years": null
    },
@@ -189,7 +191,7 @@
    "progress": "higher",
    "latest": {
     "x": "2026-06-01",
-    "value": 29.16
+    "value": 29.18
    },
    "best": {
     "value": 34.24
@@ -201,7 +203,7 @@
    "n_points": 186,
    "span_years": 15.42,
    "range_factor": 2.809,
-   "yoy_pct": -0.78,
+   "yoy_pct": -0.71,
    "trend": {
     "window_years": 12.0,
     "log10_per_year": 0.0234,
@@ -220,7 +222,7 @@
    "progress": "higher",
    "latest": {
     "x": "2026-06-01",
-    "value": 112.77
+    "value": 112.81
    },
    "best": {
     "value": 113.19
@@ -232,7 +234,7 @@
    "n_points": 186,
    "span_years": 15.42,
    "range_factor": 2.346,
-   "yoy_pct": 6.28,
+   "yoy_pct": 6.24,
    "trend": {
     "window_years": 12.0,
     "log10_per_year": 0.0255,
@@ -241,6 +243,68 @@
    },
    "source": "TradingView ECONOMICS \u2026M2 + FX",
    "description": "Broad money summed in USD \u2014 the private-credit component of the Total Liquidity Index."
+  },
+  "total_liquidity.monetization.bank_securities": {
+   "title": "US bank securities held (deficit monetization)",
+   "group": "Global Liquidity",
+   "role": "liquidity",
+   "timing": "leading",
+   "unit": "$ trillions",
+   "progress": "higher",
+   "latest": {
+    "x": "2026-05-01",
+    "value": 5.76
+   },
+   "best": {
+    "value": 5.85
+   },
+   "first": {
+    "x": "2008-02-01",
+    "value": 2.08
+   },
+   "n_points": 220,
+   "span_years": 18.25,
+   "range_factor": 2.854,
+   "yoy_pct": 4.16,
+   "trend": {
+    "window_years": 12.0,
+    "log10_per_year": 0.0293,
+    "doubling_years": 10.28,
+    "halving_years": null
+   },
+   "source": "FRED: TOTBKCR \u2212 TOTLL",
+   "description": "Treasury & agency securities held by US banks (total bank credit \u2212 loans, ~$5.7tn). Banks absorbing Treasury bill issuance \u2014 the deficit-monetization engine GMI expects to extend the cycle. Rising."
+  },
+  "total_liquidity.monetization.reverse_repo": {
+   "title": "Fed reverse repo (RRP)",
+   "group": "Global Liquidity",
+   "role": "liquidity",
+   "timing": "leading",
+   "unit": "$ trillions",
+   "progress": "lower",
+   "latest": {
+    "x": "2026-06-01",
+    "value": 0.0
+   },
+   "best": {
+    "value": 0.0
+   },
+   "first": {
+    "x": "2003-02-01",
+    "value": 0.0
+   },
+   "n_points": 179,
+   "span_years": 23.33,
+   "range_factor": null,
+   "yoy_pct": -100.0,
+   "trend": {
+    "window_years": 12.0,
+    "log10_per_year": 0.0326,
+    "doubling_years": 9.24,
+    "halving_years": null
+   },
+   "source": "FRED:RRPONTSYD",
+   "description": "Overnight reverse-repo balance \u2014 the buffer that funded bill issuance in 2023-24. Now drained to ~zero, so the monetization baton has passed to the banking system."
   },
   "big.lfpr": {
    "title": "Labour force participation",
