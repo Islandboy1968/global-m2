@@ -48,8 +48,13 @@ keeps the data trustworthy and the insight layer swappable.
   "schema_version": "1.0",
   "dashboard": "tec",
   "updated": "<YYYY-MM-DD HH:MM UTC>",
-  "summary": { latest, total_tn, yoy, yoy_s, n_economies },   // headline
-  "series":  [ {d, v, y, ys} … ],                              // global liquidity, daily
+  "total_liquidity": {                                         // THE HEADLINE — GMI Total Global Liquidity Index
+      series:[ {d, v, y, ys} … ],                              //   daily (FX-driven), $tn
+      components:{ balance_sheets:[ {d,v} … ], m2:[ {d,v} … ] },  // monthly decomposition of the one index
+      legs_latest:{ <ISO2>: v_tn … },                          //   per-economy contribution
+      summary:{ latest, total_tn, yoy, yoy_s, n_economies, balance_sheets_tn, m2_tn } },
+  "summary": { latest, total_tn, yoy, yoy_s, n_economies },   // Global M2 (47-econ) — now a COMPONENT, not the headline
+  "series":  [ {d, v, y, ys} … ],                              // Global M2, daily (component / overlay source)
   "btc": [ {d, p} … ], "ndx": [ {d, p} … ],                    // overlays
   "us":   { summary, series:[ {d, v, y, ys, vo, yo, yos} … ] },
   "big" | "cycle" | "exp" | "infl" | "labor" | "rates"

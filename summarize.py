@@ -249,7 +249,7 @@ def _headline(data):
     m2 = data.get("summary") or {}
     return {
         "metric": "GMI Total Global Liquidity Index (central-bank balance sheets "
-                  "netted + M2, summed across 10 major economies in USD)",
+                  "netted + M2, summed across the major economies in USD; see n_economies)",
         "level": tl.get("total_tn"),
         "unit": "$ trillions",
         "yoy_pct": tl.get("yoy"),

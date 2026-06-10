@@ -23,10 +23,12 @@ EVERY DAY, and the daily moves are driven by the dollar (spot FX revaluing the
 non-US legs) — the laggy monthly stocks only step on each new print. This matches
 how update_data builds the Global M2 line.
 
-Validated against GMI's published characterisation (live data, 2026-03):
-  level ~$142T · YoY +7.7% (GMI quotes ~8%/yr) · leads BTC ~2mo at 0.96 corr
-  (beats Global M2's coincident 0.95). Raw CB-balance-sheets-only fails this
-  (−0.2% YoY); Global M2 alone misses the balance-sheet + China dynamics.
+Validated against GMI's published characterisation (live data):
+  level ~$142T · YoY ~+8% (3m-avg; GMI quotes ~8%/yr) · correlates with BTC/NDX at
+  r² ~0.92/0.97 (best lead 0–2mo; the near-peak cross-correlation profile is flat,
+  so the exact lead is noise-sensitive — see summarize.py's live `signals` block for
+  the recomputed values). Raw CB-balance-sheets-only fails this (−0.2% YoY); Global
+  M2 alone misses the balance-sheet + China dynamics.
 
 v1 scope / known simplifications (flagged on the chart):
   - US leg netted (− TGA − RRP); other regions use gross balance sheet (no

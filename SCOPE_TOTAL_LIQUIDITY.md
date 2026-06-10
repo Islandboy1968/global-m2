@@ -1,9 +1,10 @@
 # SCOPE — GMI Total Global Liquidity (the real headline measure)
 
-> Status: **SCOPING / not built.** Captures the target measure, the data we have
-> vs need, a phased build, a validation plan, and the formula decisions only Raoul
-> can lock. The current dashboard headline is **Global M2** (summed M2 in USD) —
-> a good first-order proxy, but NOT the GMI flagship. Written 2026-06-09.
+> Status: **v1 BUILT** (`build_total_liquidity.py`, daily, the Tab-1 headline).
+> This doc captures the target measure, the data we have vs need, the phased build,
+> the validation plan, and the formula decisions still open for Raoul (§6). v2
+> (per-region bank-credit netting) remains future. Written 2026-06-09; v1 landed
+> the same day.
 
 ## 1. What we're building (and the key insight)
 
