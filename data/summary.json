@@ -2,17 +2,54 @@
  "schema_version": "1.0",
  "dashboard": "tec",
  "title": "The Everything Code \u2014 global liquidity & cycle dashboard",
- "generated": "2026-06-08T17:00:22Z",
+ "generated": "2026-06-10T11:58:55Z",
  "data_updated": "2026-06-07 12:28 UTC",
  "headline": {
-  "metric": "GMI Total Global Liquidity (broad money across 47 economies, USD at spot FX, summed)",
-  "level": 135.8,
+  "metric": "GMI Total Global Liquidity Index (central-bank balance sheets netted + M2, summed across 10 major economies in USD)",
+  "level": 141.91,
   "unit": "$ trillions",
-  "yoy_pct": 7.31,
-  "yoy_3m_pct": 9.18,
-  "as_of": "2026-06-07",
-  "n_economies": 47
+  "yoy_pct": 5.68,
+  "as_of": "2026-06-10",
+  "n_economies": 10,
+  "components": {
+   "balance_sheets_tn": 29.15,
+   "m2_tn": 112.75
+  },
+  "global_m2": {
+   "level_tn": 135.8,
+   "yoy_pct": 7.31,
+   "yoy_3m_pct": 9.18,
+   "as_of": "2026-06-07",
+   "n_economies": 47,
+   "note": "broad-money component, 47 economies (daily); a part of the Total Liquidity picture, not the headline"
+  }
  },
+ "signals": [
+  {
+   "relationship": "total_liquidity_leads_btc",
+   "best_lead_months": 0,
+   "correlation": 0.958,
+   "r2": 0.918,
+   "method": "max cross-correlation, monthly, log-levels",
+   "read": "GMI Total Global Liquidity leads Bitcoin"
+  },
+  {
+   "relationship": "total_liquidity_leads_ndx",
+   "best_lead_months": 0,
+   "correlation": 0.985,
+   "r2": 0.97,
+   "method": "max cross-correlation, monthly, log-levels",
+   "read": "GMI Total Global Liquidity leads the Nasdaq 100"
+  },
+  {
+   "relationship": "total_liquidity_yoy_leads_ism",
+   "best_lead_months": 5,
+   "correlation": 0.777,
+   "r2": 0.603,
+   "method": "max cross-correlation, monthly, levels",
+   "read": "Total Liquidity YoY (3m) leads the ISM manufacturing cycle"
+  }
+ ],
  "indicators": {
   "series": {
    "title": "GMI Total Global Liquidity",
@@ -111,6 +148,99 @@
    },
    "source": "TradingView NASDAQ:NDX",
    "description": "Risk-asset overlay layered against the liquidity line."
+  },
+  "total_liquidity.series": {
+   "title": "GMI Total Global Liquidity",
+   "group": "Global Liquidity",
+   "role": "liquidity",
+   "timing": "leading",
+   "unit": "$ trillions",
+   "progress": "higher",
+   "latest": {
+    "x": "2026-06-10",
+    "value": 141.91
+   },
+   "best": {
+    "value": 143.04
+   },
+   "first": {
+    "x": "2011-01-01",
+    "value": 59.88
+   },
+   "n_points": 5640,
+   "span_years": 15.44,
+   "range_factor": 2.429,
+   "yoy_pct": 5.68,
+   "trend": {
+    "window_years": 12.0,
+    "log10_per_year": 0.025,
+    "doubling_years": 12.02,
+    "halving_years": null
+   },
+   "source": "TradingView ECONOMICS (CB balance sheets + M2) + FX",
+   "description": "GMI-method Global Total Liquidity: central-bank balance sheets (netted) + M2 across 10 major economies in USD. Daily (FX-driven; monthly stocks forward-filled). The headline regime measure; reproduces GMI's ~8%/yr growth and leads risk assets."
+  },
+  "total_liquidity.components.balance_sheets": {
+   "title": "Central-bank balance sheets (index component)",
+   "group": "Global Liquidity",
+   "role": "liquidity",
+   "timing": "leading",
+   "unit": "$ trillions",
+   "progress": "higher",
+   "latest": {
+    "x": "2026-06-01",
+    "value": 29.15
+   },
+   "best": {
+    "value": 34.24
+   },
+   "first": {
+    "x": "2011-01-01",
+    "value": 12.19
+   },
+   "n_points": 186,
+   "span_years": 15.42,
+   "range_factor": 2.809,
+   "yoy_pct": -0.82,
+   "trend": {
+    "window_years": 12.0,
+    "log10_per_year": 0.0234,
+    "doubling_years": 12.86,
+    "halving_years": null
+   },
+   "source": "TradingView ECONOMICS \u2026CBBS + FX",
+   "description": "Netted central-bank balance sheets summed in USD \u2014 a component of the Total Liquidity Index (shrinking under QT everywhere except China)."
+  },
+  "total_liquidity.components.m2": {
+   "title": "Broad money M2 (index component)",
+   "group": "Global Liquidity",
+   "role": "liquidity",
+   "timing": "leading",
+   "unit": "$ trillions",
+   "progress": "higher",
+   "latest": {
+    "x": "2026-06-01",
+    "value": 112.75
+   },
+   "best": {
+    "value": 113.19
+   },
+   "first": {
+    "x": "2011-01-01",
+    "value": 48.24
+   },
+   "n_points": 186,
+   "span_years": 15.42,
+   "range_factor": 2.346,
+   "yoy_pct": 6.26,
+   "trend": {
+    "window_years": 12.0,
+    "log10_per_year": 0.0255,
+    "doubling_years": 11.8,
+    "halving_years": null
+   },
+   "source": "TradingView ECONOMICS \u2026M2 + FX",
+   "description": "Broad money summed in USD \u2014 the private-credit component of the Total Liquidity Index."
   },
   "big.lfpr": {
    "title": "Labour force participation",
