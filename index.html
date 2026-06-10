@@ -164,7 +164,7 @@
 
     <div class="chead"><span class="cnum">02</span><h2>GMI Total Global Liquidity</h2><span class="ccap" id="cap-lvl">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity, USD ($BN)</span><span class="lg pink"><i class="sw pnk" style="border:1px dashed var(--pink);background:transparent"></i>incl. US bank securities (GMI 2025 flagship)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>GMI Total Global Liquidity, USD ($BN)</span></div>
       <div class="chartbox"><canvas id="levelChart"></canvas></div>
       <div class="ctrls"><div class="ranges"></div></div>
       <div class="src">Central-bank balance sheets (netted) + M2 across 10 major economies incl. China, converted to USD &middot; GMI method &middot; Global Macro Investor</div>
@@ -194,12 +194,12 @@
       <div class="src">Source: LSEG Datastream &middot; Global Macro Investor</div>
     </div>
 
-    <div class="chead"><span class="cnum">06</span><h2>US deficit monetization &mdash; the bills engine</h2><span class="ccap" id="monetCap">&mdash;</span></div>
+    <div class="chead"><span class="cnum">06</span><h2>US bank securities held &mdash; deficit monetization</h2><span class="ccap" id="monetCap">&mdash;</span></div>
     <div class="panel">
-      <div class="legend"><span class="lg"><i class="sw blk"></i>Bank securities held ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Reverse repo / RRP ($BN)</span></div>
+      <div class="legend"><span class="lg"><i class="sw blk"></i>Bank securities held ($BN)</span><span class="lg pink"><i class="sw pnk"></i>Growth % (RHS)</span></div>
       <div class="chartbox"><canvas id="monetChart"></canvas></div>
-      <div class="ctrls"><div class="ranges"></div></div>
-      <div class="src">Banks absorbing Treasury issuance (securities = total bank credit &minus; loans, ~$5.7tn) as the RRP buffer drains to zero &mdash; the deficit-monetization channel GMI expects to carry the cycle into a super-cycle. FRED &middot; Global Macro Investor</div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl" id="monetTog"><span class="lagk">growth</span></div></div>
+      <div class="src">Banks absorbing Treasury issuance (securities = total bank credit &minus; loans, ~$5.7tn) &mdash; the deficit-monetization engine GMI expects to carry the cycle into a super-cycle. <b>The signal activates from ~Aug 2025</b>, when the reverse-repo buffer (peak $2.55tn, Dec 2022) finally drained to zero and the banking system became the marginal funder of the deficit; earlier history is shown for context. FRED &middot; Global Macro Investor</div>
     </div>
   </section>
 
@@ -1011,11 +1011,9 @@ const GLOBAL = (function(){
     {data:mom6,borderColor:"rgba(241,42,90,.4)",borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
   ]},options:optsMom()}));
 
-  // ---- 02 · Index (level) + GMI-2025 flagship variant (incl. US bank securities) ----
-  const plusBN=(TL.series_plus_banksec||[]).map(r=>({x:Date.parse(r.d), y:r.v*1000}));
+  // ---- 02 · Index (level only, full history) ----
   charts.push(new Chart(levelChart,{type:"line",data:{datasets:[
-    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05},
-    {data:plusBN,borderColor:PINK,borderWidth:1,borderDash:[4,3],pointRadius:0,fill:false,tension:.05}
+    {data:ptsBN("v"),borderColor:BLACK,borderWidth:1,pointRadius:0,fill:false,tension:.05}
   ]},options:opts(BLACK, fmtBN)}));
 
   // ---- 03 · Year-on-year (demoted — base-effect distorted, see panel caveat) ----
@@ -1029,14 +1027,20 @@ const GLOBAL = (function(){
   const lag=(arr,d)=>arr.map(a=>({x:Date.parse(a.d)-d*DAY, y:a.p}));
   charts.push(overlay(btcChart, tglPts, lag(DATA.btc,DEF), "Bitcoin (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
   charts.push(overlay(ndxChart, tglPts, lag(DATA.ndx,DEF), "Nasdaq 100 (RHS)", "GMI Total Global Liquidity ($BN)", DEF));
-  // ---- 06 · US deficit monetization — the bills engine ----
-  // Banks hoarding Treasuries (securities = total bank credit − loans) while the
-  // reverse-repo buffer is drained: the channel now extending the cycle.
-  const monetBN=key=>((TL.monetization&&TL.monetization[key])||[]).map(r=>({x:Date.parse(r.d), y:r.v*1000}));
+  // ---- 06 · US bank securities held — the deficit-monetization signal ----
+  // Level + a growth read that toggles YoY / 6m-on-6m annualised. The signal
+  // activates once the RRP buffer emptied (~Aug 2025); full history for context.
+  const bsRaw=(TL.monetization&&TL.monetization.bank_securities)||[];
+  const bsLvl=bsRaw.map(r=>({x:Date.parse(r.d), y:r.v*1000}));
+  const bsYoY=[], bs6m=[];
+  for(let i=0;i<bsRaw.length;i++){ const x=Date.parse(bsRaw[i].d);
+    if(i>=12 && bsRaw[i-12].v) bsYoY.push({x, y:(bsRaw[i].v/bsRaw[i-12].v-1)*100});
+    if(i>=6  && bsRaw[i-6].v)  bs6m.push({x, y:(Math.pow(bsRaw[i].v/bsRaw[i-6].v,2)-1)*100}); }
+  const monetMom={data:bsYoY,borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05,yAxisID:"y1"};
   charts.push(new Chart(monetChart,{type:"line",data:{datasets:[
-    {data:monetBN("bank_securities"),borderColor:BLACK,borderWidth:1.5,pointRadius:0,tension:.05},
-    {data:monetBN("reverse_repo"),borderColor:PINK,borderWidth:1.5,pointRadius:0,tension:.05}
-  ]},options:opts(BLACK, fmtBN)}));
+    {data:bsLvl,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    monetMom
+  ]},options:optsMom()}));
   charts.forEach((c,i)=>c.$auto=(i<3));
   [momoChart,levelChart,yoyChart,btcChart,ndxChart,monetChart].forEach((cv,i)=>attach(cv,charts[i]));
   controls(charts[0]); controls(charts[1]); controls(charts[2]); controls(charts[5]);
@@ -1046,6 +1050,14 @@ const GLOBAL = (function(){
   (function(){const c=charts[0]; const ext=xExtent(c);
     c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);
     [...c.canvas.closest(".panel").querySelectorAll(".ranges button")].forEach(b=>b.classList.remove("on"));})();
+  // chart 06 · default to a recent window (the signal is post-2015) + YoY/6m6m toggle
+  (function(){const c=charts[5]; if(!c) return; const ext=xExtent(c);
+    c.options.scales.x.min=Math.max(ext[0], Date.parse("2015-01-01")); c.options.scales.x.max=ext[1]; fitY(c);
+    const box=document.getElementById("monetTog"); if(!box) return;
+    const mk=(l,on)=>{const b=document.createElement("button");b.textContent=l;if(on)b.classList.add("on");return b;};
+    const bY=mk("YoY",true), b6=mk("6m/6m",false); box.appendChild(bY); box.appendChild(b6);
+    const set=(data,on,off)=>{monetMom.data=data; on.classList.add("on"); off.classList.remove("on"); c.update();};
+    bY.onclick=()=>set(bsYoY,bY,b6); b6.onclick=()=>set(bs6m,b6,bY);})();
   return {charts};
 })();
 
