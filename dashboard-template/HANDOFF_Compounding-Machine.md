@@ -6,7 +6,16 @@
 >
 > **Live prototype (BETA):**
 > https://islandboy1968.github.io/global-m2/dashboard-template/compounding-machine-beta.html
+> **GMI-branded skin (same engine, accompanies the GMI dashboards):**
+> https://islandboy1968.github.io/global-m2/dashboard-template/compounding-machine-gmi-beta.html
 > **Code + this doc:** `Islandboy1968/global-m2` → `dashboard-template/`
+>
+> Two shells, one engine: `compounding-machine.html` (RV dark restyle, the P&E
+> hand-off below) and `compounding-machine-gmi.html` (GMI light brand — white
+> page, pink `#f12a5a`, Teko/AT Aero/DM Mono, token-for-token with the live
+> Everything Code dashboard). Both read the same `data/data.js` + `lib/compute.js`
+> + `lib/sources.js`; the hourly pipeline bakes a self-contained beta of each.
+> The four-layer split (§10) is what makes the second skin a shell-only file.
 
 ---
 

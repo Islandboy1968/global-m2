@@ -89,21 +89,27 @@ def main():
 
 
 def build_beta(data_js):
-    """Assemble the single-file beta: inline data + compute + sources into the
-    shell (assets stay on their default `injected` source — no browser fetch)."""
-    shell = open(os.path.join(TPL, "compounding-machine.html")).read()
+    """Assemble the single-file betas: inline data + compute + sources into each
+    shell (assets stay on their default `injected` source — no browser fetch).
+    Two skins share one engine: the RV-styled shell and the GMI-branded shell
+    (compounding-machine-gmi.html, the skin that accompanies the GMI dashboards)."""
     compute = open(os.path.join(TPL, "lib", "compute.js")).read()
     sources = open(os.path.join(TPL, "lib", "sources.js")).read()
 
     def inline(js):
         return "<script>\n" + js + "\n</scr" + "ipt>"
 
-    shell = shell.replace('<script src="data/data.js"></script>', inline(data_js))
-    shell = shell.replace('<script src="lib/compute.js"></script>', inline(compute))
-    shell = shell.replace('<script src="lib/sources.js"></script>', inline(sources))
-    out = os.path.join(TPL, "compounding-machine-beta.html")
-    open(out, "w").write(shell)
-    print("rebuilt", out)
+    for shell_name, out_name in [
+        ("compounding-machine.html", "compounding-machine-beta.html"),
+        ("compounding-machine-gmi.html", "compounding-machine-gmi-beta.html"),
+    ]:
+        shell = open(os.path.join(TPL, shell_name)).read()
+        shell = shell.replace('<script src="data/data.js"></script>', inline(data_js))
+        shell = shell.replace('<script src="lib/compute.js"></script>', inline(compute))
+        shell = shell.replace('<script src="lib/sources.js"></script>', inline(sources))
+        out = os.path.join(TPL, out_name)
+        open(out, "w").write(shell)
+        print("rebuilt", out)
 
 
 if __name__ == "__main__":
