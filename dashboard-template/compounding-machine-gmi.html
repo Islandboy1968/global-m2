@@ -22,6 +22,9 @@
      dashboard uses). Falls back to system sans if the file is viewed standalone. */
   @font-face{font-family:"AT Aero";src:url("../fonts/AtAero-Regular.woff2") format("woff2"),url("../fonts/AtAero-Regular.woff") format("woff");font-weight:400;font-style:normal;font-display:swap}
   @font-face{font-family:"AT Aero";src:url("../fonts/AtAero-Medium.woff2") format("woff2"),url("../fonts/AtAero-Medium.woff") format("woff");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("../fonts/Teko-Regular.woff2") format("woff2");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("../fonts/Teko-Medium.woff2") format("woff2");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"Teko";src:url("../fonts/Teko-SemiBold.woff2") format("woff2");font-weight:600;font-style:normal;font-display:swap}
   :root{
     --pink:#f12a5a; --ink:#131316;
     --mut:rgba(19,19,22,.72); --mut2:rgba(19,19,22,.58); --faint:rgba(19,19,22,.45);
@@ -125,7 +128,7 @@ function Eyebrow({children,color=C.mut,style}){
 
 function Segmented({options,value,onChange,size="md"}){
   const pad = size==="sm"?"6px 14px":"7px 18px";
-  const fs = size==="sm"?15:16;
+  const fs = size==="sm"?15:18;
   return(
     <div style={{display:"inline-flex",background:"#fff",border:`1px solid ${C.line}`,borderRadius:8,padding:3,gap:2}}>
       {options.map(o=>{
@@ -160,7 +163,7 @@ function Card({children,style,pad=24,tone="plain"}){
 function SectionHead({num,title,cap}){
   return <div style={{display:"flex",flexWrap:"wrap",alignItems:"baseline",gap:"4px 12px",margin:"30px 0 9px"}}>
     <div style={{flexBasis:"100%",fontFamily:MONO,fontSize:11,fontWeight:500,letterSpacing:"2px",color:C.pink}}>{num}</div>
-    <h2 style={{fontFamily:TITLE,fontWeight:400,fontSize:27,lineHeight:1,margin:0,color:C.ink}}>{title}</h2>
+    <h2 style={{fontFamily:TITLE,fontWeight:400,fontSize:30,lineHeight:1,margin:0,color:C.ink}}>{title}</h2>
     {cap&&<div style={{marginLeft:"auto",fontFamily:MONO,fontSize:12.5,color:C.mut,textAlign:"right"}}>{cap}</div>}
   </div>;
 }
@@ -319,7 +322,7 @@ function CompoundingMachine(){
     <div style={{maxWidth:1000,margin:"0 auto",padding:"0 24px"}}>
 
       {/* BRAND ROW */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"22px 0 8px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"22px 0 8px",borderBottom:`1px solid ${C.line}`}}>
         <span style={{fontFamily:TITLE,fontWeight:400,fontSize:27,lineHeight:1,letterSpacing:".5px",color:C.ink}}>GMI</span>
         <span style={{fontFamily:MONO,fontWeight:500,fontSize:11,letterSpacing:"3px",textTransform:"uppercase",color:C.ink}}>Global Macro Investor</span>
       </div>
@@ -328,7 +331,7 @@ function CompoundingMachine(){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:20,margin:"26px 0 18px"}}>
         <div style={{maxWidth:680}}>
           <div style={{fontFamily:MONO,fontWeight:500,fontSize:12,letterSpacing:"3px",textTransform:"uppercase",color:C.pink,marginBottom:7}}>{meta.name} · Log Trend Strategy</div>
-          <h1 style={{fontFamily:TITLE,fontWeight:400,fontSize:44,margin:0,lineHeight:.95,letterSpacing:0,color:C.ink}}>The GMI Compounding Machine</h1>
+          <h1 style={{fontFamily:TITLE,fontWeight:400,fontSize:46,margin:0,lineHeight:.95,letterSpacing:0,color:C.ink}}>The GMI Compounding Machine</h1>
           <p style={{fontFamily:MONO,fontSize:13,color:C.mut,marginTop:12,marginBottom:0,lineHeight:1.6,maxWidth:580}}>
             Regression frozen end of 2025 — <span style={{color:C.ink}}>{impliedCAGR}%</span> CAGR, 1σ = <span style={{color:C.ink}}>{sd1pct}%</span>.
             Weekly signals, fixed-dollar adds at the lows. The channel extends to {meta.projectToYear} to show the band of possible prices — not a forecast.
