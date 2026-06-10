@@ -181,7 +181,7 @@ def make_alpha_html(html):
 
     html = sub(html, '<span class="tag" id="tierTag">RV PRO</span>',
                      '<span class="tag" id="tierTag">RV ALPHA</span>')
-    html = sub(html, 'var tags = { pro: "RV PRO", alpha: "RV ALPHA", guide: "GUIDE" };',
+    html = sub(html, 'var tags = { pro: "RV PRO", alpha: "ASSETS", guide: "GUIDE" };',
                      'var tags = { pro: "RV ALPHA", alpha: "RV ALPHA", guide: "GUIDE" };')
     html = sub(html, 'document.getElementById("tierTag").textContent = tags[tab] || "RV PRO";',
                      'document.getElementById("tierTag").textContent = tags[tab] || "RV ALPHA";')
@@ -196,6 +196,14 @@ def make_alpha_html(html):
     html = sub(html, '<div id="proContent" style="position: relative;">',
                      '<div id="proContent" class="hidden" style="position: relative;">')
     html = sub(html, '<div id="alphaContent" class="hidden">', '<div id="alphaContent">')
+
+    # Guide copy: name the tabs as this tier sees them (Alpha first, Pro gated).
+    html = sub(html, """        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">RV Pro Positions vs Assets</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #e9ecf3; font-weight: 600;">RV Pro Positions</span> tracks the weekly trend for every asset in the current GMI portfolio. This is the tab most subscribers should focus on.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;"><span style="color: #e9ecf3; font-weight: 600;">Assets</span> tracks broader macro assets (gold, copper, oil, yields, the dollar) that inform the overall macro picture but are not necessarily GMI positions.</p>""",
+                     """        <div style="font-size: 11px; font-weight: 700; color: #e9ecf3; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">RV Alpha Trends vs RV Pro Positions</div>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0 0 10px 0;"><span style="color: #e9ecf3; font-weight: 600;">RV Alpha Trends</span> tracks broader macro assets (gold, copper, oil, yields, the dollar) that inform the overall macro picture but are not necessarily GMI positions.</p>
+        <p style="font-size: 12px; color: #aab3c4; line-height: 1.7; margin: 0;"><span style="color: #e9ecf3; font-weight: 600;">RV Pro Positions</span> tracks the weekly trend for every asset in the current GMI portfolio. The first three positions are shown as a preview &mdash; the full table is available with an RV Pro subscription.</p>""")
 
     html = sub(html, "// Blur rows beyond the first 2 (preview rows)",
                      "// Blur rows beyond the first 3 (preview rows)")
