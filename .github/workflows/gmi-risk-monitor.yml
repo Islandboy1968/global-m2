@@ -1,17 +1,23 @@
 name: Refresh GMI Risk Monitor (GMI edition)
 
-# Daily build of dashboard-risk-monitor/gmi.html — the GMI-branded Risk
-# Monitor whose "GMI Positions" tab auto-syncs from the GMI Positions
-# dashboard's positions.json on Google Drive. Daily (not weekly like the RV
-# pages) so an open/close published in the positions book reaches this board
-# within 24h; the weekly trend signal itself only moves on weekly bars.
+# Builds dashboard-risk-monitor/gmi.html — the GMI-branded Risk Monitor whose
+# "GMI Positions" tab auto-syncs from the repo-canonical GMI Positions book
+# (gmi-positions-source.json, committed by Cowork). Triggers:
+#   - push to the positions book → rebuild within minutes of an open/close
+#   - daily cron → fresh prices/vol (the weekly trend signal itself only
+#     moves on weekly bars)
+#   - manual dispatch
 # Fail-loud contract as risk-monitor.yml: a bad feed, an unmapped ticker, or
-# an unreachable Drive source turns the job RED, but what resolved is still
-# committed so the gap is visible.
+# a missing/malformed positions book turns the job RED, but what resolved is
+# still committed so the gap is visible.
 on:
   workflow_dispatch:
   schedule:
     - cron: '30 7 * * *'   # daily 07:30 UTC (after US close, before EU open)
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard-risk-monitor/gmi-positions-source.json'
 
 jobs:
   refresh:
@@ -40,10 +46,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add dashboard-risk-monitor/gmi.html dashboard-risk-monitor/gmi-positions.json dashboard-risk-monitor/gmi-positions-source.json
+          git add dashboard-risk-monitor/gmi.html dashboard-risk-monitor/gmi-positions.json
           if git diff --staged --quiet; then
             echo "No changes."
           else
             git commit -m "gmi risk monitor: refresh $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git pull --rebase origin main   # in case main moved during the run
             git push
           fi
