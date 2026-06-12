@@ -30,6 +30,15 @@ rebuilds **on every commit to that file** plus a daily price refresh, so:
 Sync logic lives in `gmi_positions_sync.py`. A missing or malformed book
 **fails loud** in CI — never silently stale.
 
+> **The repo file is a publish target, not an editing surface** (per Cowork,
+> 2026-06-12). The authoring flow is: Cowork's local canonical book +
+> Raoul's Drive-inbox exports (`gmi-positions-YYYY-MM-DD.json`, Raoul's
+> changes win) → merge → commit here. Nothing reads the repo file back into
+> the book, so a direct edit to `gmi-positions-source.json` on GitHub is
+> **silently overwritten** by Cowork's next morning publish. Changes to the
+> book itself go through Raoul. The dated Drive snapshots are write-only
+> convenience copies; the pipeline reads none of them.
+
 > **History:** v1 fetched `positions.json` from the Google Drive folder
 > (`1wKaSzAgTF75CkDDm8cjl2QQmEHhL95xv`) with the repo file as cache.
 > Flipped to repo-canonical on 2026-06-12 once Cowork began committing the

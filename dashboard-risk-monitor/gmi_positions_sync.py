@@ -7,6 +7,14 @@
 #  gmi-positions-source.json (in this directory) to the repo. When a position
 #  is opened or closed there, the workflow rebuilds — no edit needed here.
 #
+#  PUBLISH TARGET, NOT AN EDITING SURFACE (per Cowork, 2026-06-12):
+#  gmi-positions-source.json is write-only from Cowork's side. The authoring
+#  flow is: Cowork's local canonical book + Raoul's Drive-inbox exports →
+#  merge (Raoul's changes win) → commit here. Nothing reads this repo file
+#  back into the book, so a direct edit to it on GitHub WILL BE SILENTLY
+#  OVERWRITTEN by Cowork's next morning publish. A change to the book itself
+#  goes through Raoul, never through this file.
+#
 #  How it works, in order:
 #    1. fetch_source()  — load gmi-positions-source.json, the repo-canonical
 #       copy of the GMI Positions book (Cowork-committed). Missing or
