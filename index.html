@@ -320,6 +320,14 @@
       <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
       <div class="src">Source: FRED (BLS, U.S. Treasury) &middot; Global Macro Investor</div>
     </div>
+
+    <div class="chead"><span class="cnum">07</span><h2>Cycle vs Intelligence &mdash; ISM vs labor productivity</h2><span class="ccap" id="bigCycleIntel">&mdash;</span></div>
+    <div class="panel">
+      <div class="legend"><span class="lg"><i class="sw blk"></i>ISM Manufacturing PMI</span><span class="lg pink"><i class="sw pnk"></i>Labor Productivity YoY %</span></div>
+      <div class="chartbox"><canvas id="bigCycleIntelC"></canvas></div>
+      <div class="ctrls"><div class="ranges"></div><div class="lagctl"></div></div>
+      <div class="src">Productivity confirms the channel, it does not lead. Post-2022 the two turn together; ISM speaks first only because it prints faster. Pre-2022 co-movement structure treated as inapplicable. Source: ISM, FRED (BLS) &middot; Global Macro Investor</div>
+    </div>
   </section>
 
   <!-- ============ THE BUSINESS CYCLE TAB ============ -->
@@ -883,7 +891,7 @@ function controls(chart, lag){
 }
 
 const DATA = window.TGL_DATA || null;
-let descrGlobal="—", descrUS="", descrBig="US structural macro — labour, demographics, debt and liquidity · FRED · monthly to quarterly";
+let descrGlobal="—", descrUS="", descrBig="US structural macro — labour, demographics, debt and liquidity, plus the cycle-vs-intelligence read · FRED, ISM · monthly to quarterly";
 let descrCycle="The US cycle is now best read services-first: a GDP-weighted composite (90% Services / 10% Manufacturing) as the source of truth, with manufacturing, new orders and liquidity as the high-beta inflection signal · ISM, GMI · monthly";
 
 // ----- linear dual-axis overlay (for The Big Picture); right axis can be reversed -----
@@ -1140,14 +1148,36 @@ const BIG = (function(){
   charts.push(overlayLin(bigLiqIntrNarrowC, liqN, [], fmtNum, false, fmtNum));
   // 06 LFPR (5-month forward lead) vs US 5-year Treasury yield (RHS, pink)
   charts.push(overlayLin(bigLfprY5C, lfpr, A(B.y5), fmtPct1, false, fmtPct));
+  // 07 Cycle vs Intelligence — ISM (reused from the cycle block, left) vs labor
+  // productivity YoY (right). Built manually rather than via overlayLin because
+  // the dashed 50 reference line on the ISM axis needs a plugin.
+  const CY = DATA && DATA.cycle;
+  const ismPts  = (CY && CY.ism)  ? A(CY.ism)  : [];
+  const prodPts = A(B.prod || []);
+  const fiftyLine={id:"fiftyLine",afterDatasetsDraw(chart){
+    const y=chart.scales.y, a=chart.chartArea; if(!y) return;
+    const yp=y.getPixelForValue(50); if(yp<a.top||yp>a.bottom) return;
+    const ctx=chart.ctx; ctx.save();
+    ctx.strokeStyle="rgba(19,19,22,.38)"; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(a.left,yp); ctx.lineTo(a.right,yp); ctx.stroke(); ctx.restore();
+  }};
+  const fmtIsm = v=>Math.round(v);
+  const fmtYoY = v=>(v>0?"+":"")+v.toFixed(1)+"%";
+  charts.push(new Chart(bigCycleIntelC,{type:"line",data:{datasets:[
+    {label:"left",data:ismPts,borderColor:BLACK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y"},
+    {label:"right",data:prodPts,borderColor:PINK,borderWidth:1,pointRadius:0,tension:.05,yAxisID:"y1"}
+  ]},options:optsLin(fmtIsm,false,fmtYoY),plugins:[fiftyLine]}));
   charts.forEach(c=>c.$auto=false);
-  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC,bigLiqIntrNarrowC,bigLfprY5C].forEach((cv,i)=>attach(cv,charts[i]));
+  [bigLfprBirthC,bigLfprDebtC,bigLiqDebtC,bigLiqIntrC,bigLiqIntrNarrowC,bigLfprY5C,bigCycleIntelC].forEach((cv,i)=>attach(cv,charts[i]));
   controlsFwd(charts[0],{asset:B.births, pairLbl:"LFPR vs US births /1,000", leadEl:document.getElementById("bigLfprBirth"), def:5844});
   controls(charts[1]);
   controlsFwd(charts[2],{asset:B.debt, pairLbl:"US liquidity (Narrow) vs debt/GDP", leadEl:document.getElementById("bigLiqDebt"), def:0});
   controlsFwd(charts[3],{asset:B.interest, pairLbl:"US liquidity (Broad) vs interest payments", leadEl:document.getElementById("bigLiqIntr"), def:1095});
   controlsFwd(charts[4],{asset:B.interest, pairLbl:"US liquidity (Narrow) vs interest payments", leadEl:document.getElementById("bigLiqIntrNarrow"), def:1095});
   controlsFwdLeft(charts[5],{asset:B.lfpr, pairLbl:"LFPR leads US 5-year yield", leadEl:document.getElementById("bigLfprY5"), def:152});
+  // 07 standard lead/lag, default 0 — zero shift is canonical, the control is exploration only.
+  // controlsFwd (not controls): big.prod points are {d,v} and buildLagFwd maps y:a.v.
+  controlsFwd(charts[6],{asset:(B.prod||[]), pairLbl:"ISM vs Labor Productivity", leadEl:document.getElementById("bigCycleIntel"), def:0});
   // default view windows matched to the official GMI charts (range buttons still override)
   const bigStart=(chart,iso)=>{const [lo,hi]=xExtent(chart);
     chart.options.scales.x.min=Math.max(lo, Date.parse(iso)); chart.options.scales.x.max=hi; fitY(chart);
@@ -1158,6 +1188,16 @@ const BIG = (function(){
   bigStart(charts[3],"2019-01-01");   // broad liquidity vs interest (+36m projection)
   bigStart(charts[4],"2019-01-01");   // narrow liquidity vs interest (+36m projection)
   bigStart(charts[5],"2021-01-01");   // LFPR (5m lead) vs 5-year yield
+  bigStart(charts[6],"2022-01-01");   // ISM vs labor productivity (regime view starts 2022)
+  // 07 gets a panel-specific "2022" preset appended after the shared range
+  // buttons (the shared RANGES const is global to every panel — not modified).
+  (function(){const c=charts[6], rc=c.canvas.closest(".panel").querySelector(".ranges");
+    const b=document.createElement("button"); b.textContent="2022";
+    b.onclick=()=>{const [lo,hi]=xExtent(c);
+      c.options.scales.x.min=Math.max(lo,Date.parse("2022-01-01")); c.options.scales.x.max=hi;
+      fitY(c); [...rc.children].forEach(x=>x.classList.remove("on")); b.classList.add("on");
+      if(c.$locked) saveChart(c);};
+    rc.appendChild(b); b.classList.add("on");})();
   return {charts};
 })();
 

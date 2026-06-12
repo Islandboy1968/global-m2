@@ -123,6 +123,13 @@ META = {
                      "role": "rates", "timing": "coincident", "unit": "%",
                      "progress": "higher", "source": "FRED:DGS5",
                      "description": "5-year Treasury constant-maturity yield."},
+    "big.prod":     {"title": "Labor productivity YoY", "group": "Big Picture",
+                     "role": "structural", "timing": "coincident", "unit": "% YoY",
+                     "progress": "higher", "source": "FRED:OPHNFB",
+                     "description": "US nonfarm labor productivity, output per hour, YoY %. "
+                                    "Paired with ISM to identify the cycle's channel: "
+                                    "productivity rising with ISM = intelligence channel; "
+                                    "flat = old cycle. Confirms, does not lead."},
 
     # ---- Business Cycle -------------------------------------------------
     "cycle.ism":          {"title": "ISM PMI", "group": "Business Cycle",

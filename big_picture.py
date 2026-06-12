@@ -12,6 +12,7 @@ Series:
   debt     GFDEGDQ188S      Federal Debt: Total Public Debt as % of GDP, quarterly
   interest A091RC1Q027SBEA  Federal current expenditures: interest payments, $bn, quarterly
   y5       DGS5             Market Yield on US Treasury at 5-Year Constant Maturity, %, daily
+  prod     OPHNFB           Labor productivity YoY %, quarterly
 
 The dashboard pairs these with the US Total Liquidity (Narrow) series already in
 TGL_DATA["us"], so no liquidity series is duplicated here.
@@ -24,6 +25,7 @@ BIG_SERIES = {
     "debt":     "GFDEGDQ188S",
     "interest": "A091RC1Q027SBEA",
     "y5":       "DGS5",
+    "prod":     "OPHNFB",   # Nonfarm labor productivity (output per hour), index, quarterly
 }
 
 START = "1948-01-01"   # full history; the frontend windows it
@@ -44,6 +46,13 @@ def build_big(start=START):
         except Exception as e:
             print(f"  BIG {key} ({sid}) failed: {str(e)[:90]}")
             out[key] = []
+    # Labor productivity ships as YoY % (4-quarter offset on the quarterly index).
+    if out.get("prod") and len(out["prod"]) > 4:
+        pts = out["prod"]
+        out["prod"] = [
+            {"d": p["d"], "v": round((p["v"] / pts[i-4]["v"] - 1) * 100, 2)}
+            for i, p in enumerate(pts) if i >= 4 and pts[i-4]["v"]
+        ]
     return out
 
 

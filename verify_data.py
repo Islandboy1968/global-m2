@@ -54,7 +54,7 @@ EXPECTED = {
     "US Liquidity": {"us.series": "US net liquidity (weekly)"},
     "Big Picture": {"big.lfpr": "Labour force participation", "big.births": "Birth rate",
                     "big.debt": "Federal debt % GDP", "big.interest": "Interest payments",
-                    "big.y5": "5y Treasury yield"},
+                    "big.y5": "5y Treasury yield", "big.prod": "Labor productivity YoY"},
     "Business Cycle": {"cycle.ism": "ISM PMI", "cycle.neworders": "ISM new orders",
                        "cycle.gdp": "GDP QoQ", "cycle.capex": "Capex % GDP",
                        "cycle.fci": "GMI FCI", "cycle.fci_exoil": "FCI ex-oil"},
