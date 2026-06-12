@@ -1,0 +1,279 @@
+{
+ "schema_version": "1.0",
+ "tab": "tec_liquidity_cycle",
+ "panels": [
+  {
+   "id": "tec_liq_btc",
+   "tab": "tec_liquidity_cycle",
+   "title": "Liquidity leads Bitcoin",
+   "live": false,
+   "series": [
+    {
+     "key": "liquidity_total",
+     "legend": "GMI Total Liquidity Index ($BN)",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "time_shift",
+       "days": 0
+      }
+     ]
+    },
+    {
+     "key": "btc",
+     "legend": "Bitcoin (RHS)",
+     "axis": "right",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "log"
+      }
+     ]
+    }
+   ],
+   "relationship": {
+    "kind": "lead_lag",
+    "claim": "liquidity leads BTC ~90d (BTC ~90% corr); watch the lead compressing toward 0 \u2014 faster transmission / reflexivity",
+    "lead": {
+     "leads": "liquidity_total",
+     "lags": "btc",
+     "offset_days": 90
+    }
+   }
+  },
+  {
+   "id": "tec_liq_ndx",
+   "tab": "tec_liquidity_cycle",
+   "title": "Liquidity leads Nasdaq 100",
+   "live": false,
+   "series": [
+    {
+     "key": "liquidity_total",
+     "legend": "GMI Total Liquidity Index ($BN)",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    },
+    {
+     "key": "ndx",
+     "legend": "Nasdaq 100 (RHS)",
+     "axis": "right",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "log"
+      }
+     ]
+    }
+   ],
+   "relationship": {
+    "kind": "lead_lag",
+    "claim": "liquidity leads NDX (~97.5% corr) \u2014 the cleanest of the two",
+    "lead": {
+     "leads": "liquidity_total",
+     "lags": "ndx",
+     "offset_days": 90
+    }
+   }
+  },
+  {
+   "id": "tec_liq_yoy",
+   "tab": "tec_liquidity_cycle",
+   "title": "Global M2 \u2014 Year-on-year",
+   "live": false,
+   "series": [
+    {
+     "key": "liquidity_total",
+     "legend": "Global liquidity YoY %",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "derived",
+     "transform": [
+      {
+       "op": "yoy"
+      }
+     ]
+    }
+   ],
+   "relationship": {
+    "kind": "none",
+    "claim": "the cycle-axis primary \u2014 rising = risk added"
+   }
+  },
+  {
+   "id": "tec_ism_vs_liquidity",
+   "tab": "tec_liquidity_cycle",
+   "title": "ISM vs Global Total Liquidity",
+   "live": false,
+   "series": [
+    {
+     "key": "cycle.ism",
+     "legend": "ISM manufacturing",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    },
+    {
+     "key": "liquidity_total",
+     "legend": "Global liquidity (lead)",
+     "axis": "right",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "yoy"
+      }
+     ]
+    }
+   ],
+   "relationship": {
+    "kind": "lead_lag",
+    "claim": "liquidity leads the ISM \u2014 the middle domino of the EC chain",
+    "lead": {
+     "leads": "liquidity_total",
+     "lags": "cycle.ism",
+     "offset_months": 6
+    }
+   }
+  },
+  {
+   "id": "tec_bc_composite",
+   "tab": "tec_liquidity_cycle",
+   "title": "Business-cycle composite (GDP-weighted)",
+   "live": false,
+   "series": [
+    {
+     "key": "cycle.bc_composite",
+     "legend": "Business-cycle composite",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    }
+   ],
+   "relationship": {
+    "kind": "none",
+    "claim": "the cycle state; rising through 50 = expansion"
+   }
+  },
+  {
+   "id": "tec_cyclical_impulse",
+   "tab": "tec_liquidity_cycle",
+   "title": "Cyclical impulse vs the broad composite",
+   "live": false,
+   "series": [
+    {
+     "key": "cycle.cyclical_impulse",
+     "legend": "Cyclical impulse",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    },
+    {
+     "key": "cycle.bc_composite",
+     "legend": "Broad composite",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    }
+   ],
+   "relationship": {
+    "kind": "lead_lag",
+    "claim": "the impulse leads the composite \u2014 earliest cycle turn signal",
+    "lead": {
+     "leads": "cycle.cyclical_impulse",
+     "lags": "cycle.bc_composite",
+     "offset_months": 5
+    }
+   }
+  },
+  {
+   "id": "tec_fci",
+   "tab": "tec_liquidity_cycle",
+   "title": "ISM vs GMI Financial Conditions Index",
+   "live": false,
+   "series": [
+    {
+     "key": "cycle.fci",
+     "legend": "Financial conditions",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual"
+    },
+    {
+     "key": "cycle.ism",
+     "legend": "ISM",
+     "axis": "right",
+     "source": "indicator",
+     "series_kind": "actual"
+    }
+   ],
+   "relationship": {
+    "kind": "lead_lag",
+    "claim": "FCI is the earliest domino \u2014 financial conditions lead liquidity",
+    "lead": {
+     "leads": "cycle.fci",
+     "lags": "cycle.ism",
+     "offset_months": 6
+    }
+   }
+  },
+  {
+   "id": "tec_dominoes",
+   "tab": "tec_liquidity_cycle",
+   "title": "The Everything Code Dominoes",
+   "live": false,
+   "series": [
+    {
+     "key": "cycle.fci",
+     "legend": "Financial conditions",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "normalize",
+       "basis": "zscore"
+      }
+     ]
+    },
+    {
+     "key": "liquidity_total",
+     "legend": "Liquidity",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "yoy"
+      },
+      {
+       "op": "normalize",
+       "basis": "zscore"
+      }
+     ]
+    },
+    {
+     "key": "cycle.ism",
+     "legend": "ISM (business cycle)",
+     "axis": "left",
+     "source": "indicator",
+     "series_kind": "actual",
+     "transform": [
+      {
+       "op": "normalize",
+       "basis": "zscore"
+      }
+     ]
+    }
+   ],
+   "relationship": {
+    "kind": "composite",
+    "claim": "the order the cycle falls: financial conditions -> liquidity -> ISM -> asset prices; each with a lead time"
+   }
+  }
+ ]
+}

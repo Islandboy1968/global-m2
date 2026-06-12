@@ -155,11 +155,19 @@ The two share: the `summary.json` indicator-digest field set, the `schema_versio
 scheme, and the `dashboard` discriminator (`"tec"` / `"ea"`). An agent can fetch
 both digests and reason across them with one parser.
 
-**Not yet on the TEC side** (EA-only or future): per-panel manifests
-(`panels.json`) and the computed chart-relationship checks (`relationships.py`).
-TEC is a single-page dashboard without per-tab panel directories; if TEC's
-overlay charts (liquidity-leads-BTC/NDX, FCI-leads-ISM) later need machine-readable
-construction metadata, adopt EA's §5 panel-manifest shape. Tracked, not built.
+**Built on the TEC side too (2026-06-12):** per-panel manifests and the
+computed chart-relationship checks now exist here — `data/panels.json` (§5a,
+single manifest: TEC is a single-page dashboard, authored in the EA repo's
+`tec_handoff/` and delivered when the cross-repo PAT landed) and
+`relationships.py` (§5b, ported from EA's reference implementation). One
+deliberate adaptation, documented in the module docstring: TEC correlates on a
+MONTHLY grid (EA uses integer years) because TEC's claimed leads are ~90 days
+(liquidity → BTC/NDX) and 12-18 months (FCI → ISM) — a year grid would read
+them all as zero. Output emits `best_lag_months` (native) plus
+`best_lag_years` (EA-parser compatibility). The checks ride into
+`data/summary.json` as a `panels` list via the same lazy-import hook in
+`summarize.build_summary` that EA uses; a failure in the checks layer can
+never break the digest.
 
 ---
 
@@ -168,9 +176,10 @@ construction metadata, adopt EA's §5 panel-manifest shape. Tracked, not built.
 - **Locked:** the three-surface model, `schema_version` + `dashboard` stamp, the
   `summary.json` indicator-digest field set above, "pipeline emits facts not
   narrative," source-verified freshness in the digest.
-- **Proposed / not yet locked:** panel manifests + relationship checks for TEC's
-  overlay charts. Change freely while v1.0 is young; bump to 1.1 once a consuming
-  agent depends on the added shape.
+- **Built, not yet locked:** panel manifests (`data/panels.json`) + relationship
+  checks (`relationships.py` → `summary.json.panels`), landed 2026-06-12. Change
+  freely while v1.0 is young; bump to 1.1 once a consuming agent depends on the
+  added shape.
 
 ## 6. Licensing / redistribution
 

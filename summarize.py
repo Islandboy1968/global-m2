@@ -386,6 +386,15 @@ def build_summary(data):
             indicators[path] = s
         except Exception:  # a bad series must never break the digest
             continue
+
+    # §5b: independent checks of the chart constructions data/panels.json
+    # (§5a) declares — same lazy-import hook as EA's summarize.py.
+    try:
+        import relationships
+        panels = relationships.build_panel_checks(data)
+    except Exception:  # the digest must never break on the checks layer
+        panels = []
+
     return {
         "schema_version": SCHEMA_VERSION,
         "dashboard": "tec",
@@ -394,6 +403,7 @@ def build_summary(data):
         "data_updated": data.get("updated"),
         "headline": _headline(data),
         "signals": _signals(data),
+        "panels": panels,
         "indicators": indicators,
         "build": _build_status(data),
     }
