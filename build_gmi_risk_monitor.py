@@ -4,9 +4,10 @@
 Same verified pipeline as build_risk_monitor.py (M2/ISM macro spine from
 data/data.js, per-asset TradingView pulls through lib/signals.py +
 lib/metrics.py) with one difference: the position list is NOT hand-edited.
-It is auto-derived from the GMI Positions dashboard's positions.json on
-Google Drive (see dashboard-risk-monitor/gmi_positions_sync.py), so opens
-and closes published there flow through on the next run.
+It is auto-derived from the GMI Positions book that Cowork commits to the
+repo as dashboard-risk-monitor/gmi-positions-source.json (see
+gmi_positions_sync.py), so opens and closes published there flow through
+on the next run — and commits to that file trigger an immediate rebuild.
 
 Outputs:
   dashboard-risk-monitor/gmi.html            — baked page (JS vars + embedded
@@ -15,8 +16,8 @@ Outputs:
                                                file for AI/programmatic use
 
 FAIL LOUD (matching build_risk_monitor.py): unresolved feeds, tickers missing
-from TV_MAP, or an unreachable Drive source all exit non-zero — but what
-resolved is still written, so the gap is visible rather than blank/stale.
+from TV_MAP, or a missing/malformed positions book all exit non-zero — but
+what resolved is still written, so the gap is visible rather than blank/stale.
 """
 import json, os, sys, datetime as dt
 
@@ -38,7 +39,7 @@ def inject(html, start, end, payload):
 def main():
     macro = build_macro(load_tgl())
 
-    src, src_label, warning = SYNC.fetch_source()
+    src, src_label = SYNC.fetch_source()
     assets, unpriced, unmapped = SYNC.derive_assets(src)
 
     failures = []
@@ -136,9 +137,6 @@ def main():
         print("\nFAILED FEEDS (%d) — board incomplete:" % len(failures))
         for f in failures:
             print("  - " + f)
-        bad = True
-    if warning:
-        print("\nSOURCE WARNING: " + warning)
         bad = True
     if bad:
         sys.exit(1)

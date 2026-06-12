@@ -3,17 +3,18 @@
 # ===========================================================================
 #  The GMI-branded Risk Monitor page (gmi.html) does NOT use a hand-edited
 #  position list like positions.py. Its "GMI Positions" tab follows the GMI
-#  Positions dashboard's positions.json (maintained in Cowork, published to
-#  Google Drive). When a position is opened or closed there, the next pipeline
-#  run picks it up automatically — no edit in this repo.
+#  Positions dashboard's book, which Cowork publishes by committing
+#  gmi-positions-source.json (in this directory) to the repo. When a position
+#  is opened or closed there, the workflow rebuilds — no edit needed here.
 #
 #  How it works, in order:
-#    1. fetch_source()  — download positions.json from Google Drive (the file
-#       must be shared "anyone with the link can view"). On success the copy
-#       is cached to gmi-positions-source.json so the repo always carries the
-#       last good snapshot. On failure the cached snapshot is used and the
-#       build FAILS LOUD (exit non-zero) so a broken sync is caught in CI,
-#       never silently stale on the board.
+#    1. fetch_source()  — load gmi-positions-source.json, the repo-canonical
+#       copy of the GMI Positions book (Cowork-committed). Missing or
+#       unparseable file FAILS LOUD in CI — never silently stale.
+#       (History: v1 fetched positions.json from Google Drive with this file
+#       as cache; flipped to repo-canonical 2026-06-12 once Cowork began
+#       committing the book directly — fresher, no public link-sharing, and
+#       commits trigger an immediate rebuild.)
 #    2. derive_assets() — flatten the three books (Tactical / Core /
 #       Long-term) into ONE deduped list of open instruments, in first-
 #       appearance order, tagged with which books hold each instrument.
@@ -29,22 +30,16 @@
 # ===========================================================================
 import json
 import os
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CACHE_PATH = os.path.join(HERE, "gmi-positions-source.json")
-
-# Google Drive file ID of positions.json in the "GMI Positions Dashboard"
-# folder (drive.google.com/drive/folders/1wKaSzAgTF75CkDDm8cjl2QQmEHhL95xv).
-DRIVE_FILE_ID = "1ASs512qjBSBUcT1u4y8w-11n7ZDUdF_0"
-DRIVE_URL = "https://drive.google.com/uc?export=download&id=" + DRIVE_FILE_ID
+SOURCE_PATH = os.path.join(HERE, "gmi-positions-source.json")
 
 BOOKS = [("tactical", "T"), ("core", "C"), ("long_term", "LT")]
 NO_FEED_CLASSES = {"basket", "fund", "option"}
 
-# TradingView symbol map, keyed by the ticker used in positions.json.
+# TradingView symbol map, keyed by the ticker used in the positions book.
 # name/ticker are what the table displays (canonical, since the same
-# instrument can appear in positions.json under lot labels like
+# instrument can appear in the book under lot labels like
 # "SUI (tactical)"). Fields otherwise as in positions.py.
 TV_MAP = {
     "BTC":   {"name": "Bitcoin",         "ticker": "BTC",  "tv_symbol": "INDEX:BTCUSD",    "category": "Crypto",    "secular_method": "logchannel", "is_yield": False},
@@ -67,32 +62,24 @@ TV_MAP = {
     "QQQ":   {"name": "Nasdaq 100",      "ticker": "QQQ",  "tv_symbol": "NASDAQ:QQQ",      "category": "Equity",    "secular_method": "sma60",      "is_yield": False},
     "NDX":   {"name": "Nasdaq 100",      "ticker": "NDX",  "tv_symbol": "NASDAQ:NDX",      "category": "Index",     "secular_method": "sma60",      "is_yield": False},
     "TAN":   {"name": "Invesco Solar",   "ticker": "TAN",  "tv_symbol": "AMEX:TAN",        "category": "Equity",    "secular_method": "sma60",      "is_yield": False},
-    # EU Carbon: positions.json books the EUA future as MO1; the Risk Monitor
-    # source for the same exposure is the WisdomTree Carbon ETC (CARB.L).
+    # EU Carbon: the positions book books the EUA future as MO1; the Risk
+    # Monitor source for the same exposure is the WisdomTree Carbon ETC (CARB.L).
     "MO1":   {"name": "EU Carbon (EUA)", "ticker": "EUA",  "tv_symbol": "LSE:CARB",        "category": "Commodity", "secular_method": "logchannel", "is_yield": False},
 }
 
 
-def fetch_source(timeout=30):
-    """Return (data, source_label, warning). Tries Drive first, caches the
-    download; on any failure falls back to the committed cache with a warning
-    string the caller must surface (and fail the build on)."""
-    try:
-        req = urllib.request.Request(DRIVE_URL, headers={"User-Agent": "Mozilla/5.0"})
-        raw = urllib.request.urlopen(req, timeout=timeout).read()
-        data = json.loads(raw)
-        if "sections" not in data:
-            raise ValueError("no 'sections' key — not a positions.json payload")
-        with open(CACHE_PATH, "wb") as f:
-            f.write(raw)
-        return data, "Google Drive (live)", None
-    except Exception as ex:
-        data = json.load(open(CACHE_PATH))
-        warning = ("positions.json not reachable on Drive (%r) — built from the "
-                   "committed snapshot (as_of %s). If the file isn't shared "
-                   "'anyone with link can view' yet, sharing it fixes this."
-                   % (ex, data.get("as_of_prices", "unknown")))
-        return data, "cached snapshot", warning
+def fetch_source():
+    """Return (data, source_label) from the repo-canonical positions book.
+    Missing or malformed file raises — the build must fail loud, since
+    without a book there is no honest GMI Positions tab to publish."""
+    if not os.path.exists(SOURCE_PATH):
+        raise SystemExit("FAIL: %s missing — the repo-canonical GMI positions "
+                         "book (Cowork-committed) is gone." % SOURCE_PATH)
+    data = json.load(open(SOURCE_PATH))
+    if "sections" not in data:
+        raise SystemExit("FAIL: %s has no 'sections' key — not a positions "
+                         "book payload." % SOURCE_PATH)
+    return data, "repo (gmi-positions-source.json)"
 
 
 def derive_assets(data):

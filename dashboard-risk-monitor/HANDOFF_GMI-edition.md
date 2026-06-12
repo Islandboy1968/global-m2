@@ -17,24 +17,24 @@ weekly workflow, and the `make_alpha_html()` derivation are unchanged.
 ## How positions auto-update
 
 The position list is **not hand-edited** (unlike `positions.py`). The
-pipeline (`build_gmi_risk_monitor.py`, daily via
-`.github/workflows/gmi-risk-monitor.yml`) reads the GMI Positions
-dashboard's `positions.json` from Google Drive
-(folder `1wKaSzAgTF75CkDDm8cjl2QQmEHhL95xv`), so:
+GMI Positions book is **repo-canonical**: Cowork publishes it by committing
+`dashboard-risk-monitor/gmi-positions-source.json` to `main`. The pipeline
+(`build_gmi_risk_monitor.py` via `.github/workflows/gmi-risk-monitor.yml`)
+rebuilds **on every commit to that file** plus a daily price refresh, so:
 
-- **Open a position** in the GMI Positions dashboard → it appears here on
-  the next daily run (provided its ticker is in `TV_MAP`, below).
+- **Open a position** in the GMI Positions dashboard → Cowork commits the
+  book → the board updates within minutes (provided the ticker is in
+  `TV_MAP`, below).
 - **Close a position** → it drops off automatically. Nothing to edit.
 
-Sync logic lives in `gmi_positions_sync.py`. Each successful Drive fetch is
-cached to `gmi-positions-source.json` (committed), so the build always has a
-last-good snapshot; if Drive is unreachable the build uses the snapshot and
-**fails loud** so the broken sync is caught in CI, never silently stale.
+Sync logic lives in `gmi_positions_sync.py`. A missing or malformed book
+**fails loud** in CI — never silently stale.
 
-> **One-time setup:** the Drive `positions.json` must be shared
-> **"anyone with the link can view"** for the GitHub runner to fetch it.
-> Until then every run is RED with a clear SOURCE WARNING (the page still
-> builds from the snapshot).
+> **History:** v1 fetched `positions.json` from the Google Drive folder
+> (`1wKaSzAgTF75CkDDm8cjl2QQmEHhL95xv`) with the repo file as cache.
+> Flipped to repo-canonical on 2026-06-12 once Cowork began committing the
+> book directly — fresher data, no public link-sharing, instant rebuilds.
+> The Drive copy is now human-facing only; the pipeline never reads it.
 
 ## The one manual touchpoint
 
